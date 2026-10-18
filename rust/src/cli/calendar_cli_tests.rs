@@ -200,7 +200,7 @@ fn update_properties_action_ids_also_set_the_label_they_imply() {
     ok(&t, &["update_properties", "abc123", "action_ids=g1, g2"]);
 
     let event = t.app.calendar_client().unwrap().get_event("abc123").unwrap();
-    assert_eq!((event.action_ids, event.event_label_id.as_deref()), (Some(vec!["g1".to_string(), "g2".to_string()]), Some("label-1")));
+    assert_eq!((event.action_ids, event.event_label_id.as_deref()), (Some(crate::testing::shares(&["g1", "g2"])), Some("label-1")));
 }
 
 #[test]

@@ -34,6 +34,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -83,7 +113,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -99,6 +129,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -142,7 +177,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -190,7 +225,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -489,7 +532,15 @@
         },
         "action_ids": {
           "items": {
-            "type": "string"
+            "anyOf": [
+              {
+                "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ActionSplit"
+              }
+            ]
           },
           "type": [
             "array",
@@ -583,6 +634,36 @@
       },
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -632,7 +713,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -648,6 +729,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -873,6 +959,36 @@
       },
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "EventCancel": {
           "description": "An event to cancel, and whether that counts against follow-through:\na commitment dropped (true) rather than just a change of plan (false).\nGive etag -- the event's, as you last read it: without it, the cancel is refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "properties": {
@@ -972,7 +1088,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -988,6 +1104,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -1031,7 +1152,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -1079,7 +1200,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1339,6 +1468,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -1388,7 +1547,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -1404,6 +1563,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -1447,7 +1611,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -1495,7 +1659,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -1815,7 +1987,15 @@
         },
         "action_ids": {
           "items": {
-            "type": "string"
+            "anyOf": [
+              {
+                "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ActionSplit"
+              }
+            ]
           },
           "type": [
             "array",
@@ -1869,6 +2049,36 @@
       },
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -1918,7 +2128,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -1934,6 +2144,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -2152,6 +2367,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -2201,7 +2446,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -2217,6 +2462,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -2330,7 +2580,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2540,6 +2798,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -2589,7 +2877,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -2605,6 +2893,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -2718,7 +3011,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -2943,6 +3244,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -2992,7 +3323,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -3008,6 +3339,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -3121,7 +3457,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3352,6 +3696,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -3401,7 +3775,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -3417,6 +3791,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -3530,7 +3909,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -3750,6 +4137,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -3799,7 +4216,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -3815,6 +4232,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -3858,7 +4280,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -3906,7 +4328,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4166,6 +4596,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -4215,7 +4675,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -4231,6 +4691,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -4274,7 +4739,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -4322,7 +4787,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -4631,6 +5104,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "Facts": {
           "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
           "properties": {
@@ -4680,7 +5183,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -4696,6 +5199,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -4739,7 +5247,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -4787,7 +5295,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -13517,7 +14033,7 @@
           ]
         },
         "instructions": {
-          "default": "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\"play guitar\", \"eat a meal\"); an event can have several, the first setting its color. For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations`, matched by their hints -- usually one; several when it moved between places), with_ids (people from `people` who were there; never \"self\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \"self\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot). The notes aren't judgments: you don't know the traits, so just record what happened. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave); with neither, the whole event is for it. An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
+          "default": "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\"play guitar\", \"eat a meal\"); an event can have several, the first setting its color. Each is an id -- an even part of the remaining time, what the minutes and percents leave -- or {action_id, minutes?, percent?, remaining?} when the notes say how long it took (remaining: true for its part of the remaining time as well). For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations`, matched by their hints -- usually one; several when it moved between places), with_ids (people from `people` who were there; never \"self\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \"self\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot). The notes aren't judgments: you don't know the traits, so just record what happened. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave), and remaining: true if it also takes the remaining time; with neither, it takes the remaining time (what the minutes and percents leave). An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
           "type": "string"
         }
       },
@@ -13527,6 +14043,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "AdditionSettled": {
           "description": "An addition the user settled, as a proposal shows it: its `id`, or\n`None` if they dropped it.",
           "properties": {
@@ -13632,7 +14178,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -14462,6 +15016,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "CompactionCreate": {
           "description": "Something unplanned that happened: a `create` of compact_notes.",
           "properties": {
@@ -14502,7 +15086,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -14592,7 +15184,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -14711,7 +15311,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -14727,6 +15327,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -15060,6 +15665,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "CompactionChange": {
           "description": "One calendar change a plan makes.",
           "properties": {
@@ -15220,7 +15855,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -15247,7 +15890,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -15263,6 +15906,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -15769,6 +16417,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "AdditionSettled": {
           "description": "An addition the user settled, as a proposal shows it: its `id`, or\n`None` if they dropped it.",
           "properties": {
@@ -15904,7 +16582,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -16061,7 +16747,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -16077,6 +16763,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -16155,7 +16846,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -16665,6 +17364,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "AdditionChoice": {
           "description": "The user's say on an action, person or location Claude's decisions\nadd (by its `ref`): `create` it now -- with any of `name`, `context`\n(a person's) and `hint` (a location's) corrected -- say it's one\nthat's `existing` (its `id`), or `drop` it from the events.",
           "properties": {
@@ -16781,7 +17510,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -16797,6 +17526,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -16914,7 +17648,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -17045,7 +17787,7 @@
           "type": "object"
         },
         "PublicEvent": {
-          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the whole event). The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
+          "description": "A calendar event, as every event tool takes and returns it.\n\nis_cancelled is read-only: update_event refuses to set it -- cancel\nan event with delete_event, which says whether the cancellation counts\nagainst follow-through.\n\naction_ids are what was done at the event (see get_actions), the\nfirst setting its label and color; setting them is how an event is\ntied to actions. Each is an action's id, taking an even part of the\nremaining time (what the minutes and percents leave), or an object\n{action_id, minutes?, percent?, remaining?}: minutes (a fixed share),\npercent (of what the minutes leave), and remaining true for its part of\nthe remaining time as well. The minutes must fit in the event and the\npercents add up to no more than 100; read back, minutes are cut to fit\nan event shortened since. action_names (their names, in the same order) and\nevent_label_id (derived from the first action) are read-only: an\nupdate ignores them.\n\nactions_from_label is true when an event was never given actions, so\nits action_ids are inferred from its label (the action that holds the\nlabel), not stored. Sending it back with actions_from_label still true\nleaves them inferred, whatever action_ids says; to store actions, send\naction_ids with actions_from_label false (or left out).\n\neffective_priority is read-only: the priority that applies, i.e.\npriority falling back,\nwhen the event doesn't set one, to the highest (lowest-numbered)\npriority among its actions (each action's own, or its nearest\ngroup's). Kept separate from priority so that sending a listed event\nstraight back to update_event never copies its actions' priority onto\nthe event itself, which would stop it following later changes to the\nactions. An update ignores it.\n\nis_end_of_day_sleep/recurring_event_id are read-only too, and an\nupdate ignores them as well. is_end_of_day_sleep decides where a day\nends for compaction, so a wrong mark would quietly change what later\nupdates shrink, move or cancel; it's only set by hand, with\ncalendar_cli. recurring_event_id is assigned by Google and can't be\nset at all.\n\ngoals are the goals the event is for (see get_goals): each a goal_id,\nwith minutes (a fixed share of the event), percent (of what the\nminutes leave), or neither (the remaining time, what the minutes and\npercents leave); remaining true gives one with minutes or percent the\nremaining time too. The minutes must fit in\nthe event, and the percents add up to no more than 100; read back,\nminutes are cut to fit an event shortened since, and goals deleted\nsince are left out. Set them to replace them whole ([] for none).\nMost events have none: tag an event with a goal only when that goal\nis open (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints. Tag the\nmost specific goal that fits (a sub-goal rather than its parent), and\ngive minutes or percent when only part of the event was for it.\n\nfacts are what compaction established about a past event, for\ntraits' judgments later: location_ids (see\nget_locations), with_ids (the people there with the user -- never\n\"self\", who's at every event), for_ids (people it was done for who\nweren't there), notes ({person id: a subjective note on how it was\nfor them}, \"self\" for the user) and commute (true for getting from\none place to another). Compaction writes them; set them to replace\nthem whole.\n\njudgments are how the event went for each person, judged after\ncompaction against each judgment part of the traits that apply to them\n(see record_judgments): {person id: {trait id: {part key: {\"rating\",\n\"scale\", \"reasoning\"}}}}. Set them to overwrite a rating by hand\n(replacing them whole), or clear them.\n\nrepeat is write-only: given to create_event, or to update_event for an\nevent that isn't in a series, it makes the event the first of a\nrecurring series that repeats as it says (see Repeat), in the\ncalendar's time zone. The event's id becomes the series' own, and the\nseries' events (list_events) each get their own id, with the series'\nas their recurring_event_id. It's never returned: get_recurrence says\nhow a series repeats, and update_recurrence changes it.\n\nEverything before the last compaction (get_compaction_status's\nlast_compaction) is history: see update_event.",
           "properties": {
             "id": {
               "type": [
@@ -17093,7 +17835,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -17498,6 +18248,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "AdditionSettled": {
           "description": "An addition the user settled, as a proposal shows it: its `id`, or\n`None` if they dropped it.",
           "properties": {
@@ -17633,7 +18413,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -17790,7 +18578,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -17806,6 +18594,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -17884,7 +18677,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -18580,6 +19381,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "AdditionSettled": {
           "description": "An addition the user settled, as a proposal shows it: its `id`, or\n`None` if they dropped it.",
           "properties": {
@@ -18715,7 +19546,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -18872,7 +19711,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -18888,6 +19727,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -19136,7 +19980,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -19611,6 +20463,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "AdditionSettled": {
           "description": "An addition the user settled, as a proposal shows it: its `id`, or\n`None` if they dropped it.",
           "properties": {
@@ -19746,7 +20628,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -19903,7 +20793,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -19919,6 +20809,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -20167,7 +21062,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -21160,6 +22063,36 @@
       ],
       "type": "object",
       "$defs": {
+        "ActionSplit": {
+          "additionalProperties": false,
+          "description": "An action and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
+          "properties": {
+            "action_id": {
+              "type": "string"
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "percent": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "An even part of the remaining time too, what the minutes and\npercents leave, with the actions given as bare ids.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "action_id"
+          ],
+          "type": "object"
+        },
         "CompactionChange": {
           "description": "One calendar change a plan makes.",
           "properties": {
@@ -21320,7 +22253,15 @@
             },
             "action_ids": {
               "items": {
-                "type": "string"
+                "anyOf": [
+                  {
+                    "description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ActionSplit"
+                  }
+                ]
               },
               "type": [
                 "array",
@@ -21347,7 +22288,7 @@
           "type": "object"
         },
         "GoalShare": {
-          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the whole event.",
+          "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -21363,6 +22304,11 @@
                 "integer",
                 "null"
               ]
+            },
+            "remaining": {
+              "default": false,
+              "description": "With minutes or percent: the remaining time too, as a goal with\nneither takes.",
+              "type": "boolean"
             }
           },
           "required": [

@@ -9,6 +9,7 @@ use crate::py;
 use crate::sheet::rows;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::cancellations::Cancellations;
+use crate::stores::shares::share_problems;
 use crate::timeline::{build_timeline, Timeline, TimelineEvent};
 use chrono::{Duration, FixedOffset, Offset};
 
@@ -371,8 +372,8 @@ impl EventChanges {
                 patch.end = patch.end.or(before.end);
             }
             let after = patched(&before, &patch);
-            if patch.goals.is_some() {
-                if let Some(problem) = goal_share_problem(&after, &format!("event {event_id} ({})", summary_repr(&before))) {
+            if patch.goals.is_some() || patch.action_ids.is_some() {
+                if let Some(problem) = share_problem(&after, patch.goals.is_some(), patch.action_ids.is_some(), &format!("event {event_id} ({})", summary_repr(&before))) {
                     problems.push(problem);
                     continue;
                 }
@@ -448,7 +449,7 @@ impl EventChanges {
                     continue;
                 }
             }
-            if let Some(problem) = goal_share_problem(&event, &format!("new event {} ({})", number + 1, summary_repr(&event))) {
+            if let Some(problem) = share_problem(&event, true, true, &format!("new event {} ({})", number + 1, summary_repr(&event))) {
                 problems.push(problem);
                 continue;
             }
@@ -660,12 +661,16 @@ pub fn timeline(batch: &Batch) -> Option<Timeline> {
     if shown.is_empty() { None } else { Some(build_timeline(Vec::new(), shown, None, true, None)) }
 }
 
-/// What's wrong with `event`'s goal shares, for its whole length, named
-/// as `name` -- or None.
-fn goal_share_problem(event: &Event, name: &str) -> Option<Problem> {
-    let shares = event.goals.as_deref().unwrap_or_default();
+/// What's wrong with `event`'s goal shares (with `goals`) and action
+/// shares (with `actions`), for its whole length, named as `name` -- or
+/// None.
+fn share_problem(event: &Event, goals: bool, actions: bool, name: &str) -> Option<Problem> {
     let (Some(start), Some(end)) = (event.start, event.end) else { return None };
-    let problems = crate::stores::goals::share_problems(shares, (end - start).num_minutes());
+    let minutes = (end - start).num_minutes();
+    let mut problems = if goals { share_problems(event.goals.as_deref().unwrap_or_default(), minutes) } else { Vec::new() };
+    if let Some(actions) = event.action_ids.as_deref().filter(|a| actions && !a.is_empty() && !event.actions_from_label) {
+        problems.extend(share_problems(actions, minutes));
+    }
     if problems.is_empty() {
         return None;
     }

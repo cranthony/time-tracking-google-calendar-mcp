@@ -139,7 +139,7 @@ fn additions(actions: Value, people: Value, locations: Value) -> Additions {
 fn new_ones_are_named_by_ref_shown_and_created_when_applied() {
     let setup = bare(Stores { people: vec![json!({"id": "sam", "name": "Sam", "status": "active"})], ..Default::default() });
     let mut decisions = setup.coffee_instead_of_email();
-    decisions[0].action_ids = Some(strings(&["new:coffee"]));
+    decisions[0].action_ids = Some(crate::testing::shares(&["new:coffee"]));
     decisions[0].facts = Some(facts(json!({"locations": ["new:cafe"], "with": ["sam", "new:alex"], "notes": {"new:alex": "new in town"}})));
 
     let planned = setup
@@ -180,7 +180,7 @@ fn new_ones_are_named_by_ref_shown_and_created_when_applied() {
     let alex = setup.compactor.people.as_ref().map(|p| serde_json::to_value(p.get_person("alex").unwrap()).unwrap()).unwrap()["id"].as_str().unwrap().to_string();
     let cafe = setup.compactor.locations.as_ref().unwrap().get_location("corner cafe").unwrap().id.unwrap();
     let event = created(&setup);
-    assert_eq!(event.action_ids, Some(vec![coffee.id.clone().unwrap()]));
+    assert_eq!(event.action_ids, Some(vec![crate::stores::actions::ActionShare::whole(coffee.id.clone().unwrap())]));
     assert_eq!(
         event.facts.map(|f| f.to_public()),
         Some(facts(json!({"locations": [cafe], "with": ["sam", alex.clone()], "notes": {alex: "new in town"}})).to_public())
@@ -191,7 +191,7 @@ fn new_ones_are_named_by_ref_shown_and_created_when_applied() {
 fn a_resumed_commit_reuses_what_it_already_added() {
     let setup = bare(Stores::default());
     let mut decisions = setup.coffee_instead_of_email();
-    decisions[0].action_ids = Some(strings(&["new:coffee"]));
+    decisions[0].action_ids = Some(crate::testing::shares(&["new:coffee"]));
     let id = setup
         .try_dry_run(decisions, DryRun { additions: additions(json!([{"ref": "new:coffee", "name": "Drink coffee"}]), json!([]), json!([])), ..Default::default() })
         .unwrap()
@@ -205,7 +205,7 @@ fn a_resumed_commit_reuses_what_it_already_added() {
     let all = setup.compactor.actions.as_ref().unwrap().all().unwrap();
     let names: Vec<&str> = all.iter().map(|a| a.name.as_deref().unwrap()).collect();
     assert_eq!(names, vec!["Drink coffee"]);
-    assert_eq!(created(&setup).action_ids, Some(vec![all[0].id.clone().unwrap()]));
+    assert_eq!(created(&setup).action_ids, Some(vec![crate::stores::actions::ActionShare::whole(all[0].id.clone().unwrap())]));
 }
 
 #[test]
@@ -229,7 +229,7 @@ fn a_ref_that_isnt_added_is_refused() {
     let setup = Setup::new(&[("09:05", "x")], None, "11:30");
 
     refused(
-        setup.try_dry_run(vec![EventDecision { action_ids: Some(strings(&["new:nope"])), ..keep("e1") }], DryRun::default()),
+        setup.try_dry_run(vec![EventDecision { action_ids: Some(crate::testing::shares(&["new:nope"])), ..keep("e1") }], DryRun::default()),
         "a ref that isn't in new_actions",
     );
 }

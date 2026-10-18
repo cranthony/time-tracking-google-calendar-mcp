@@ -109,7 +109,7 @@ use crate::google::calendar::BATCH_SIZE;
 use crate::google::{BatchRequest, GoogleError};
 use crate::py;
 use crate::stores::action_calendar::ActionCalendar;
-use crate::stores::actions::{ActionTree, Actions};
+use crate::stores::actions::{share_ids, ActionShare, ActionTree, Actions};
 use crate::stores::cancellations::Cancellations;
 use crate::stores::event_changes::{ChangeError, Problem};
 use crate::stores::goals::{self, share_problems, Goals};
@@ -191,7 +191,7 @@ pub struct ContextEvent {
     pub start: Moment,
     pub end: Moment,
     pub description: Option<String>,
-    pub action_ids: Option<Vec<String>>,
+    pub action_ids: Option<Vec<ActionShare>>,
     pub action_names: Option<Vec<String>>,
     pub suggested_action_ids: Option<Vec<String>>,
     pub priority: Option<i64>,
@@ -461,7 +461,7 @@ impl NoteCompactor {
                     end: e.end(),
                     description: e.description.clone(),
                     action_ids: e.action_ids.clone(),
-                    action_names: e.action_ids.as_ref().map(|ids| ids.iter().map(|a| lookup(&names, a).unwrap_or(a.clone())).collect()),
+                    action_names: e.action_ids.as_ref().map(|ids| ids.iter().map(|a| lookup(&names, &a.action_id).unwrap_or(a.action_id.clone())).collect()),
                     suggested_action_ids: suggested.iter().rev().find(|(k, _)| *k == id).map(|(_, v)| v.clone()),
                     priority: e.effective_priority(),
                     facts: e.facts.clone(),
@@ -626,8 +626,8 @@ impl NoteCompactor {
                 .action_ids
                 .iter()
                 .flatten()
-                .filter(|a| tree.by_id(a).is_some_and(|action| action.status != Some(crate::stores::actions::ActionStatus::Deleted)))
-                .cloned()
+                .filter(|a| tree.by_id(&a.action_id).is_some_and(|action| action.status != Some(crate::stores::actions::ActionStatus::Deleted)))
+                .map(|a| a.action_id.clone())
                 .collect();
             if let Some(summary) = event.summary.as_deref().filter(|s| !s.is_empty()) {
                 if !usable.is_empty() && !event.is_cancelled() {
@@ -2465,13 +2465,13 @@ impl NoteCompactor {
                     .iter()
                     .rev()
                     .find(|e| e.id.as_deref().is_some_and(|i| !i.is_empty()) && e.id.as_deref() == id)
-                    .map(|e| e.action_ids.clone().unwrap_or_default())
+                    .map(|e| share_ids(e.action_ids.as_deref().unwrap_or_default()))
                     .unwrap_or_default()
             };
             let new: Vec<String> = additions.actions.iter().map(|a| a.ref_.clone()).collect();
             let mut problems: Vec<String> = Vec::new();
             for d in decisions {
-                let ids = d.action_ids.clone().unwrap_or_default();
+                let ids = share_ids(d.action_ids.as_deref().unwrap_or_default());
                 let named: Vec<String> = ids.iter().filter(|a| !new.contains(a)).cloned().collect();
                 let who = repr_opt(d.event_id.as_deref().filter(|e| !e.is_empty()).or(d.summary.as_deref()));
                 if !ids.is_empty() && ids.iter().any(|a| a.starts_with(REF_PREFIX) && !new.contains(a)) {
@@ -3288,7 +3288,7 @@ fn keep_priorities(plan: &mut CompactionPlan, tree: &ActionTree, day: &Day) {
         if start >= day.now || state.priority.is_some() {
             return None;
         }
-        state.action_ids.iter().flatten().filter_map(|a| tree.priority(a)).min()
+        state.action_ids.iter().flatten().filter_map(|a| tree.priority(&a.action_id)).min()
     };
     let mut changed: Vec<Option<String>> = Vec::new();
     for change in plan.changes.iter_mut() {

@@ -4,7 +4,7 @@
 
 use crate::event::Event;
 use crate::facts::Facts;
-use crate::stores::actions::{action_problems, Action, ActionStatus, Actions};
+use crate::stores::actions::{action_problems, Action, ActionShare, ActionStatus, Actions};
 use crate::stores::locations::{location_problems, Location, Locations};
 use crate::stores::people::{person_problems, People, Person, Status};
 use crate::py;
@@ -295,7 +295,7 @@ pub fn resolve(event: &Event, ids: &[(String, String)]) -> Event {
     }
     let mut out = event.clone();
     if let Some(action_ids) = event.action_ids.as_ref().filter(|a| !a.is_empty()) {
-        out.action_ids = Some(action_ids.iter().map(|a| mapped(ids, a)).collect());
+        out.action_ids = Some(action_ids.iter().map(|a| ActionShare { action_id: mapped(ids, &a.action_id), ..a.clone() }).collect());
     }
     if let Some(facts) = &event.facts {
         let list = |value: &Option<Value>| -> Option<Value> {

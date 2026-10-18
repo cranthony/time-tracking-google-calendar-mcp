@@ -194,9 +194,9 @@ fn gives_each_part_once_with_its_rubric_ratings_engagement_and_facts() {
 #[test]
 fn history_is_what_they_did_together_within_the_lookback() {
     let earlier = [
-        Event { action_ids: Some(strings(&["cook"])), facts: Some(facts(json!({"locations": ["home"], "with": ["sam"]}))), ..event("e0002", 3) },
-        Event { action_ids: Some(strings(&["cook"])), facts: Some(facts(json!({"locations": ["home"]}))), ..event("e0003", 5) }, // without Sam
-        Event { action_ids: Some(strings(&["hike"])), facts: Some(facts(json!({"locations": ["peak"], "with": ["sam"]}))), ..event("e0004", 40) }, // too long ago
+        Event { action_ids: Some(crate::testing::shares(&["cook"])), facts: Some(facts(json!({"locations": ["home"], "with": ["sam"]}))), ..event("e0002", 3) },
+        Event { action_ids: Some(crate::testing::shares(&["cook"])), facts: Some(facts(json!({"locations": ["home"]}))), ..event("e0003", 5) }, // without Sam
+        Event { action_ids: Some(crate::testing::shares(&["hike"])), facts: Some(facts(json!({"locations": ["peak"], "with": ["sam"]}))), ..event("e0004", 40) }, // too long ago
     ];
     let mut events = vec![tonight()];
     events.extend(earlier);
@@ -346,8 +346,8 @@ fn a_habit_has_its_own_rubric() {
 
 #[test]
 fn a_habits_history_is_its_events_in_scope() {
-    let before = Event { action_ids: Some(strings(&["hike"])), facts: Some(facts(json!({"locations": ["peak"]}))), ..event("e0000", 3) };
-    let cooked = Event { action_ids: Some(strings(&["cook"])), facts: Some(facts(json!({"locations": ["home"]}))), ..event("c0000", 2) };
+    let before = Event { action_ids: Some(crate::testing::shares(&["hike"])), facts: Some(facts(json!({"locations": ["peak"]}))), ..event("e0000", 3) };
+    let cooked = Event { action_ids: Some(crate::testing::shares(&["cook"])), facts: Some(facts(json!({"locations": ["home"]}))), ..event("c0000", 2) };
     let s = Setup::standard(&[before, cooked, tonight()])
         .with_habits(&[json!({"id": "out", "name": "Get outside", "action_id": "outdoors", "status": "active"})]);
 

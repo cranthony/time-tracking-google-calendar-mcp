@@ -595,103 +595,43 @@ fn check_statuses(statuses: Option<&[String]>) -> anyhow::Result<Vec<String>> {
 
 // -- events' goal shares -------------------------------------------------------
 
+pub use crate::stores::shares::{parse_shares, settled_shares, share_problems, shares_text};
+use crate::stores::shares::{is_false, Share};
+
 /// One goal an event is tagged with, and how much of the event it takes:
 /// minutes (a fixed share), percent (of what the fixed shares leave), or
-/// neither -- the whole event.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+/// neither -- the remaining time, what the minutes and percents leave.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
 pub struct GoalShare {
     pub goal_id: String,
     pub minutes: Option<i64>,
     pub percent: Option<i64>,
+    /// With minutes or percent: the remaining time too, as a goal with
+    /// neither takes.
+    #[schema(default = "false")]
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub remaining: bool,
 }
 
-/// Shares as an event keeps them: "a b=45m c=30%".
-pub fn shares_text(shares: &[GoalShare]) -> String {
-    shares
-        .iter()
-        .map(|s| match (s.minutes, s.percent) {
-            (Some(m), _) => format!("{}={m}m", s.goal_id),
-            (None, Some(p)) => format!("{}={p}%", s.goal_id),
-            (None, None) => s.goal_id.clone(),
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
+impl Share for GoalShare {
+    const KIND: &'static str = "goal";
+    const NEITHER: &'static str = "the remaining time";
 
-/// Shares as `shares_text` wrote them; a token that isn't one is skipped.
-pub fn parse_shares(text: &str) -> Vec<GoalShare> {
-    text.split_whitespace()
-        .filter_map(|token| match token.split_once('=') {
-            None => Some(GoalShare { goal_id: token.into(), minutes: None, percent: None }),
-            Some((id, amount)) if !id.is_empty() => {
-                if let Some(m) = amount.strip_suffix('m').and_then(|m| m.parse().ok()) {
-                    Some(GoalShare { goal_id: id.into(), minutes: Some(m), percent: None })
-                } else {
-                    amount.strip_suffix('%').and_then(|p| p.parse().ok()).map(|p| GoalShare { goal_id: id.into(), minutes: None, percent: Some(p) })
-                }
-            }
-            Some(_) => None,
-        })
-        .collect()
-}
-
-/// What's wrong with `shares` on an event `event_minutes` long.
-pub fn share_problems(shares: &[GoalShare], event_minutes: i64) -> Vec<String> {
-    let mut problems = Vec::new();
-    let mut seen: Vec<&str> = Vec::new();
-    let (mut minutes, mut percent) = (0, 0);
-    for share in shares {
-        let id = share.goal_id.trim();
-        if id.is_empty() || id.contains(char::is_whitespace) || id.contains('=') {
-            problems.push(format!("goal id {} isn't one", py::repr(&share.goal_id)));
-            continue;
-        }
-        if seen.contains(&id) {
-            problems.push(format!("goal {id} is given more than once"));
-        }
-        seen.push(id);
-        match (share.minutes, share.percent) {
-            (Some(_), Some(_)) => problems.push(format!("goal {id} is given both minutes and percent: give one, or neither for the whole event")),
-            (Some(m), None) if m <= 0 => problems.push(format!("goal {id}'s minutes must be more than 0, not {m}")),
-            (Some(m), None) => minutes += m,
-            (None, Some(p)) if !(1..=100).contains(&p) => problems.push(format!("goal {id}'s percent must be 1 to 100, not {p}")),
-            (None, Some(p)) => percent += p,
-            (None, None) => {}
-        }
+    fn new(goal_id: String, minutes: Option<i64>, percent: Option<i64>, remaining: bool) -> Self {
+        GoalShare { goal_id, minutes, percent, remaining: remaining && (minutes.is_some() || percent.is_some()) }
     }
-    if minutes > event_minutes {
-        problems.push(format!("its goals' minutes add up to {minutes}, more than the event's {event_minutes}"));
+    fn id(&self) -> &str {
+        &self.goal_id
     }
-    if percent > 100 {
-        problems.push(format!("its goals' percents add up to {percent}, more than 100"));
+    fn minutes(&self) -> Option<i64> {
+        self.minutes
     }
-    problems
-}
-
-/// `shares` as an event `event_minutes` long gives them: only those whose
-/// goal is still there (`known`), minutes cut down to fit in the event
-/// (an event shortened since they were given), and percents to 100.
-pub fn settled_shares(shares: &[GoalShare], event_minutes: i64, known: &dyn Fn(&str) -> bool) -> Vec<GoalShare> {
-    let (mut minutes_left, mut percent_left) = (event_minutes.max(0), 100);
-    let mut out: Vec<GoalShare> = Vec::new();
-    for share in shares.iter().filter(|s| known(&s.goal_id)) {
-        if out.iter().any(|s| s.goal_id == share.goal_id) {
-            continue;
-        }
-        let mut share = share.clone();
-        if let Some(m) = share.minutes {
-            let m = m.clamp(0, minutes_left);
-            minutes_left -= m;
-            share.minutes = Some(m);
-            share.percent = None;
-        } else if let Some(p) = share.percent {
-            let p = p.clamp(0, percent_left);
-            percent_left -= p;
-            share.percent = Some(p);
-        }
-        out.push(share);
+    fn percent(&self) -> Option<i64> {
+        self.percent
     }
-    out
+    fn remaining(&self) -> bool {
+        self.remaining
+    }
 }
 
 // Written by the app: made once by their ids and versions.

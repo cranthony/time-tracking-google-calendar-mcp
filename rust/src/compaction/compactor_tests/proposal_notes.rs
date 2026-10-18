@@ -282,7 +282,7 @@ fn settling() -> Settling {
     setup.append_note("09:00", None);
     setup.append_note("09:30", None);
     let mut decisions = setup.coffee_instead_of_email();
-    decisions[0].action_ids = Some(strings(&["new:coffee"]));
+    decisions[0].action_ids = Some(crate::testing::shares(&["new:coffee"]));
     decisions[0].facts = Some(facts(json!({"locations": ["new:cafe"], "with": ["sam", "new:alex"], "notes": {"sam": "tired", "new:alex": "new in town"}})));
     let result = setup.try_dry_run(decisions.clone(), DryRun { additions: new_additions(), ..Default::default() }).unwrap();
     let key = result.changes.iter().find(|c| c.action == "create").unwrap().key.clone().unwrap();
@@ -364,7 +364,7 @@ fn an_action_approved_now_is_created_active() {
     let all = s.setup.compactor.actions.as_ref().unwrap().all().unwrap();
     assert_eq!(all.len(), 1);
     assert_eq!((all[0].name.as_deref(), all[0].status), (Some("Drink coffee"), Some(crate::stores::actions::ActionStatus::Active)));
-    assert_eq!(s.coffee(&proposal).action_ids, Some(vec![all[0].id.clone().unwrap()]));
+    assert_eq!(s.coffee(&proposal).action_ids, Some(vec![crate::stores::actions::ActionShare::whole(all[0].id.clone().unwrap())]));
 }
 
 #[test]

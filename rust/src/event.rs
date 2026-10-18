@@ -2,6 +2,7 @@
 //! it's read from and written to the API.
 
 use crate::facts::Facts;
+use crate::stores::actions::ActionShare;
 use crate::stores::goals::{parse_shares, shares_text, GoalShare};
 use crate::py;
 use anyhow::{anyhow, bail};
@@ -43,7 +44,9 @@ pub struct Event {
     pub priority: Option<i64>,
     pub is_end_of_day_sleep: Option<bool>,
     pub event_label_id: Option<String>,
-    pub action_ids: Option<Vec<String>>,
+    /// Its actions, the first setting its color, and how much of it each
+    /// takes.
+    pub action_ids: Option<Vec<ActionShare>>,
     /// The goals it's tagged with, and how much of it each takes ([] for
     /// none, given to a patch, to remove them).
     pub goals: Option<Vec<GoalShare>>,
@@ -127,7 +130,7 @@ impl Event {
             event.is_end_of_day_sleep = Some(raw.to_lowercase() == "true");
         }
         if let Some(raw) = prop("action_ids") {
-            event.action_ids = Some(raw.split_whitespace().map(str::to_string).collect());
+            event.action_ids = Some(parse_shares(raw));
         }
         if let Some(raw) = prop("goal_shares") {
             event.goals = Some(parse_shares(raw));
@@ -214,7 +217,7 @@ impl Event {
             set(&mut private, format!("{PREFIX}is_end_of_day_sleep"), Some(if sleep { "true" } else { "false" }.into()));
         }
         if let Some(ids) = &self.action_ids {
-            set(&mut private, format!("{PREFIX}action_ids"), Some(ids.join(" ")));
+            set(&mut private, format!("{PREFIX}action_ids"), Some(shares_text(ids)));
         }
         if let Some(shares) = &self.goals {
             let text = if shares.is_empty() { None } else { Some(shares_text(shares)) };

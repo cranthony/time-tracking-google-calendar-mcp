@@ -232,7 +232,7 @@ fn shows_a_series_in_its_own_time_zone_with_its_schedule_in_words() {
     let server = Server::new();
     server.t.app.actions().unwrap();
     server.t.seed(ACTIONS.1, &[json!({"id": "g1", "name": "Work", "status": "active", "label_id": "l1"})]);
-    server.seed(&[Event { action_ids: Some(strings(&["g1"])), facts: Some(crate::testing::facts(json!({"with": ["sam"], "locations": ["home"]}))), ..standup("RRULE:FREQ=WEEKLY;BYDAY=MO") }]);
+    server.seed(&[Event { action_ids: Some(crate::testing::shares(&["g1"])), facts: Some(crate::testing::facts(json!({"with": ["sam"], "locations": ["home"]}))), ..standup("RRULE:FREQ=WEEKLY;BYDAY=MO") }]);
 
     let public = server.ok("get_recurrence", json!({"id": "series1"}));
 

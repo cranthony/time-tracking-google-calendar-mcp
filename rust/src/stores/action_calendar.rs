@@ -4,7 +4,7 @@
 use crate::event::{Event, Moment};
 use crate::google::calendar::{CalendarClient, EventLabel};
 use crate::google::{BatchRequest, GoogleError};
-use crate::stores::actions::{ActionStatus, ActionTree, Actions};
+use crate::stores::actions::{ActionShare, ActionStatus, ActionTree, Actions};
 use crate::stores::groups::set;
 use crate::stores::groups::{priority_label_id, priority_of_label};
 
@@ -103,7 +103,7 @@ impl ActionCalendar {
             },
             None => event.clone(),
         };
-        let primary = doing.action_ids.as_ref().and_then(|ids| ids.first()).and_then(|id| tree.by_id(id));
+        let primary = doing.action_ids.as_ref().and_then(|ids| ids.first()).and_then(|first| tree.by_id(&first.action_id));
         let mut held: Option<Vec<String>> = None;
         if let Some(primary) = primary {
             if primary.status == Some(ActionStatus::Proposed) && set(primary.label_id.as_deref()).is_some() {
@@ -125,7 +125,7 @@ impl ActionCalendar {
         Ok(Event { event_label_id: Some(priority_label), ..event.clone() })
     }
 
-    fn priority_label(&self, event: &Event, current: Option<&Event>, action_ids: Option<&[String]>, tree: &ActionTree) -> anyhow::Result<String> {
+    fn priority_label(&self, event: &Event, current: Option<&Event>, action_ids: Option<&[ActionShare]>, tree: &ActionTree) -> anyhow::Result<String> {
         self.actions.ensure_priority_labels_once()?;
         let mut priority = event.priority;
         if priority.is_none() && !event.cleared.contains("priority") {
@@ -134,7 +134,7 @@ impl ActionCalendar {
             }
         }
         if priority.is_none() {
-            priority = action_ids.into_iter().flatten().filter_map(|a| tree.priority(a)).min();
+            priority = action_ids.into_iter().flatten().filter_map(|a| tree.priority(&a.action_id)).min();
         }
         Ok(priority_label_id(priority))
     }
@@ -153,14 +153,14 @@ fn fill_in(event: &Event, tree: &ActionTree) -> Event {
         None => {
             let Some(owner) = tree.action_for_label(event.event_label_id.as_deref()) else { return event };
             event.actions_from_label = true;
-            vec![owner.id.clone().unwrap_or_else(|| "None".into())]
+            vec![ActionShare::whole(owner.id.clone().unwrap_or_else(|| "None".into()))]
         }
     };
     if action_ids.is_empty() {
         event.action_ids = Some(action_ids);
         return event;
     }
-    event.action_priority = action_ids.iter().filter_map(|i| tree.priority(i)).min();
+    event.action_priority = action_ids.iter().filter_map(|a| tree.priority(&a.action_id)).min();
     event.action_ids = Some(action_ids);
     event
 }
@@ -174,7 +174,7 @@ pub fn with_action_label(event: &Event, tree: &ActionTree, inserting: bool, held
         return event.clone();
     }
     let none = if inserting { None } else { Some(String::new()) };
-    let primary = ids.first().and_then(|id| tree.by_id(id));
+    let primary = ids.first().and_then(|first| tree.by_id(&first.action_id));
     let label_id = primary.and_then(|p| set(p.label_id.as_deref()));
     let (Some(primary), Some(label_id)) = (primary, label_id) else {
         return Event { event_label_id: none, ..event.clone() };

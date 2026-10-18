@@ -292,7 +292,7 @@ fn deadlines_fall_due_at_the_end_of_their_day_unless_given_a_time() {
 // -- goal shares -----------------------------------------------------------------
 
 fn share(id: &str, minutes: Option<i64>, percent: Option<i64>) -> GoalShare {
-    GoalShare { goal_id: id.into(), minutes, percent }
+    GoalShare { goal_id: id.into(), minutes, percent, remaining: false }
 }
 
 #[test]
@@ -300,8 +300,8 @@ fn shares_are_kept_as_text_and_read_back() {
     let shares = vec![share("a", None, None), share("b", Some(45), None), share("c", None, Some(30))];
 
     assert_eq!(shares_text(&shares), "a b=45m c=30%");
-    assert_eq!(parse_shares("a b=45m c=30%"), shares);
-    assert_eq!(parse_shares("a =5m b=lots c=10%"), vec![share("a", None, None), share("c", None, Some(10))]);
+    assert_eq!(parse_shares::<GoalShare>("a b=45m c=30%"), shares);
+    assert_eq!(parse_shares::<GoalShare>("a =5m b=lots c=10%"), vec![share("a", None, None), share("c", None, Some(10))]);
 }
 
 #[test]

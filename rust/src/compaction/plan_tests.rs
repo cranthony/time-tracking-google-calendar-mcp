@@ -388,29 +388,29 @@ fn cancel_marks_it_as_not_having_happened() {
 fn create_makes_a_new_event() {
     let plan = plan(
         &[note(1, "11:05", Some("coffee")), note(2, "11:20", None)],
-        &[EventDecision { start_note: Some("n1".into()), end_note: Some("n2".into()), action_ids: Some(strings(&["g1"])), ..create(Some("Coffee")) }],
+        &[EventDecision { start_note: Some("n1".into()), end_note: Some("n2".into()), action_ids: Some(crate::testing::shares(&["g1"])), ..create(Some("Coffee")) }],
     );
     let made = creates(&plan);
     assert_eq!(made.len(), 1);
     let after = made[0].after.clone().unwrap();
     assert_eq!(span(&after), at("11:05", "11:20"));
-    assert_eq!(after.action_ids, Some(strings(&["g1"])));
+    assert_eq!(after.action_ids, Some(crate::testing::shares(&["g1"])));
     assert_eq!(after.description, None);
 }
 
 #[test]
 fn keep_can_set_or_clear_an_events_actions_alone() {
     let mut events = day();
-    events[1].action_ids = Some(strings(&["old"]));
+    events[1].action_ids = Some(crate::testing::shares(&["old"]));
     let plan = plan_with(
         &[],
-        &[EventDecision { action_ids: Some(strings(&["g1", "g2"])), ..keep("e1") }, EventDecision { action_ids: Some(vec![]), ..keep("e2") }, keep("e3")],
+        &[EventDecision { action_ids: Some(crate::testing::shares(&["g1", "g2"])), ..keep("e1") }, EventDecision { action_ids: Some(vec![]), ..keep("e2") }, keep("e3")],
         &events,
         "11:30",
         Extra::default(),
     )
     .unwrap();
-    assert_eq!(changed(&plan, "e1").after.unwrap().action_ids, Some(strings(&["g1", "g2"])));
+    assert_eq!(changed(&plan, "e1").after.unwrap().action_ids, Some(crate::testing::shares(&["g1", "g2"])));
     assert_eq!(changed(&plan, "e2").after.unwrap().action_ids, Some(vec![]));
     if let Some(lunch) = by_event(&plan, "e3") {
         assert_eq!(lunch.after.unwrap().action_ids, lunch.before.unwrap().action_ids);
@@ -419,19 +419,19 @@ fn keep_can_set_or_clear_an_events_actions_alone() {
 
 #[test]
 fn a_future_events_actions_change_without_pinning_it() {
-    let change = changed(&plan(&[], &[EventDecision { action_ids: Some(strings(&["g1"])), ..keep("e4") }]), "e4");
+    let change = changed(&plan(&[], &[EventDecision { action_ids: Some(crate::testing::shares(&["g1"])), ..keep("e4") }]), "e4");
     assert_eq!(change.reason, "set what was done at it (its actions)");
-    assert_eq!(change.after.unwrap().action_ids, Some(strings(&["g1"])));
+    assert_eq!(change.after.unwrap().action_ids, Some(crate::testing::shares(&["g1"])));
 }
 
 #[test]
 fn the_timeline_marks_actions_and_totals_their_time() {
     let mut events = day();
-    events[0].action_ids = Some(strings(&["work"]));
-    events[1].action_ids = Some(strings(&["work"]));
+    events[0].action_ids = Some(crate::testing::shares(&["work"]));
+    events[1].action_ids = Some(crate::testing::shares(&["work"]));
     let plan = plan_with(
         &[],
-        &[EventDecision { action_ids: Some(strings(&["work", "writing"])), ..keep("e2") }],
+        &[EventDecision { action_ids: Some(crate::testing::shares(&["work", "writing"])), ..keep("e2") }],
         &events,
         "11:30",
         Extra { names: names(&[("work", "Time Tracker"), ("writing", "Writing")]), ..Default::default() },
@@ -1076,8 +1076,8 @@ fn flags_what_each_past_event_is_missing() {
     let plan = plan_with(
         &[],
         &[
-            EventDecision { action_ids: Some(strings(&["g1"])), facts: Some(home.clone()), ..keep("e1") },
-            EventDecision { action_ids: Some(strings(&["g1"])), ..keep("e2") },
+            EventDecision { action_ids: Some(crate::testing::shares(&["g1"])), facts: Some(home.clone()), ..keep("e1") },
+            EventDecision { action_ids: Some(crate::testing::shares(&["g1"])), ..keep("e2") },
             EventDecision { facts: Some(home), ..keep("e4") },
         ],
         &day(),
@@ -1101,7 +1101,7 @@ fn flags_what_each_past_event_is_missing() {
 fn flags_nothing_once_every_past_event_is_settled() {
     let home = facts(json!({"locations": ["home"]}));
     let decisions: Vec<EventDecision> =
-        ["e1", "e2", "e3"].iter().map(|e| EventDecision { action_ids: Some(strings(&["g1"])), facts: Some(home.clone()), ..keep(e) }).collect();
+        ["e1", "e2", "e3"].iter().map(|e| EventDecision { action_ids: Some(crate::testing::shares(&["g1"])), facts: Some(home.clone()), ..keep(e) }).collect();
     let plan = plan_with(&[], &decisions, &day(), "12:30", Extra::default()).unwrap();
     assert!(!timeline_text(&plan).contains('⚠'));
 }

@@ -54,7 +54,7 @@ impl EventBuilder {
         self
     }
     pub fn actions(mut self, ids: &[&str]) -> Self {
-        self.0.action_ids = Some(ids.iter().map(|s| s.to_string()).collect());
+        self.0.action_ids = Some(shares(ids));
         self
     }
     pub fn facts(mut self, facts: Facts) -> Self {
@@ -79,6 +79,11 @@ impl From<EventBuilder> for Event {
 /// Facts from JSON as they're stored ({"locations": [...], "with": [...]}).
 pub fn facts(json: Value) -> Facts {
     Facts::from_json(&json.to_string()).unwrap()
+}
+
+/// Action shares, each an action with neither minutes nor percent.
+pub fn shares(ids: &[&str]) -> Vec<crate::stores::actions::ActionShare> {
+    ids.iter().map(|&id| id.into()).collect()
 }
 
 pub fn strings(items: &[&str]) -> Vec<String> {

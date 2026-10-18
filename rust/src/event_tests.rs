@@ -45,8 +45,12 @@ fn cleared(names: &[&str]) -> BTreeSet<String> {
 #[test]
 fn action_ids_round_trip_through_a_private_extended_property() {
     // [] is stored, so clearing actions sticks.
-    for (ids, stored) in [(vec!["a1", "a2"], "a1 a2"), (vec![], "")] {
-        let ids: Vec<String> = ids.into_iter().map(str::to_string).collect();
+    let split = |id: &str, minutes, percent, remaining| crate::stores::shares::Share::new(id.to_string(), minutes, percent, remaining);
+    for (ids, stored) in [
+        (crate::testing::shares(&["a1", "a2"]), "a1 a2"),
+        (vec![], ""),
+        (vec![split("a1", Some(30), None, true), split("a2", None, None, false), split("a3", None, Some(25), false)], "a1=30m+r a2 a3=25%"),
+    ] {
         let sent = body(Event { action_ids: Some(ids.clone()), ..Default::default() });
 
         assert_eq!(private(&sent), json!({"cascading-time-tracker-action_ids": stored}));
