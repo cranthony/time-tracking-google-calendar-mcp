@@ -22,6 +22,13 @@ pub const SERVER: &str = "server";
 pub const MEMORY: &str = "memory";
 pub const RESTARTS: &str = "restarts";
 pub const TOOL_PREFIX: &str = "tool:";
+/// The series of what the spreadsheet refreshes found changed by hand.
+pub const SHEET_WARNINGS: &str = "sheet-warnings";
+/// How many of a warning's cells it names; the rest are only counted.
+pub const WARNING_CELLS: usize = 20;
+/// How long a warning counts as recent: toward the flag the app shows a
+/// banner for.
+pub const RECENT_WARNING_DAYS: i64 = 7;
 const VERSION: &str = "1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -181,7 +188,7 @@ pub fn rss_kib() -> Option<i64> {
     status.lines().find(|l| l.starts_with("VmRSS:"))?.split_whitespace().nth(1)?.parse().ok()
 }
 
-fn now_ms() -> i64 {
+pub fn now_ms() -> i64 {
     #[cfg(test)]
     if let Some(ms) = TEST_CLOCK_MS.with(std::cell::Cell::get) {
         TEST_CLOCK_MS.with(|c| c.set(Some(ms + 1234)));
@@ -190,11 +197,63 @@ fn now_ms() -> i64 {
     Utc::now().timestamp_millis()
 }
 
+/// What a refresh of the metadata spreadsheet found changed by hand (see
+/// SheetsClient::refresh): a tab's cells edited, or the tab deleted, and
+/// whether the server's copy was put back.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SheetWarning {
+    pub at_ms: i64,
+    /// "edited" or "deleted".
+    pub kind: String,
+    pub tab: Option<String>,
+    /// The first WARNING_CELLS cells changed, and how many there were.
+    pub cells: Vec<WarnedCell>,
+    pub cell_count: usize,
+    pub restored: bool,
+}
+
+/// A cell changed by hand: its A1 name, what was found there, and what the
+/// server keeps (and put back).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct WarnedCell {
+    pub cell: String,
+    pub found: String,
+    pub kept: String,
+}
+
+impl SheetWarning {
+    /// The warnings for what `refreshed` found, at `at_ms`.
+    pub fn of(refreshed: &crate::google::sheets::Refreshed, at_ms: i64) -> Vec<SheetWarning> {
+        let mut warnings = Vec::new();
+        for changed in &refreshed.changed {
+            let cells = changed
+                .cells
+                .iter()
+                .take(WARNING_CELLS)
+                .map(|d| WarnedCell { cell: crate::google::kept::a1(d.row, d.column), found: d.found.clone(), kept: d.kept.clone() })
+                .collect();
+            warnings.push(SheetWarning {
+                at_ms,
+                kind: "edited".into(),
+                tab: changed.title.clone(),
+                cells,
+                cell_count: changed.cells.len(),
+                restored: changed.restored,
+            });
+        }
+        for deleted in &refreshed.deleted {
+            warnings.push(SheetWarning { at_ms, kind: "deleted".into(), tab: deleted.title.clone(), cells: Vec::new(), cell_count: 0, restored: deleted.restored });
+        }
+        warnings
+    }
+}
+
 #[derive(Default)]
 struct Series {
     calls: Vec<(String, VecDeque<CallSample>)>,
     memory: VecDeque<MemorySample>,
     restarts: VecDeque<i64>,
+    warnings: VecDeque<SheetWarning>,
     dirty: Vec<String>,
 }
 
@@ -262,6 +321,31 @@ impl HealthRecorder {
         Self::dirty(&mut series, RESTARTS.into());
     }
 
+    pub fn record_sheet_warnings(&self, warnings: Vec<SheetWarning>) {
+        if warnings.is_empty() {
+            return;
+        }
+        let mut series = self.lock();
+        for warning in warnings {
+            push_kept(&mut series.warnings, warning);
+        }
+        Self::dirty(&mut series, SHEET_WARNINGS.into());
+    }
+
+    /// The last KEEP warnings, oldest first.
+    pub fn sheet_warnings(&self) -> Vec<SheetWarning> {
+        self.lock().warnings.iter().cloned().collect()
+    }
+
+    /// How many warnings came within RECENT_WARNING_DAYS of `now_ms`, and
+    /// when the latest did.
+    pub fn recent_sheet_warnings(&self, now_ms: i64) -> (usize, Option<i64>) {
+        let since = now_ms - RECENT_WARNING_DAYS * 24 * 60 * 60 * 1000;
+        let series = self.lock();
+        let recent: Vec<i64> = series.warnings.iter().map(|w| w.at_ms).filter(|at| *at >= since).collect();
+        (recent.len(), recent.iter().max().copied())
+    }
+
     /// Take in the series as the tab kept them, from before this start.
     pub fn merge(&self, rows: &[HealthRow]) {
         let mut series = self.lock();
@@ -292,6 +376,16 @@ impl HealthRecorder {
                     let older = decode_times(data)?;
                     let mine = series.restarts.clone();
                     series.restarts = merged(older, &mine, |t| *t);
+                } else if name == SHEET_WARNINGS {
+                    let mut all: Vec<SheetWarning> = serde_json::from_str(data)?;
+                    for warning in series.warnings.iter() {
+                        if !all.contains(warning) {
+                            all.push(warning.clone());
+                        }
+                    }
+                    all.sort_by_key(|w| w.at_ms);
+                    let skip = all.len().saturating_sub(KEEP);
+                    series.warnings = all.into_iter().skip(skip).collect();
                 }
                 Ok(())
             })();
@@ -343,6 +437,9 @@ impl HealthRecorder {
         } else if name == MEMORY {
             let samples: Vec<MemorySample> = series.memory.iter().copied().collect();
             (encode_memory(&samples), samples.last().map(|s| s.at_ms), samples.len())
+        } else if name == SHEET_WARNINGS {
+            let warnings: Vec<&SheetWarning> = series.warnings.iter().collect();
+            (serde_json::to_string(&warnings).expect("warnings are JSON"), warnings.last().map(|w| w.at_ms), warnings.len())
         } else {
             let samples: Vec<i64> = series.restarts.iter().copied().collect();
             (encode_times(&samples), samples.last().copied(), samples.len())

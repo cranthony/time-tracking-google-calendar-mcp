@@ -50,6 +50,29 @@ pub struct ToolHealth {
     pub calls: Option<Vec<HealthCall>>,
 }
 
+/// A cell of the metadata spreadsheet changed by hand: its A1 name
+/// ("B3"), what was found there, and what the server keeps.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct WarnedCell {
+    pub cell: String,
+    pub found: String,
+    pub kept: String,
+}
+
+/// What a check of the metadata spreadsheet found changed by hand (UTC):
+/// a tab's cells edited ("edited") -- the first 20 of them, and how many
+/// -- or the tab deleted ("deleted"); and whether the server put back its
+/// own copy (`restored`). It's the server's alone: see the README.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct SheetWarning {
+    pub at: String,
+    pub kind: String,
+    pub tab: Option<String>,
+    pub cells: Vec<WarnedCell>,
+    pub cell_count: i64,
+    pub restored: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct HealthReport {
     pub tools: Vec<ToolHealth>,
@@ -61,6 +84,9 @@ pub struct HealthReport {
     /// How this build signs people in: "required" (WorkOS sign-in) or
     /// "disabled" (built with AUTH_DISABLED: every request is trusted).
     pub auth: String,
+    /// The last 100 hand edits found in the metadata spreadsheet, oldest
+    /// first.
+    pub sheet_warnings: Vec<SheetWarning>,
 }
 
 /// The server's health metrics, to graph or look for patterns in: for
@@ -71,7 +97,10 @@ pub struct HealthReport {
 /// last 100 calls, whichever tool; and its last 100 restarts. Kept across
 /// restarts, in the Health tab of the calendar's metadata spreadsheet;
 /// the last few seconds' may not be written yet, but are given here.
-/// Also auth: "required", or "disabled" for a build that skips sign-in.
+/// Also auth: "required", or "disabled" for a build that skips sign-in;
+/// and sheet_warnings: what the server found changed by hand in the
+/// metadata spreadsheet (which is its alone), each time, and whether it
+/// put back its own copy.
 ///
 /// `tool_name`: just that tool's calls. `samples`: false for just the
 /// summaries, without each call and memory sample. Read-only.
@@ -130,5 +159,13 @@ pub fn get_health(app: &App, tool_name: Option<String>, #[schema(default = "true
         "memory_max_mib": max,
         "restarts": app.health.restarts().into_iter().map(iso).collect::<Vec<_>>(),
         "auth": crate::auth_mode::name(),
+        "sheet_warnings": app.health.sheet_warnings().iter().map(|w| json!({
+            "at": iso(w.at_ms),
+            "kind": w.kind,
+            "tab": w.tab,
+            "cells": w.cells,
+            "cell_count": w.cell_count,
+            "restored": w.restored,
+        })).collect::<Vec<_>>(),
     }))
 }

@@ -372,11 +372,12 @@ fn a_refresh_puts_back_what_was_edited_by_hand_and_keeps_what_it_found() {
     s.t.app.refresh_sheets(true);
 
     assert_eq!(s.t.fake.rows(&sheet, "Locations")[1][name], "Home");
-    let repairs = s.t.app.sheets_repairs();
-    assert_eq!(repairs.len(), 1);
-    let changed = &repairs[0].refreshed.changed[0];
-    assert_eq!(changed.title.as_deref(), Some("Locations"));
-    assert_eq!((changed.cells[0].found.as_str(), changed.cells[0].kept.as_str(), changed.restored), ("Cabin", "Home", true));
+    let warnings = s.ok("get_health", json!({}))["sheet_warnings"].clone();
+    let cell = format!("{}2", crate::google::kept::column_letters(name));
+    assert_eq!(
+        warnings,
+        json!([{"at": warnings[0]["at"], "kind": "edited", "tab": "Locations", "cells": [{"cell": cell, "found": "Cabin", "kept": "Home"}], "cell_count": 1, "restored": true}])
+    );
     s.t.app.refresh_sheets(true);
-    assert_eq!(s.t.app.sheets_repairs().len(), 1);
+    assert_eq!(s.t.app.health.sheet_warnings().len(), 1);
 }

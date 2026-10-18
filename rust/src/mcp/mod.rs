@@ -80,11 +80,11 @@ pub fn handle(app: &Arc<crate::app::App>, session: &mut Session, message: &Value
     let result = match method {
         "initialize" => {
             session.initialized = true;
-            Ok(initialize_result(&params))
+            Ok(initialize_result(app, &params))
         }
         "ping" => Ok(json!({})),
         "tools/list" => Ok(json!({ "tools": *CONTRACT })),
-        "tools/call" => Ok(call_tool(app, &params, timings)),
+        "tools/call" => Ok(with_sheet_warnings(app, call_tool(app, &params, timings))),
         _ => Err((METHOD_NOT_FOUND, "Method not found")),
     };
     Some(match result {
@@ -117,7 +117,29 @@ fn error_response(id: Value, code: i64, message: &str) -> Value {
 #[allow(dead_code)]
 const _UNUSED: i64 = INVALID_PARAMS;
 
-fn initialize_result(params: &Value) -> Value {
+/// The flag in the handshake's and each tool result's `_meta` while the
+/// metadata spreadsheet has been changed by hand recently: how many times
+/// in the last RECENT_WARNING_DAYS, and when last -- for a client to show
+/// a banner (get_health's `sheet_warnings` says what changed).
+pub const SHEET_WARNINGS_META_KEY: &str = "time-tracking/sheetWarnings";
+
+fn sheet_warnings_meta(app: &crate::app::App) -> Option<Value> {
+    let (recent, latest) = app.health.recent_sheet_warnings(crate::health::now_ms());
+    (recent > 0).then(|| json!({"recent": recent, "latest": latest.map(crate::health::iso)}))
+}
+
+/// Add the spreadsheet warnings flag, if there's one, to `result`'s `_meta`.
+fn with_sheet_warnings(app: &crate::app::App, mut result: Value) -> Value {
+    if let Some(flag) = sheet_warnings_meta(app) {
+        if !result["_meta"].is_object() {
+            result["_meta"] = json!({});
+        }
+        result["_meta"][SHEET_WARNINGS_META_KEY] = flag;
+    }
+    result
+}
+
+fn initialize_result(app: &crate::app::App, params: &Value) -> Value {
     let requested = params.get("protocolVersion").and_then(Value::as_str).unwrap_or_default();
     let negotiated =
         if HANDSHAKE_PROTOCOL_VERSIONS.contains(&requested) { requested } else { LATEST_HANDSHAKE_VERSION };
@@ -139,7 +161,7 @@ fn initialize_result(params: &Value) -> Value {
         result["instructions"] = json!(crate::auth_mode::INSTRUCTIONS);
         result["serverInfo"]["title"] = json!(format!("{SERVER_NAME} (sign-in off)"));
     }
-    result
+    with_sheet_warnings(app, result)
 }
 
 fn text_item(text: String) -> Value {
@@ -233,3 +255,7 @@ pub fn call_tool(app: &Arc<crate::app::App>, params: &Value, timings: &mut Vec<T
         }
     }
 }
+
+#[cfg(test)]
+#[path = "mod_tests.rs"]
+mod tests;

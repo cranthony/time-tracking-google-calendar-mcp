@@ -21854,7 +21854,7 @@
     }
   },
   {
-    "description": "The server's health metrics, to graph or look for patterns in: for\neach tool, its last 100 calls -- when each ended, how long the tool's\nown work took and how long the whole request took (auth and transport\nincluded), and whether it succeeded -- with the median, 95th\npercentile and slowest of each; the server's memory after each of its\nlast 100 calls, whichever tool; and its last 100 restarts. Kept across\nrestarts, in the Health tab of the calendar's metadata spreadsheet;\nthe last few seconds' may not be written yet, but are given here.\nAlso auth: \"required\", or \"disabled\" for a build that skips sign-in.\n\n`tool_name`: just that tool's calls. `samples`: false for just the\nsummaries, without each call and memory sample. Read-only.",
+    "description": "The server's health metrics, to graph or look for patterns in: for\neach tool, its last 100 calls -- when each ended, how long the tool's\nown work took and how long the whole request took (auth and transport\nincluded), and whether it succeeded -- with the median, 95th\npercentile and slowest of each; the server's memory after each of its\nlast 100 calls, whichever tool; and its last 100 restarts. Kept across\nrestarts, in the Health tab of the calendar's metadata spreadsheet;\nthe last few seconds' may not be written yet, but are given here.\nAlso auth: \"required\", or \"disabled\" for a build that skips sign-in;\nand sheet_warnings: what the server found changed by hand in the\nmetadata spreadsheet (which is its alone), each time, and whether it\nput back its own copy.\n\n`tool_name`: just that tool's calls. `samples`: false for just the\nsummaries, without each call and memory sample. Read-only.",
     "inputSchema": {
       "properties": {
         "tool_name": {
@@ -21916,12 +21916,20 @@
         "auth": {
           "description": "How this build signs people in: \"required\" (WorkOS sign-in) or\n\"disabled\" (built with AUTH_DISABLED: every request is trusted).",
           "type": "string"
+        },
+        "sheet_warnings": {
+          "description": "The last 100 hand edits found in the metadata spreadsheet, oldest\nfirst.",
+          "items": {
+            "$ref": "#/$defs/SheetWarning"
+          },
+          "type": "array"
         }
       },
       "required": [
         "tools",
         "restarts",
-        "auth"
+        "auth",
+        "sheet_warnings"
       ],
       "type": "object",
       "$defs": {
@@ -21993,6 +22001,43 @@
           ],
           "type": "object"
         },
+        "SheetWarning": {
+          "description": "What a check of the metadata spreadsheet found changed by hand (UTC):\na tab's cells edited (\"edited\") -- the first 20 of them, and how many\n-- or the tab deleted (\"deleted\"); and whether the server put back its\nown copy (`restored`). It's the server's alone: see the README.",
+          "properties": {
+            "at": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "tab": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cells": {
+              "items": {
+                "$ref": "#/$defs/WarnedCell"
+              },
+              "type": "array"
+            },
+            "cell_count": {
+              "type": "integer"
+            },
+            "restored": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "at",
+            "kind",
+            "cells",
+            "cell_count",
+            "restored"
+          ],
+          "type": "object"
+        },
         "ToolHealth": {
           "description": "One tool's last calls (up to 100): how many, how many failed, and\ntheir latencies -- the tool's own work, and the whole request's.",
           "properties": {
@@ -22039,6 +22084,26 @@
             "tool",
             "count",
             "errors"
+          ],
+          "type": "object"
+        },
+        "WarnedCell": {
+          "description": "A cell of the metadata spreadsheet changed by hand: its A1 name\n(\"B3\"), what was found there, and what the server keeps.",
+          "properties": {
+            "cell": {
+              "type": "string"
+            },
+            "found": {
+              "type": "string"
+            },
+            "kept": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "cell",
+            "found",
+            "kept"
           ],
           "type": "object"
         }

@@ -4,9 +4,9 @@
 //! look at the calendar's metadata spreadsheet, then its tab.
 
 use crate::google::calendar::CalendarClient;
-use crate::google::sheets::{Refreshed, SheetsClient};
+use crate::google::sheets::SheetsClient;
 use crate::google::Google;
-use crate::health::{HealthRecorder, HealthTab, HealthWriter};
+use crate::health::{HealthRecorder, HealthTab, HealthWriter, SheetWarning};
 use crate::sheet::{ensure_spreadsheet, retitle_spreadsheet};
 use crate::stores::actions::Actions;
 use crate::stores::cancellations::Cancellations;
@@ -23,9 +23,8 @@ use crate::stores::recurrences::Recurrences;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::write_lock::WRITE_LOCK;
 use anyhow::{anyhow, Context};
-use chrono::{DateTime, Utc};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, OnceLock};
 
 pub struct Config {
     pub calendar_id: Option<String>,
@@ -80,8 +79,6 @@ pub struct App {
     recurrences: OnceLock<Recurrences>,
     writer: OnceLock<Arc<HealthWriter>>,
     sheets_refresh: OnceLock<SheetsRefresh>,
-    /// What the last refreshes found changed by hand, newest last.
-    repairs: Mutex<Vec<SheetsRepair>>,
     me: OnceLock<std::sync::Weak<App>>,
 }
 
@@ -97,8 +94,6 @@ pub enum SheetsRefresh {
 }
 
 pub const SHEETS_REFRESH_SECONDS: u64 = 300;
-/// How many refreshes' findings are kept.
-pub const KEEP_REPAIRS: usize = 100;
 
 impl SheetsRefresh {
     pub fn from_var(value: Option<&str>) -> SheetsRefresh {
@@ -114,14 +109,6 @@ impl SheetsRefresh {
     }
 }
 
-/// A refresh that found the spreadsheet changed under the server: when,
-/// which spreadsheet, and what it found and put back.
-#[derive(Clone, Debug)]
-pub struct SheetsRepair {
-    pub at: DateTime<Utc>,
-    pub spreadsheet_id: String,
-    pub refreshed: Refreshed,
-}
 
 /// Build a store once, under WRITE_LOCK -- checking again once the lock is
 /// held, in case another call built it meanwhile.
@@ -161,7 +148,6 @@ impl App {
             recurrences: OnceLock::new(),
             writer: OnceLock::new(),
             sheets_refresh: OnceLock::new(),
-            repairs: Mutex::new(Vec::new()),
             me: OnceLock::new(),
         }
     }
@@ -398,31 +384,24 @@ impl App {
     }
 
     /// Check each spreadsheet the server keeps against Sheets, putting back
-    /// whatever was changed by hand (see `SheetsClient::refresh`), and keep
-    /// what each found. With `wait`, wait for the write lock to put things
-    /// back; else a tool writing leaves them for the next refresh. Its
-    /// failures are logged, not returned: nothing waits on a refresh.
+    /// whatever was changed by hand (see `SheetsClient::refresh`), and warn
+    /// of what was (see `HealthRecorder::sheet_warnings`). With `wait`, wait
+    /// for the write lock to put things back; else a tool writing leaves
+    /// them for the next refresh, which warns of them then. Its failures
+    /// are logged, not returned: nothing waits on a refresh.
     pub fn refresh_sheets(&self, wait: bool) {
         let Some(google) = self.google.get() else { return };
         let sheets = SheetsClient::new(google.clone());
         for spreadsheet_id in sheets.kept_spreadsheets() {
             match sheets.refresh(&spreadsheet_id, &[crate::sheet::HEALTH.0], wait) {
-                Ok(refreshed) if refreshed.is_empty() => {}
+                Ok(refreshed) if refreshed.is_empty() || refreshed.deferred => {}
                 Ok(refreshed) => {
                     tracing::warn!("the metadata spreadsheet was changed by hand: {refreshed:?}");
-                    let mut repairs = self.repairs.lock().unwrap_or_else(|e| e.into_inner());
-                    repairs.push(SheetsRepair { at: Utc::now(), spreadsheet_id, refreshed });
-                    let over = repairs.len().saturating_sub(KEEP_REPAIRS);
-                    repairs.drain(..over);
+                    self.health.record_sheet_warnings(SheetWarning::of(&refreshed, crate::health::now_ms()));
                 }
                 Err(error) => tracing::warn!("couldn't check the metadata spreadsheet {spreadsheet_id}: {error:#}"),
             }
         }
-    }
-
-    /// What the last refreshes found changed by hand, newest last.
-    pub fn sheets_repairs(&self) -> Vec<SheetsRepair> {
-        self.repairs.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Refresh the spreadsheets every so often from a thread of its own
