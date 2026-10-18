@@ -259,6 +259,39 @@ fn clearing_a_description_or_facts_sends_them_empty() {
 }
 
 #[test]
+fn amend_proposal_sets_and_clears_goals_and_confirming_writes_them() {
+    let (server, p, _, _) = proposed();
+    for id in ["goal01", "goal02"] {
+        server.ok("create_goal", json!({"goal": {"id": id, "title": format!("Goal {id}"), "deadline": "2026-12-01"}}));
+    }
+    server.ok("update_event", json!({"updates": [{"event": {"id": "e2", "goals": [{"goal_id": "goal02"}]}}]}));
+    let shares = json!([{"goal_id": "goal01", "minutes": 20}, {"goal_id": "goal02", "percent": 50}]);
+
+    let proposal = server.ok(
+        "amend_proposal",
+        json!({
+            "proposal_id": p,
+            "revision": 1,
+            "updates": [{"event": {"id": "e1", "goals": shares}}, {"event": {"id": "e2"}, "clear_fields": ["goals"]}],
+            "creates": [{"summary": "Walk", "start": "2026-01-01T11:00:00+00:00", "end": "2026-01-01T11:20:00+00:00", "goals": [{"goal_id": "goal01"}]}],
+        }),
+    );
+    let edits: Vec<Value> = proposal["user_edits"].as_array().unwrap().iter().map(|e| e["edit"].clone()).collect();
+    let edit = |f: &dyn Fn(&Value) -> bool| edits.iter().find(|e| f(e)).unwrap().clone();
+    assert_eq!(edit(&|e| e["event_id"] == "e1")["goals"][0]["goal_id"], "goal01");
+    assert_eq!(edit(&|e| e["event_id"] == "e2")["goals"], json!([]));
+    assert_eq!(edit(&|e| e["action"] == "create")["goals"][0]["goal_id"], "goal01");
+
+    assert_eq!(server.ok("confirm_proposal", json!({"proposal_id": p, "revision": 2}))["status"], "applied");
+
+    assert_eq!(crate::stores::goals::shares_text(&server.event("e1").goals.unwrap()), "goal01=20m goal02=50%");
+    assert_eq!(server.event("e2").goals.unwrap_or_default(), vec![]);
+    let events = server.ok("list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}));
+    let walk = events.as_array().unwrap().iter().find(|e| e["summary"] == "Walk").expect("the walk").clone();
+    assert_eq!(walk["goals"], json!([{"goal_id": "goal01", "minutes": null, "percent": null}]));
+}
+
+#[test]
 fn amend_proposal_refuses_what_a_proposal_cant_take() {
     let (server, p, _, _) = proposed();
 
@@ -268,6 +301,7 @@ fn amend_proposal_refuses_what_a_proposal_cant_take() {
         (json!({"event": {"id": "e1"}, "clear_fields": ["priority"]}), "can't clear an event's priority"),
         (json!({"event": {"summary": "x"}}), "needs the event's id"),
         (json!({"event": {"id": "e1", "description": "x"}, "clear_fields": ["description"]}), "description: set or cleared, not both"),
+        (json!({"event": {"id": "e1", "goals": []}, "clear_fields": ["goals"]}), "goals: set or cleared, not both"),
     ] {
         server.refused("amend_proposal", json!({"proposal_id": p, "revision": 1, "updates": [update]}), message);
     }

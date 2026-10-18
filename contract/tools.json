@@ -16953,6 +16953,15 @@
                 }
               ]
             },
+            "goals": {
+              "items": {
+                "$ref": "#/$defs/GoalShare"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "judgments": {
               "additionalProperties": true,
               "type": [
@@ -16988,7 +16997,8 @@
                   "location",
                   "priority",
                   "facts",
-                  "judgments"
+                  "judgments",
+                  "goals"
                 ],
                 "type": "string"
               },
