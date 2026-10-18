@@ -6,7 +6,9 @@ use crate::google::calendar::CalendarClient;
 use crate::google::sheets::SheetsClient;
 use serde_json::{json, Value};
 
-pub const SPREADSHEET_TITLE: &str = "Calendar Metadata";
+/// The server keeps its own copy of what's in the spreadsheet, so an edit
+/// made by hand is overwritten -- the title says so.
+pub const SPREADSHEET_TITLE: &str = "Calendar Metadata (do not edit by hand)";
 const SPREADSHEET_ID_METADATA_KEY: &str = "calendar-metadata-spreadsheet-id";
 const SHEET_ROLE_METADATA_KEY: &str = "sheet-role";
 pub const MIN_TAB_ROWS: i64 = 1000;
@@ -46,6 +48,12 @@ pub fn ensure_spreadsheet(calendar: &CalendarClient, sheets: &SheetsClient) -> a
     let id = sheets.create_spreadsheet(SPREADSHEET_TITLE)?;
     calendar.set_calendar_metadata(SPREADSHEET_ID_METADATA_KEY, Some(&id))?;
     Ok((id, true))
+}
+
+/// Give spreadsheet `id` its title, SPREADSHEET_TITLE: one made under an
+/// older title, or renamed by hand, gets it back. One write, no read.
+pub fn retitle_spreadsheet(sheets: &SheetsClient, id: &str) -> anyhow::Result<()> {
+    sheets.set_spreadsheet_title(id, SPREADSHEET_TITLE)
 }
 
 /// The tab tagged `role`, and whether it was just made (tagged first: for

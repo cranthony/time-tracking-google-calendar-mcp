@@ -255,6 +255,16 @@ impl SheetsClient {
         Ok(response["spreadsheetId"].as_str().ok_or_else(|| anyhow!("no spreadsheetId"))?.to_string())
     }
 
+    pub fn set_spreadsheet_title(&self, spreadsheet_id: &str, title: &str) -> anyhow::Result<()> {
+        write_lock::require("SheetsClient.set_spreadsheet_title")?;
+        self.batch_update(
+            spreadsheet_id,
+            json!({"requests": [{"updateSpreadsheetProperties": {"properties": {"title": title}, "fields": "title"}}]}),
+            &[],
+        )?;
+        Ok(())
+    }
+
     fn batch_update(&self, spreadsheet_id: &str, body: Value, query: &[(&str, String)]) -> anyhow::Result<Value> {
         self.execute("POST", &format!("v4/spreadsheets/{spreadsheet_id}:batchUpdate"), query, Some(&body))
     }

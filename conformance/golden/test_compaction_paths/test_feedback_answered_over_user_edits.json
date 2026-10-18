@@ -4259,7 +4259,7 @@
   {
    "body": {
     "properties": {
-     "title": "Calendar Metadata"
+     "title": "Calendar Metadata (do not edit by hand)"
     }
    },
    "if_match": null,
@@ -8388,7 +8388,7 @@
      }
     ],
     "properties": {
-     "title": "Calendar Metadata"
+     "title": "Calendar Metadata (do not edit by hand)"
     },
     "tabs": {
      "Action Groups": {
