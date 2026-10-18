@@ -22,7 +22,7 @@ use chrono::{Duration, NaiveDate, NaiveDateTime};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
-pub const GOAL_STATUSES: [&str; 4] = ["inactive", "active", "done", "obsolete"];
+pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
 pub const CLEARABLE_FIELDS: [&str; 7] =
@@ -31,7 +31,8 @@ pub const CLEARABLE_FIELDS: [&str; 7] =
 // -- the types -------------------------------------------------------------------
 
 /// Where a goal stands: inactive (not started, or set aside), active
-/// (being worked on), done (reached) or obsolete (no longer wanted).
+/// (being worked on), done (reached), missed (not reached, and no longer
+/// pursued) or obsolete (no longer wanted).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub enum GoalStatus {
     #[serde(rename = "inactive")]
@@ -40,14 +41,16 @@ pub enum GoalStatus {
     Active,
     #[serde(rename = "done")]
     Done,
+    #[serde(rename = "missed")]
+    Missed,
     #[serde(rename = "obsolete")]
     Obsolete,
 }
 
 impl GoalStatus {
-    /// Done or obsolete: nothing more to do for it.
+    /// Done, missed or obsolete: nothing more to do for it.
     pub fn is_closed(self) -> bool {
-        matches!(self, GoalStatus::Done | GoalStatus::Obsolete)
+        matches!(self, GoalStatus::Done | GoalStatus::Missed | GoalStatus::Obsolete)
     }
 
     pub fn text(self) -> &'static str {
@@ -55,6 +58,7 @@ impl GoalStatus {
             GoalStatus::Inactive => "inactive",
             GoalStatus::Active => "active",
             GoalStatus::Done => "done",
+            GoalStatus::Missed => "missed",
             GoalStatus::Obsolete => "obsolete",
         }
     }
@@ -98,8 +102,8 @@ pub struct Goal {
 }
 
 /// A goal as the goal tools return it: plus its parents' titles (path,
-/// outermost first), when it first became active (started_at) and, done
-/// or obsolete, when it became so (closed_at).
+/// outermost first), when it first became active (started_at) and, done,
+/// missed or obsolete, when it became so (closed_at).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub struct ListedGoal {
     pub id: Option<String>,
@@ -168,7 +172,7 @@ pub fn started_at(goal: &Goal) -> Option<&DateTimeText> {
     goal.history.as_deref().unwrap_or_default().iter().find(|c| c.status == GoalStatus::Active).map(|c| &c.at)
 }
 
-/// When `goal` was done or made obsolete, if it is now.
+/// When `goal` was done, missed or made obsolete, if it is now.
 pub fn closed_at(goal: &Goal) -> Option<&DateTimeText> {
     if !goal.status.is_some_and(GoalStatus::is_closed) {
         return None;
@@ -474,7 +478,7 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
                 problems.push((
                     both.clone(),
                     format!(
-                        "{name} is {}, but its parent {parent_name} is {}: mark it done or obsolete, move it under another goal, or reopen its parent",
+                        "{name} is {}, but its parent {parent_name} is {}: mark it done, missed or obsolete, move it under another goal, or reopen its parent",
                         status.text(),
                         parent_status.text()
                     ),

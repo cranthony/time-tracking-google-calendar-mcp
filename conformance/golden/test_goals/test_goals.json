@@ -285,9 +285,9 @@
      }
     ]
    },
-   "content": "Error executing tool update_goals: goal a0g0jc ('Write the pane') is active, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent; goal rs21so ('Polish') is inactive, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent",
+   "content": "Error executing tool update_goals: goal a0g0jc ('Write the pane') is active, but its parent goal co2yzn ('Ship the app') is done: mark it done, missed or obsolete, move it under another goal, or reopen its parent; goal rs21so ('Polish') is inactive, but its parent goal co2yzn ('Ship the app') is done: mark it done, missed or obsolete, move it under another goal, or reopen its parent",
    "is_error": true,
-   "text": "Error executing tool update_goals: goal a0g0jc ('Write the pane') is active, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent; goal rs21so ('Polish') is inactive, but its parent goal co2yzn ('Ship the app') is done: mark it done or obsolete, move it under another goal, or reopen its parent",
+   "text": "Error executing tool update_goals: goal a0g0jc ('Write the pane') is active, but its parent goal co2yzn ('Ship the app') is done: mark it done, missed or obsolete, move it under another goal, or reopen its parent; goal rs21so ('Polish') is inactive, but its parent goal co2yzn ('Ship the app') is done: mark it done, missed or obsolete, move it under another goal, or reopen its parent",
    "tool": "update_goals"
   },
   {

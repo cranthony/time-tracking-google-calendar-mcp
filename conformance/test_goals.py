@@ -36,6 +36,19 @@ async def test_goals(session):
     await session.call("update_goals", deletes=[{"goal_id": later}])
 
 
+async def test_missed_goals(session):
+    top = (await session.call("create_goal", goal={"title": "Run a marathon", "deadline": "2026-12-01"}))["created_id"]
+    sub = (await session.call("create_goal", goal={"title": "Run a half first", "parent_id": top, "deadline": "2026-11-01", "required": True}))["created_id"]
+
+    await session.call_error("update_goals", updates=[{"goal": {"id": top, "status": "missed"}}])
+    # A required sub-goal missed doesn't keep its parent from being done.
+    changed = await session.call("update_goals", updates=[{"goal": {"id": sub, "status": "missed"}}, {"goal": {"id": top, "status": "done"}}])
+    assert [g["status"] for g in changed["goals"]] == ["missed", "done"]
+    assert await session.call("get_goals") == []
+    missed = await session.call("get_goals", statuses=["missed"])
+    assert [g["title"] for g in missed] == ["Run a half first"] and missed[0]["closed_at"]
+
+
 async def test_events_tagged_with_goals(session):
     goal = (await session.call("create_goal", goal={"title": "Learn Rust", "deadline": "2026-12-01"}))["created_id"]
     made = await session.call(
