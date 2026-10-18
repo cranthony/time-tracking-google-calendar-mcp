@@ -1,14 +1,19 @@
 //! Google Sheets, behind a thin client: spreadsheets, tabs, rows and
-//! columns, knowing nothing of what a tab means. Reads of a tab inside one
-//! tool call are cached (see `CachedReads`), and a 429 is retried with
-//! backoff, as in Python.
+//! columns, knowing nothing of what a tab means. Every tab read is kept
+//! for the process's life and kept up to date by the client's own writes
+//! (see `kept`), so reads come from memory after the first; a write sends
+//! only the rows it changes; `refresh` checks what's kept against the
+//! spreadsheet and puts back what was changed by hand. A 429 is retried
+//! with backoff, as in Python.
 
+use super::kept::{self, Differs, TabIdentity, KEPT_RANGE};
 use super::{status_of, Google};
 use crate::py;
-use crate::write_lock;
+use crate::write_lock::{self, WRITE_LOCK};
 use anyhow::{anyhow, bail};
 use regex::Regex;
 use serde_json::{json, Map, Value};
+#[cfg(test)]
 use std::cell::RefCell;
 use std::sync::{Arc, LazyLock};
 
@@ -27,86 +32,6 @@ impl TabRange {
 }
 
 pub type Rows = Vec<Vec<String>>;
-
-thread_local! {
-    /// What `CachedReads` holds for the tool call running on this thread:
-    /// `None` outside one. A tool call runs wholly on one thread, so this
-    /// plays the part of Python's ContextVar.
-    static READ_CACHE: RefCell<Option<Vec<(TabRange, Rows)>>> = const { RefCell::new(None) };
-}
-
-/// Within this guard's life, a read repeating an earlier one (same tab,
-/// within the range read before) is answered from memory; a write forgets
-/// that tab first. Nested guards share the outer one's cache.
-pub struct CachedReads {
-    outer: bool,
-}
-
-impl CachedReads {
-    pub fn start() -> CachedReads {
-        let outer = READ_CACHE.with(|c| {
-            let mut cache = c.borrow_mut();
-            if cache.is_none() {
-                *cache = Some(Vec::new());
-                true
-            } else {
-                false
-            }
-        });
-        CachedReads { outer }
-    }
-}
-
-impl Drop for CachedReads {
-    fn drop(&mut self) {
-        if self.outer {
-            READ_CACHE.with(|c| *c.borrow_mut() = None);
-        }
-    }
-}
-
-fn caching() -> bool {
-    READ_CACHE.with(|c| c.borrow().is_some())
-}
-
-fn cached_rows(wanted: &TabRange) -> Option<Rows> {
-    READ_CACHE.with(|c| {
-        let cache = c.borrow();
-        let cache = cache.as_ref()?;
-        if let Some((_, rows)) = cache.iter().find(|(r, _)| r == wanted) {
-            return Some(rows.clone());
-        }
-        let inner = grid_range(wanted.sheet_id, &wanted.range).ok()?;
-        for (cached, rows) in cache {
-            if cached.spreadsheet_id != wanted.spreadsheet_id || cached.sheet_id != wanted.sheet_id {
-                continue;
-            }
-            let outer = grid_range(cached.sheet_id, &cached.range).ok()?;
-            if contains(&outer, &inner) {
-                return Some(within(rows, &outer, &inner));
-            }
-        }
-        None
-    })
-}
-
-fn remember(range: &TabRange, rows: &Rows) {
-    READ_CACHE.with(|c| {
-        if let Some(cache) = c.borrow_mut().as_mut() {
-            cache.retain(|(r, _)| r != range);
-            cache.push((range.clone(), rows.clone()));
-        }
-    });
-}
-
-/// Forget cached reads of `sheet_id` -- or every tab, for `None`.
-fn forget(spreadsheet_id: &str, sheet_id: Option<i64>) {
-    READ_CACHE.with(|c| {
-        if let Some(cache) = c.borrow_mut().as_mut() {
-            cache.retain(|(r, _)| !(r.spreadsheet_id == spreadsheet_id && sheet_id.map_or(true, |s| s == r.sheet_id)));
-        }
-    });
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridRange {
@@ -278,7 +203,13 @@ impl SheetsClient {
         }
         let response =
             self.batch_update(spreadsheet_id, json!({"requests": [{"addSheet": {"properties": properties}}]}), &[])?;
-        response["replies"][0]["addSheet"]["properties"]["sheetId"].as_i64().ok_or_else(|| anyhow!("no sheetId"))
+        let id = response["replies"][0]["addSheet"]["properties"]["sheetId"].as_i64().ok_or_else(|| anyhow!("no sheetId"))?;
+        self.kept(spreadsheet_id, |tabs| {
+            let tab = tabs.entry(id).or_default();
+            tab.rows = Some(Rows::new());
+            tab.generation += 1;
+        });
+        Ok(id)
     }
 
     pub fn update_sheet_properties(
@@ -366,7 +297,7 @@ impl SheetsClient {
     /// the bottom if that leaves fewer than `keep_at_least`.
     pub fn delete_rows(&self, spreadsheet_id: &str, sheet_id: i64, start_row: i64, end_row: i64, keep_at_least: i64) -> anyhow::Result<()> {
         write_lock::require("SheetsClient.delete_rows")?;
-        forget(spreadsheet_id, Some(sheet_id));
+        self.writing_to(spreadsheet_id, sheet_id);
         let response = self.batch_update(
             spreadsheet_id,
             json!({
@@ -377,7 +308,21 @@ impl SheetsClient {
                 "responseIncludeGridData": false
             }),
             &[("fields", "updatedSpreadsheet(sheets(properties(sheetId,gridProperties(rowCount))))".into())],
-        )?;
+        );
+        let response = match response {
+            Ok(response) => response,
+            Err(error) => {
+                self.forget_tab(spreadsheet_id, sheet_id);
+                return Err(error);
+            }
+        };
+        self.kept(spreadsheet_id, |tabs| {
+            let tab = tabs.entry(sheet_id).or_default();
+            tab.generation += 1;
+            if let Some(rows) = tab.rows.as_mut() {
+                kept::delete_rows(rows, (start_row - 1) as usize, end_row as usize);
+            }
+        });
         let row_count = response
             .pointer("/updatedSpreadsheet/sheets")
             .and_then(Value::as_array)
@@ -404,9 +349,15 @@ impl SheetsClient {
         Ok(rows_of(response.get("values")))
     }
 
+    /// Write `rows` at A1 range `sheet_range` (the tab's title in it):
+    /// what's kept of every tab is forgotten, not knowing which it was.
     pub fn write_rows(&self, spreadsheet_id: &str, sheet_range: &str, rows: &Rows) -> anyhow::Result<()> {
         write_lock::require("SheetsClient.write_rows")?;
-        forget(spreadsheet_id, None);
+        kept::forget_spreadsheet(&self.root(), spreadsheet_id);
+        self.put_rows(spreadsheet_id, sheet_range, rows)
+    }
+
+    fn put_rows(&self, spreadsheet_id: &str, sheet_range: &str, rows: &Rows) -> anyhow::Result<()> {
         self.execute(
             "PUT",
             &format!("v4/spreadsheets/{spreadsheet_id}/values/{}", encode_range(sheet_range)),
@@ -420,49 +371,96 @@ impl SheetsClient {
         Ok(self.read_ranges_in_sheet(spreadsheet_id, sheet_id, &[range])?.remove(0))
     }
 
+    /// Each of `ranges` of tab `sheet_id`, cut from what's kept of the
+    /// tab (read first if it isn't kept yet); a range reaching past the
+    /// kept columns is read from Sheets.
     pub fn read_ranges_in_sheet(&self, spreadsheet_id: &str, sheet_id: i64, ranges: &[&str]) -> anyhow::Result<Vec<Rows>> {
+        let outer = grid_range(sheet_id, KEPT_RANGE)?;
+        let grids: Vec<GridRange> = ranges.iter().map(|r| grid_range(sheet_id, r)).collect::<anyhow::Result<_>>()?;
+        if grids.iter().all(|g| contains(&outer, g)) {
+            let rows = match self.kept_rows(spreadsheet_id, sheet_id) {
+                Some(rows) => rows,
+                None => self.load(spreadsheet_id, &[sheet_id])?.remove(0),
+            };
+            return Ok(grids.iter().map(|g| within(&rows, &outer, g)).collect());
+        }
         let wanted: Vec<TabRange> = ranges.iter().map(|r| TabRange::new(spreadsheet_id, sheet_id, r)).collect();
-        let mut found: Vec<Option<Rows>> = wanted.iter().map(cached_rows).collect();
-        let mut missing: Vec<TabRange> = Vec::new();
-        for (range, rows) in wanted.iter().zip(&found) {
-            if rows.is_none() && !missing.contains(range) {
-                missing.push(range.clone());
-            }
-        }
-        if !missing.is_empty() {
-            let fetched = self.fetch(spreadsheet_id, &missing)?;
-            for (i, range) in wanted.iter().enumerate() {
-                if found[i].is_none() {
-                    found[i] = fetched.iter().find(|(r, _)| r == range).map(|(_, rows)| rows.clone());
-                }
-            }
-        }
-        Ok(found.into_iter().map(Option::unwrap_or_default).collect())
+        Ok(self.fetch(spreadsheet_id, &wanted)?.into_iter().map(|(_, rows)| rows).collect())
     }
 
-    /// Inside a tool call, read every one of `ranges` not cached yet --
-    /// one request per spreadsheet -- so later reads come from memory.
+    /// Read every tab of `ranges` not kept yet -- one request per
+    /// spreadsheet -- so later reads of them come from memory.
     pub fn prefetch(&self, ranges: &[TabRange]) -> anyhow::Result<()> {
-        if !caching() {
-            return Ok(());
-        }
-        let mut missing: Vec<TabRange> = Vec::new();
+        let mut spreadsheets: Vec<&str> = Vec::new();
         for range in ranges {
-            if cached_rows(range).is_none() && !missing.contains(range) {
-                missing.push(range.clone());
-            }
-        }
-        let mut spreadsheets: Vec<String> = Vec::new();
-        for range in &missing {
-            if !spreadsheets.contains(&range.spreadsheet_id) {
-                spreadsheets.push(range.spreadsheet_id.clone());
+            if !spreadsheets.contains(&range.spreadsheet_id.as_str()) {
+                spreadsheets.push(&range.spreadsheet_id);
             }
         }
         for spreadsheet_id in spreadsheets {
-            let these: Vec<TabRange> = missing.iter().filter(|r| r.spreadsheet_id == spreadsheet_id).cloned().collect();
-            self.fetch(&spreadsheet_id, &these)?;
+            let mut missing: Vec<i64> = Vec::new();
+            for range in ranges.iter().filter(|r| r.spreadsheet_id == spreadsheet_id) {
+                if !missing.contains(&range.sheet_id) && self.kept_rows(spreadsheet_id, range.sheet_id).is_none() {
+                    missing.push(range.sheet_id);
+                }
+            }
+            if !missing.is_empty() {
+                self.load(spreadsheet_id, &missing)?;
+            }
         }
         Ok(())
+    }
+
+    fn root(&self) -> String {
+        self.google.sheets_url("")
+    }
+
+    fn kept<T>(&self, spreadsheet_id: &str, f: impl FnOnce(&mut std::collections::BTreeMap<i64, kept::Tab>) -> T) -> T {
+        kept::with(&self.root(), spreadsheet_id, f)
+    }
+
+    fn kept_rows(&self, spreadsheet_id: &str, sheet_id: i64) -> Option<Rows> {
+        self.kept(spreadsheet_id, |tabs| tabs.get(&sheet_id).and_then(|t| t.rows.clone()))
+    }
+
+    /// Read tabs `sheet_ids` whole (their kept cells) in one request, and
+    /// keep each -- unless a write to it began meanwhile, which would make
+    /// what was read stale.
+    fn load(&self, spreadsheet_id: &str, sheet_ids: &[i64]) -> anyhow::Result<Vec<Rows>> {
+        let generations: Vec<u64> = self.kept(spreadsheet_id, |tabs| sheet_ids.iter().map(|id| tabs.get(id).map_or(0, |t| t.generation)).collect());
+        let ranges: Vec<TabRange> = sheet_ids.iter().map(|id| TabRange::new(spreadsheet_id, *id, KEPT_RANGE)).collect();
+        let fetched: Vec<Rows> = self.fetch(spreadsheet_id, &ranges)?.into_iter().map(|(_, rows)| rows).collect();
+        self.kept(spreadsheet_id, |tabs| {
+            for ((id, generation), rows) in sheet_ids.iter().zip(&generations).zip(&fetched) {
+                let tab = tabs.entry(*id).or_default();
+                if tab.generation == *generation && tab.rows.is_none() {
+                    tab.rows = Some(rows.clone());
+                }
+            }
+        });
+        Ok(fetched)
+    }
+
+    /// Note what tab `sheet_id` is, so a refresh can make it again if it's
+    /// deleted by hand.
+    pub fn identify(&self, spreadsheet_id: &str, sheet_id: i64, identity: TabIdentity) {
+        self.kept(spreadsheet_id, |tabs| tabs.entry(sheet_id).or_default().identity = Some(identity));
+    }
+
+    /// A write to tab `sheet_id` is beginning: a read already under way
+    /// mustn't be kept.
+    fn writing_to(&self, spreadsheet_id: &str, sheet_id: i64) {
+        self.kept(spreadsheet_id, |tabs| tabs.entry(sheet_id).or_default().generation += 1);
+    }
+
+    /// Forget what's kept of tab `sheet_id`, so it's read afresh: after a
+    /// write that may have been only partly made.
+    fn forget_tab(&self, spreadsheet_id: &str, sheet_id: i64) {
+        self.kept(spreadsheet_id, |tabs| {
+            let tab = tabs.entry(sheet_id).or_default();
+            tab.rows = None;
+            tab.generation += 1;
+        });
     }
 
     fn fetch(&self, spreadsheet_id: &str, ranges: &[TabRange]) -> anyhow::Result<Vec<(TabRange, Rows)>> {
@@ -475,46 +473,14 @@ impl SheetsClient {
             Some(&json!({"dataFilters": filters, "majorDimension": "ROWS"})),
         )?;
         let values = values_by_filter(&response, &grids);
-        let fetched: Vec<(TabRange, Rows)> = ranges.iter().cloned().zip(values).collect();
-        for (range, rows) in &fetched {
-            remember(range, rows);
-        }
-        Ok(fetched)
+        Ok(ranges.iter().cloned().zip(values).collect())
     }
 
-    /// Write `rows` at `range` of tab `sheet_id`, through a bounded
-    /// GridRange -- falling back to a title-qualified A1 range (which grows
-    /// the grid) when they'd land past the tab's last row.
+    /// Write `rows` at `range` of tab `sheet_id` -- only those of them
+    /// that change what's kept, when the tab is kept.
     pub fn write_rows_in_sheet(&self, spreadsheet_id: &str, sheet_id: i64, range: &str, rows: &Rows) -> anyhow::Result<()> {
         write_lock::require("SheetsClient.write_rows_in_sheet")?;
-        if rows.is_empty() {
-            return Ok(());
-        }
-        forget(spreadsheet_id, Some(sheet_id));
-        let mut grid = grid_range(sheet_id, range)?;
-        grid.end_row = Some(grid.start_row + rows.len() as i64);
-        let result = self.execute(
-            "POST",
-            &format!("v4/spreadsheets/{spreadsheet_id}/values:batchUpdateByDataFilter"),
-            &[],
-            Some(&json!({
-                "valueInputOption": "RAW",
-                "data": [{"dataFilter": {"gridRange": grid.to_json()}, "majorDimension": "ROWS", "values": rows}]
-            })),
-        );
-        match result {
-            Err(error) if status_of(&error) == Some(400) => {}
-            Err(error) => return Err(error),
-            Ok(response) => {
-                let wanted: usize = rows.iter().map(Vec::len).sum();
-                if response.get("totalUpdatedCells").and_then(Value::as_i64).unwrap_or(0) >= wanted as i64 {
-                    return Ok(());
-                }
-            }
-        }
-        let title = self.get_sheet_title(spreadsheet_id, sheet_id)?;
-        let qualified = format!("'{}'!{range}", title.replace('\'', "''"));
-        self.write_rows(spreadsheet_id, &qualified, rows)
+        self.write_runs(spreadsheet_id, &[TabWrite { sheet_id, range: range.into(), rows: rows.clone() }])
     }
 }
 
@@ -526,43 +492,318 @@ pub struct TabWrite {
     pub rows: Rows,
 }
 
+/// A run of rows to write: `rows` at `grid` (bounded to them).
+#[derive(Debug, Clone)]
+struct Run {
+    grid: GridRange,
+    rows: Rows,
+}
+
 impl SheetsClient {
     /// Make each of `writes` -- to tabs of `spreadsheet_id` -- in one
-    /// request, as `write_rows_in_sheet` makes one, falling back to making
-    /// them one at a time if any would land past its tab's last row.
+    /// request, sending only the rows that change what's kept.
     pub fn write_tabs(&self, spreadsheet_id: &str, writes: &[TabWrite]) -> anyhow::Result<()> {
         write_lock::require("SheetsClient.write_tabs")?;
-        let writes: Vec<&TabWrite> = writes.iter().filter(|w| !w.rows.is_empty()).collect();
-        if writes.len() > 1 {
-            let mut data = Vec::new();
-            for write in &writes {
-                forget(spreadsheet_id, Some(write.sheet_id));
-                let mut grid = grid_range(write.sheet_id, &write.range)?;
-                grid.end_row = Some(grid.start_row + write.rows.len() as i64);
-                data.push(json!({"dataFilter": {"gridRange": grid.to_json()}, "majorDimension": "ROWS", "values": write.rows}));
-            }
-            let result = self.execute(
-                "POST",
-                &format!("v4/spreadsheets/{spreadsheet_id}/values:batchUpdateByDataFilter"),
-                &[],
-                Some(&json!({"valueInputOption": "RAW", "data": data})),
-            );
-            match result {
-                Err(error) if status_of(&error) == Some(400) => {}
-                Err(error) => return Err(error),
-                Ok(response) => {
-                    let wanted: usize = writes.iter().flat_map(|w| w.rows.iter().map(Vec::len)).sum();
-                    if response.get("totalUpdatedCells").and_then(Value::as_i64).unwrap_or(0) >= wanted as i64 {
-                        return Ok(());
+        self.write_runs(spreadsheet_id, writes)
+    }
+
+    /// `writes`, as the runs of rows that change what's kept (all of a
+    /// write's rows, for a tab not kept or a range past the kept
+    /// columns), made in one request, then kept. Nothing is sent when
+    /// nothing changes.
+    fn write_runs(&self, spreadsheet_id: &str, writes: &[TabWrite]) -> anyhow::Result<()> {
+        let mut runs: Vec<Run> = Vec::new();
+        for write in writes.iter().filter(|w| !w.rows.is_empty()) {
+            let mut grid = grid_range(write.sheet_id, &write.range)?;
+            grid.end_row = Some(grid.start_row + write.rows.len() as i64);
+            runs.extend(self.changing(spreadsheet_id, grid, &write.rows));
+        }
+        if runs.is_empty() {
+            return Ok(());
+        }
+        let mut tabs: Vec<i64> = runs.iter().map(|r| r.grid.sheet_id).collect();
+        tabs.dedup();
+        for tab in &tabs {
+            self.writing_to(spreadsheet_id, *tab);
+        }
+        match self.send(spreadsheet_id, &runs) {
+            Ok(()) => {
+                let outer_start = |g: &GridRange| (g.start_row as usize, g.start_column as usize);
+                // Up again once it's kept: a refresh that read the tab
+                // while the write was under way mustn't take the write for
+                // a hand edit.
+                self.kept(spreadsheet_id, |kept_tabs| {
+                    for run in &runs {
+                        let tab = kept_tabs.entry(run.grid.sheet_id).or_default();
+                        tab.generation += 1;
+                        if let Some(rows) = tab.rows.as_mut() {
+                            let (row, column) = outer_start(&run.grid);
+                            kept::set_cells(rows, row, column, &run.rows);
+                        }
                     }
+                });
+                Ok(())
+            }
+            Err(error) => {
+                for tab in &tabs {
+                    self.forget_tab(spreadsheet_id, *tab);
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// The runs of `rows` (to write at `grid`) that change a kept tab's
+    /// cells -- or all of them, as one run, when the tab isn't kept or
+    /// `grid` reaches past the kept columns.
+    fn changing(&self, spreadsheet_id: &str, grid: GridRange, rows: &Rows) -> Vec<Run> {
+        let outer = grid_range(grid.sheet_id, KEPT_RANGE).expect("KEPT_RANGE is a range");
+        let kept_rows = if contains(&outer, &grid) { self.kept_rows(spreadsheet_id, grid.sheet_id) } else { None };
+        let Some(kept_rows) = kept_rows else {
+            return vec![Run { grid, rows: rows.clone() }];
+        };
+        let (top, left) = (grid.start_row as usize, grid.start_column as usize);
+        let changes = |i: usize| rows[i].iter().enumerate().any(|(j, text)| kept::cell(&kept_rows, top + i, left + j) != text);
+        let mut runs = Vec::new();
+        let mut i = 0;
+        while i < rows.len() {
+            if !changes(i) {
+                i += 1;
+                continue;
+            }
+            let start = i;
+            while i < rows.len() && changes(i) {
+                i += 1;
+            }
+            let run_grid = GridRange { start_row: (top + start) as i64, end_row: Some((top + i) as i64), ..grid.clone() };
+            runs.push(Run { grid: run_grid, rows: rows[start..i].to_vec() });
+        }
+        runs
+    }
+
+    /// Make `runs` in one request, through bounded GridRanges -- falling
+    /// back, for one past its tab's last row, to a title-qualified A1
+    /// range (which grows the grid), one run at a time.
+    fn send(&self, spreadsheet_id: &str, runs: &[Run]) -> anyhow::Result<()> {
+        let data: Vec<Value> =
+            runs.iter().map(|r| json!({"dataFilter": {"gridRange": r.grid.to_json()}, "majorDimension": "ROWS", "values": r.rows})).collect();
+        let result = self.execute(
+            "POST",
+            &format!("v4/spreadsheets/{spreadsheet_id}/values:batchUpdateByDataFilter"),
+            &[],
+            Some(&json!({"valueInputOption": "RAW", "data": data})),
+        );
+        match result {
+            Err(error) if status_of(&error) == Some(400) => {}
+            Err(error) => return Err(error),
+            Ok(response) => {
+                let wanted: usize = runs.iter().flat_map(|r| r.rows.iter().map(Vec::len)).sum();
+                if response.get("totalUpdatedCells").and_then(Value::as_i64).unwrap_or(0) >= wanted as i64 {
+                    return Ok(());
                 }
             }
         }
-        for write in writes {
-            self.write_rows_in_sheet(spreadsheet_id, write.sheet_id, &write.range, &write.rows)?;
+        if runs.len() > 1 {
+            for run in runs {
+                self.send(spreadsheet_id, std::slice::from_ref(run))?;
+            }
+            return Ok(());
+        }
+        let run = &runs[0];
+        let title = self.get_sheet_title(spreadsheet_id, run.grid.sheet_id)?;
+        let range = format!(
+            "{}:{}{}",
+            kept::a1(run.grid.start_row as usize, run.grid.start_column as usize),
+            kept::column_letters(run.grid.end_column as usize - 1),
+            run.grid.end_row.unwrap_or(run.grid.start_row + run.rows.len() as i64)
+        );
+        let qualified = format!("'{}'!{range}", title.replace('\'', "''"));
+        self.put_rows(spreadsheet_id, &qualified, &run.rows)
+    }
+}
+
+/// What a refresh found in one spreadsheet: tabs whose cells weren't as
+/// kept, and tabs deleted -- each put back unless `deferred`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Refreshed {
+    pub changed: Vec<ChangedTab>,
+    pub deleted: Vec<DeletedTab>,
+    /// A tool was writing, so nothing was put back: the next refresh will.
+    pub deferred: bool,
+}
+
+impl Refreshed {
+    pub fn is_empty(&self) -> bool {
+        self.changed.is_empty() && self.deleted.is_empty()
+    }
+}
+
+/// A tab with cells changed under the server: each cell, as found and as
+/// kept, and whether the kept ones were written back.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChangedTab {
+    pub sheet_id: i64,
+    pub title: Option<String>,
+    pub cells: Vec<Differs>,
+    pub restored: bool,
+}
+
+/// A tab deleted under the server, and whether it was made again (with
+/// its id, title, tag and kept cells).
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeletedTab {
+    pub sheet_id: i64,
+    pub title: Option<String>,
+    pub restored: bool,
+}
+
+/// A kept tab as a refresh began: how far along its writes were, and its
+/// cells.
+struct Seen {
+    sheet_id: i64,
+    generation: u64,
+    rows: Rows,
+    identity: Option<TabIdentity>,
+}
+
+impl SheetsClient {
+    /// The spreadsheets anything is kept of.
+    pub fn kept_spreadsheets(&self) -> Vec<String> {
+        kept::spreadsheets(&self.root())
+    }
+
+    /// Read every kept tab of `spreadsheet_id` (but those tagged with one
+    /// of `skip`) in one request, without the write lock, and compare each
+    /// with what's kept; then put back whatever was changed or deleted by
+    /// hand -- holding the write lock, if it's free (with `wait`, waiting
+    /// for it). A tab written while it was read is left for the next
+    /// refresh: what was read of it may be older than the write.
+    pub fn refresh(&self, spreadsheet_id: &str, skip: &[&str], wait: bool) -> anyhow::Result<Refreshed> {
+        let seen: Vec<Seen> = self.kept(spreadsheet_id, |tabs| {
+            tabs.iter()
+                .filter(|(_, t)| !t.identity.as_ref().is_some_and(|i| skip.contains(&i.value.as_str())))
+                .filter_map(|(id, t)| Some(Seen { sheet_id: *id, generation: t.generation, rows: t.rows.clone()?, identity: t.identity.clone() }))
+                .collect()
+        });
+        let mut report = Refreshed::default();
+        if seen.is_empty() {
+            return Ok(report);
+        }
+        let ranges = |ids: &[i64]| -> Vec<TabRange> { ids.iter().map(|id| TabRange::new(spreadsheet_id, *id, KEPT_RANGE)).collect() };
+        let ids: Vec<i64> = seen.iter().map(|s| s.sheet_id).collect();
+        let (found, gone): (Vec<(i64, Rows)>, Vec<i64>) = match self.fetch(spreadsheet_id, &ranges(&ids)) {
+            Ok(fetched) => (ids.iter().copied().zip(fetched.into_iter().map(|(_, rows)| rows)).collect(), Vec::new()),
+            Err(error) if status_of(&error) == Some(400) => {
+                let present = self.sheet_ids(spreadsheet_id)?;
+                let (here, gone): (Vec<i64>, Vec<i64>) = ids.iter().partition(|id| present.contains(id));
+                let fetched = if here.is_empty() { Vec::new() } else { self.fetch(spreadsheet_id, &ranges(&here))? };
+                (here.iter().copied().zip(fetched.into_iter().map(|(_, rows)| rows)).collect(), gone)
+            }
+            Err(error) => return Err(error),
+        };
+        let unwritten = |s: &Seen| self.kept(spreadsheet_id, |tabs| tabs.get(&s.sheet_id).is_some_and(|t| t.generation == s.generation && t.rows.is_some()));
+        let seen_of = |id: i64| seen.iter().find(|s| s.sheet_id == id).expect("every tab read was seen");
+        let title_of = |s: &Seen| s.identity.as_ref().map(|i| i.title.clone());
+        for (id, rows) in &found {
+            let s = seen_of(*id);
+            let cells = kept::differences(rows, &s.rows);
+            if !cells.is_empty() && unwritten(s) {
+                report.changed.push(ChangedTab { sheet_id: *id, title: title_of(s), cells, restored: false });
+            }
+        }
+        for id in &gone {
+            report.deleted.push(DeletedTab { sheet_id: *id, title: title_of(seen_of(*id)), restored: false });
+        }
+        if report.is_empty() {
+            return Ok(report);
+        }
+        let held = if wait { Some(WRITE_LOCK.hold()) } else { WRITE_LOCK.try_hold() };
+        let Some(_held) = held else {
+            report.deferred = true;
+            return Ok(report);
+        };
+        for changed in &mut report.changed {
+            let s = seen_of(changed.sheet_id);
+            if !unwritten(s) {
+                continue;
+            }
+            let found_rows = &found.iter().find(|(id, _)| *id == changed.sheet_id).expect("a changed tab was read").1;
+            self.send(spreadsheet_id, &restoring(changed.sheet_id, &changed.cells, &s.rows, found_rows))?;
+            changed.restored = true;
+        }
+        for deleted in &mut report.deleted {
+            let s = seen_of(deleted.sheet_id);
+            match &s.identity {
+                Some(identity) if unwritten(s) => {
+                    self.recreate(spreadsheet_id, s.sheet_id, identity, &s.rows)?;
+                    deleted.restored = true;
+                }
+                _ => self.forget_tab(spreadsheet_id, s.sheet_id),
+            }
+        }
+        Ok(report)
+    }
+
+    /// Every tab's id.
+    fn sheet_ids(&self, spreadsheet_id: &str) -> anyhow::Result<Vec<i64>> {
+        let response =
+            self.execute("GET", &format!("v4/spreadsheets/{spreadsheet_id}"), &[("fields", "sheets.properties".into())], None)?;
+        Ok(response.get("sheets").and_then(Value::as_array).into_iter().flatten().filter_map(|s| s["properties"]["sheetId"].as_i64()).collect())
+    }
+
+    /// Make tab `sheet_id` again, deleted by hand: the same id, title
+    /// (" (restored)" after it if another tab has taken it), color and
+    /// tag, and `rows`.
+    fn recreate(&self, spreadsheet_id: &str, sheet_id: i64, identity: &TabIdentity, rows: &Rows) -> anyhow::Result<()> {
+        let add = |title: &str| {
+            let mut properties = json!({"sheetId": sheet_id, "title": title});
+            if let Some(color) = &identity.color {
+                properties["tabColor"] = color.clone();
+            }
+            self.batch_update(spreadsheet_id, json!({"requests": [{"addSheet": {"properties": properties}}]}), &[])
+        };
+        match add(&identity.title) {
+            Err(error) if status_of(&error) == Some(400) => {
+                add(&format!("{} (restored)", identity.title))?;
+            }
+            other => {
+                other?;
+            }
+        }
+        self.create_sheet_metadata(spreadsheet_id, sheet_id, &identity.key, &identity.value)?;
+        if !rows.is_empty() {
+            let grid = GridRange { sheet_id, start_row: 0, start_column: 0, end_column: kept::KEPT_COLUMNS as i64, end_row: Some(rows.len() as i64) };
+            self.send(spreadsheet_id, &[Run { grid, rows: rows.clone() }])?;
         }
         Ok(())
     }
+}
+
+/// The writes that put `cells` of tab `sheet_id` back as kept: each row
+/// with a changed cell, as kept, cleared out to as wide as it was found;
+/// a run of such rows to a write.
+fn restoring(sheet_id: i64, cells: &[Differs], kept_rows: &Rows, found: &Rows) -> Vec<Run> {
+    let mut rows: Vec<usize> = cells.iter().map(|d| d.row).collect();
+    rows.sort();
+    rows.dedup();
+    let row_as_kept = |r: usize| -> Vec<String> {
+        let width = found.get(r).map_or(0, Vec::len).max(kept_rows.get(r).map_or(0, Vec::len));
+        (0..width).map(|c| kept::cell(kept_rows, r, c).to_string()).collect()
+    };
+    let mut runs: Vec<Run> = Vec::new();
+    for r in rows {
+        match runs.last_mut() {
+            Some(run) if run.grid.end_row == Some(r as i64) => {
+                run.rows.push(row_as_kept(r));
+                run.grid.end_row = Some(r as i64 + 1);
+            }
+            _ => runs.push(Run {
+                grid: GridRange { sheet_id, start_row: r as i64, start_column: 0, end_column: kept::KEPT_COLUMNS as i64, end_row: Some(r as i64 + 1) },
+                rows: vec![row_as_kept(r)],
+            }),
+        }
+    }
+    runs
 }
 
 /// Each grid range's rows from a batchGetByDataFilter answer, matched by

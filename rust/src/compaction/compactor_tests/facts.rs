@@ -48,12 +48,12 @@ fn a_typical_round_of_compaction_makes_no_more_read_requests_than_this() {
 
     let counts = round("10:40+1", "10:45+1");
 
-    // Each compaction call reads the notes tab, the journal and the
+    // The first compaction call reads the notes tab, the journal and the
     // actions', people's and locations' tabs whole, together in one request
-    // (NoteCompactor's prefetch); every later read of them in the call falls
-    // within that, so it's served from the cache.
+    // (NoteCompactor's prefetch); they're kept, so no later call reads
+    // Sheets at all.
     let expected: Vec<(String, usize)> =
-        ["note", "prepare_compaction", "compact_notes dry run", "confirm_proposal"].iter().map(|n| (n.to_string(), 1)).collect();
+        ["note", "prepare_compaction", "compact_notes dry run", "confirm_proposal"].iter().map(|n| (n.to_string(), 0)).collect();
     assert_eq!(counts, expected);
 }
 

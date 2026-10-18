@@ -3,6 +3,8 @@ each kind of part, and habits rated by them."""
 
 from __future__ import annotations
 
+import pytest
+
 PARTS = [
     {"kind": "judgment", "rubric": "Was this activity or place new?", "ratings": {"0": "routine", "1": "a twist", "2": "new", "3": "adventurous"}, "facts": ["action", {"fact": "action_history", "lookback_days": 90}, "location"], "window_days": 30},
     {"kind": "continuity", "last_within_days": 14, "next_within_days": 14},
@@ -43,15 +45,17 @@ async def test_trait_part_with_action(session):
     await session.call_error("create_trait", trait={"name": "Broken", "definition": "d", "parts": [{"kind": "count", "target": 2, "interval_days": 14, "noun": "x", "action": "nosuch"}]})
 
 
+@pytest.mark.server_env(TIME_TRACKER_SHEETS_REFRESH="every_call")
 async def test_traits_edited_by_hand(session, google):
-    """A trait whose parts were broken by hand is listed with its problems."""
+    """A trait whose parts were broken by hand while the server runs is put
+    back as the server keeps it, before the next call reads it."""
     await session.call("get_traits")
     spreadsheet = next(iter(google.spreadsheets.values()))
     tab = next(t for t in spreadsheet["sheets"] if t["properties"]["title"] == "Traits")
     parts_column = next(c for (r, c), v in tab["cells"].items() if r == 0 and v == "parts")
     tab["cells"][(1, parts_column)] = '[{"kind": "count", "target": "many"}]'
     traits = await session.call("get_traits")
-    assert traits[0]["problems"]
+    assert not traits[0].get("problems")
 
 
 async def test_habits(session):

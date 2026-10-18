@@ -69,3 +69,14 @@ fn the_health_tabs_lock_lets_its_writer_write_too() {
 
     require("SheetsClient.write_rows").unwrap();
 }
+
+#[test]
+fn trying_for_it_gives_way_to_another_thread_holding_it_but_nests_in_this_one() {
+    let _held = WRITE_LOCK.hold();
+
+    assert!(in_another_thread(|| WRITE_LOCK.try_hold().is_none()));
+    let nested = WRITE_LOCK.try_hold();
+    assert!(nested.is_some());
+    drop(nested);
+    assert!(held());
+}

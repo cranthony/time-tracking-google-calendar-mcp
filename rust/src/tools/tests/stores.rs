@@ -356,3 +356,27 @@ fn a_read_only_tool_runs_while_another_thread_holds_the_lock() {
 
     assert!(done.join().unwrap());
 }
+
+// -- the spreadsheet edited by hand while the server runs -------------------------------------
+
+#[test]
+fn a_refresh_puts_back_what_was_edited_by_hand_and_keeps_what_it_found() {
+    let s = Server::new();
+    s.ok("create_location", json!({"location": {"name": "Home"}}));
+    let sheet = s.t.spreadsheet();
+    let name = s.t.fake.rows(&sheet, "Locations")[0].iter().position(|h| h == "name").unwrap();
+    s.t.fake.edit_by_hand(&sheet, "Locations", 1, name, "Cabin");
+
+    // Read from what the server keeps, not the spreadsheet.
+    assert_eq!(s.ok("get_locations", json!({}))[0]["name"], json!("Home"));
+    s.t.app.refresh_sheets(true);
+
+    assert_eq!(s.t.fake.rows(&sheet, "Locations")[1][name], "Home");
+    let repairs = s.t.app.sheets_repairs();
+    assert_eq!(repairs.len(), 1);
+    let changed = &repairs[0].refreshed.changed[0];
+    assert_eq!(changed.title.as_deref(), Some("Locations"));
+    assert_eq!((changed.cells[0].found.as_str(), changed.cells[0].kept.as_str(), changed.restored), ("Cabin", "Home", true));
+    s.t.app.refresh_sheets(true);
+    assert_eq!(s.t.app.sheets_repairs().len(), 1);
+}

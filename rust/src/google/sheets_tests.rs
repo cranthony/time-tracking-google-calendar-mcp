@@ -1,6 +1,7 @@
 //! The module's tests, against the fake Google.
 
 use super::*;
+use crate::google::kept;
 use crate::testing::fake_google::{FakeGoogle, LoggedRequest};
 use crate::write_lock::WRITE_LOCK;
 
@@ -54,11 +55,6 @@ impl Fixture {
         self.write(1, "A1:B1", rows(&[&["other", "tab"]]));
         self.fake.clear_requests();
     }
-}
-
-fn cached<T>(f: impl FnOnce() -> T) -> T {
-    let _reads = CachedReads::start();
-    f()
 }
 
 #[test]
@@ -229,7 +225,7 @@ fn reads_by_tab_id_without_looking_up_the_title() {
     let read = &f.requests("values:batchGetByDataFilter")[0];
     assert_eq!(
         read.body,
-        json!({"dataFilters": [{"gridRange": {"sheetId": 1, "startRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 4}}], "majorDimension": "ROWS"})
+        json!({"dataFilters": [{"gridRange": {"sheetId": 1, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": 26}}], "majorDimension": "ROWS"})
     );
     assert_eq!(f.fake.requests().len(), 1);
 }
@@ -292,7 +288,7 @@ fn falls_back_to_the_title_qualified_range_past_the_end_of_the_grid() {
     f.write(1, "A2:D", rows(&[&["a"], &["b"]]));
 
     let fallback = f.fake.requests().into_iter().find(|r| r.method == "PUT").expect("a fallback write");
-    assert!(fallback.path.ends_with("/values/'Chris''s Labels'!A2:D"), "{}", fallback.path);
+    assert!(fallback.path.ends_with("/values/'Chris''s Labels'!A2:D3"), "{}", fallback.path);
     assert_eq!(fallback.body, json!({"values": [["a"], ["b"]]}));
     assert_eq!(f.read(1, "A2:D"), rows(&[&["a"], &["b"]]));
 }
@@ -318,10 +314,10 @@ fn writing_no_rows_sends_nothing() {
     assert!(f.fake.requests().is_empty());
 }
 
-// -- several ranges, and the read cache ------------------------------------------------------------
+// -- several ranges, and what's kept -----------------------------------------------------------------
 
 #[test]
-fn reads_every_range_in_one_request() {
+fn reads_a_tab_whole_once_and_cuts_every_range_from_it() {
     let f = fixture();
     f.write(1, "A1:C3", rows(&[&["header"], &["a"], &["b"]]));
     f.fake.clear_requests();
@@ -330,8 +326,10 @@ fn reads_every_range_in_one_request() {
 
     assert_eq!(result, vec![rows(&[&["header"]]), rows(&[&["a"], &["b"]])]);
     assert_eq!(f.reads(), 1);
-    let starts: Vec<Value> = f.requests("values:batchGetByDataFilter")[0].body["dataFilters"].as_array().unwrap().iter().map(|d| d["gridRange"]["startRowIndex"].clone()).collect();
-    assert_eq!(starts, vec![json!(0), json!(1)]);
+    assert_eq!(
+        f.requests("values:batchGetByDataFilter")[0].body["dataFilters"],
+        json!([{"gridRange": {"sheetId": 1, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": 26}}])
+    );
 }
 
 #[test]
@@ -355,230 +353,354 @@ fn a_range_with_nothing_in_it_is_empty() {
 }
 
 #[test]
-fn caches_each_range_and_requests_only_the_ones_not_cached() {
-    let f = fixture();
-    f.write(1, "A1:C2", rows(&[&["header"], &["a"]]));
-    f.fake.clear_requests();
-
-    let (both, header, data) = cached(|| {
-        f.read(1, "A1:C1");
-        let both = f.client.read_ranges_in_sheet(&f.spreadsheet, 1, &["A1:C1", "A2:C"]).unwrap();
-        (both, f.read(1, "A1:C1"), f.read(1, "A2:C"))
-    });
-
-    assert_eq!(both, vec![rows(&[&["header"]]), rows(&[&["a"]])]);
-    assert_eq!((header, data), (rows(&[&["header"]]), rows(&[&["a"]])));
-    let reads = f.requests("values:batchGetByDataFilter");
-    assert_eq!(reads.len(), 2);
-    assert_eq!(reads[1].body["dataFilters"].as_array().unwrap().len(), 1);
-}
-
-#[test]
-fn a_range_within_one_read_is_cut_out_of_it_as_the_api_would_return_it() {
-    for range in ["A1:D1", "A2:D", "A3:D4", "B2:C", "A2:B3", "D2:D", "A4:D9", "C1:C1", "A6:D"] {
-        let f = fixture();
-        f.seeded();
-        let expected = f.read(0, range);
-        f.fake.clear_requests();
-
-        let within = cached(|| {
-            f.read(0, "A1:D");
-            f.read(0, range)
-        });
-
-        assert_eq!(within, expected, "{range}");
-        assert_eq!(f.reads(), 1, "{range}");
-    }
-}
-
-#[test]
-fn a_range_reaching_outside_what_was_read_is_requested() {
-    let f = fixture();
-    f.seeded();
-
-    cached(|| {
-        f.read(0, "A2:B");
-        f.read(0, "A2:C"); // a column more
-        f.read(0, "A1:B"); // a row higher
-    });
-    cached(|| {
-        f.read(0, "A1:D3");
-        f.read(0, "A1:D"); // open-ended, past a bounded one
-    });
-
-    assert_eq!(f.reads(), 5);
-}
-
-#[test]
-fn another_tabs_range_is_never_used() {
-    let f = fixture();
-    f.seeded();
-
-    let other = cached(|| {
-        f.read(0, "A1:D");
-        f.read(1, "A1:B1")
-    });
-
-    assert_eq!(other, rows(&[&["other", "tab"]]));
-    assert_eq!(f.reads(), 2);
-}
-
-#[test]
-fn a_write_to_the_tab_forgets_the_range_it_was_within() {
-    let f = fixture();
-    f.seeded();
-
-    let read = cached(|| {
-        f.read(0, "A1:D");
-        f.write(0, "A3:A3", rows(&[&["new"]]));
-        f.read(0, "A3:A3")
-    });
-
-    assert_eq!(read, rows(&[&["new"]]));
-    assert_eq!(f.reads(), 2);
-}
-
-#[test]
-fn prefetch_reads_several_tabs_in_one_request_for_later_reads_within_them() {
-    let f = fixture();
-    f.write(0, "A1:B2", rows(&[&["h"], &["one"]]));
-    f.write(1, "A1:B2", rows(&[&["h"], &["two"]]));
-    f.fake.clear_requests();
-
-    let (one, two) = cached(|| {
-        f.client.prefetch(&[TabRange::new(&f.spreadsheet, 0, "A1:B"), TabRange::new(&f.spreadsheet, 1, "A1:B")]).unwrap();
-        (f.client.read_ranges_in_sheet(&f.spreadsheet, 0, &["A1:B1", "A2:B"]).unwrap(), f.read(1, "A2:B"))
-    });
-
-    assert_eq!((one, two), (vec![rows(&[&["h"]]), rows(&[&["one"]])], rows(&[&["two"]])));
-    assert_eq!(f.reads(), 1);
-}
-
-#[test]
-fn prefetch_skips_what_is_already_cached() {
-    let f = fixture();
-
-    cached(|| {
-        f.read(0, "A1:B");
-        f.client.prefetch(&[TabRange::new(&f.spreadsheet, 0, "A2:B"), TabRange::new(&f.spreadsheet, 1, "A1:B")]).unwrap();
-    });
-
-    let last = f.requests("values:batchGetByDataFilter").pop().unwrap();
-    let filters = last.body["dataFilters"].as_array().unwrap().clone();
-    assert_eq!(filters.len(), 1);
-    assert_eq!(filters[0]["gridRange"]["sheetId"], json!(1));
-}
-
-#[test]
-fn prefetch_does_nothing_outside_a_tool_calls_cache() {
-    let f = fixture();
-
-    f.client.prefetch(&[TabRange::new(&f.spreadsheet, 0, "A1:B")]).unwrap();
-
-    assert_eq!(f.reads(), 0);
-}
-
-#[test]
-fn repeated_reads_in_a_scope_are_served_from_memory_across_clients() {
+fn a_kept_tab_is_read_from_memory_across_calls_and_clients() {
     let f = fixture();
     f.write(1, "A2:A2", rows(&[&["a"]]));
     f.fake.clear_requests();
     let other = SheetsClient::new(f.fake.google());
 
-    let (first, second) = cached(|| (f.read(1, "A2:D"), other.read_rows_in_sheet(&f.spreadsheet, 1, "A2:D").unwrap()));
+    let first = f.read(1, "A2:D");
+    let second = other.read_rows_in_sheet(&f.spreadsheet, 1, "A2:D").unwrap();
+    let header = f.read(1, "A1:D1");
 
-    assert_eq!((first.clone(), second), (rows(&[&["a"]]), rows(&[&["a"]])));
+    assert_eq!((first, second, header), (rows(&[&["a"]]), rows(&[&["a"]]), vec![]));
     assert_eq!(f.reads(), 1);
 }
 
 #[test]
-fn different_ranges_and_tabs_are_read_separately() {
-    let f = fixture();
-
-    cached(|| {
-        f.read(1, "A2:D");
-        f.read(1, "A1:D1");
-        f.read(0, "A2:D");
-    });
-
-    assert_eq!(f.reads(), 3);
-}
-
-#[test]
-fn a_caller_mutating_what_it_read_does_not_change_the_cache() {
-    let f = fixture();
-    f.write(1, "A2:A2", rows(&[&["a"]]));
-
-    let again = cached(|| {
-        f.read(1, "A2:D")[0].push("mutated".into());
-        f.read(1, "A2:D").push(vec!["mutated".into()]);
-        f.read(1, "A2:D")
-    });
-
-    assert_eq!(again, rows(&[&["a"]]));
-}
-
-#[test]
-fn a_write_to_the_tab_through_any_client_forgets_its_cached_reads() {
-    for how in ["write_rows_in_sheet", "delete_rows", "write_rows"] {
+fn a_range_within_the_kept_cells_is_cut_out_as_the_api_would_return_it() {
+    for range in ["A1:D1", "A2:D", "A3:D4", "B2:C", "A2:B3", "D2:D", "A4:D9", "C1:C1", "A6:D", "A1:Z"] {
         let f = fixture();
-        f.write(1, "A2:A2", rows(&[&["a"]]));
+        f.seeded();
+        let expected = f.client.fetch(&f.spreadsheet, &[TabRange::new(&f.spreadsheet, 0, range)]).unwrap().remove(0).1;
         f.fake.clear_requests();
-        let other = SheetsClient::new(f.fake.google());
 
-        let read = cached(|| {
-            f.read(1, "A2:D");
-            let _held = WRITE_LOCK.hold();
-            match how {
-                "write_rows_in_sheet" => other.write_rows_in_sheet(&f.spreadsheet, 1, "A2:A2", &rows(&[&["b"]])).unwrap(),
-                "delete_rows" => other.delete_rows(&f.spreadsheet, 1, 3, 3, 0).unwrap(),
-                _ => other.write_rows(&f.spreadsheet, "'Second'!A2", &rows(&[&["b"]])).unwrap(),
-            }
-            f.read(1, "A2:D")
-        });
-
-        assert_eq!(f.reads(), 2, "{how}");
-        if how != "delete_rows" {
-            assert_eq!(read, rows(&[&["b"]]), "{how}");
-        }
+        assert_eq!(f.read(0, range), expected, "{range}");
+        assert_eq!(f.reads(), 1, "{range}");
     }
 }
 
 #[test]
-fn a_write_to_another_tab_keeps_this_tabs_cached_reads() {
+fn a_range_past_the_kept_columns_is_read_from_sheets_every_time() {
     let f = fixture();
 
-    cached(|| {
-        f.read(1, "A2:D");
-        f.write(0, "A2:D2", rows(&[&["x"]]));
-        f.read(1, "A2:D");
-    });
+    f.read(1, "B5:AA7");
+    f.read(1, "B5:AA7");
 
-    assert_eq!(f.reads(), 1);
+    assert_eq!(f.reads(), 2);
 }
 
 #[test]
-fn nothing_is_cached_outside_a_scope_or_across_scopes() {
+fn another_tab_is_read_on_its_own() {
     let f = fixture();
+    f.seeded();
+    f.read(0, "A1:D");
 
-    cached(|| f.read(1, "A2:D"));
-    cached(|| f.read(1, "A2:D"));
-    f.read(1, "A2:D");
-
-    assert_eq!(f.reads(), 3);
+    assert_eq!(f.read(1, "A1:B1"), rows(&[&["other", "tab"]]));
+    assert_eq!(f.reads(), 2);
 }
 
 #[test]
-fn a_nested_scope_shares_the_outer_ones_cache() {
+fn prefetch_reads_the_tabs_not_kept_in_one_request() {
     let f = fixture();
+    f.write(0, "A1:B2", rows(&[&["h"], &["one"]]));
+    f.write(1, "A1:B2", rows(&[&["h"], &["two"]]));
+    f.fake.clear_requests();
 
-    cached(|| {
-        f.read(1, "A2:D");
-        cached(|| f.read(1, "A2:D"));
-        f.read(1, "A2:D");
-    });
+    f.client.prefetch(&[TabRange::new(&f.spreadsheet, 0, "A1:B"), TabRange::new(&f.spreadsheet, 1, "A1:B")]).unwrap();
+    let one = f.client.read_ranges_in_sheet(&f.spreadsheet, 0, &["A1:B1", "A2:B"]).unwrap();
+    let two = f.read(1, "A2:B");
+    f.client.prefetch(&[TabRange::new(&f.spreadsheet, 0, "A1:B")]).unwrap();
 
+    assert_eq!((one, two), (vec![rows(&[&["h"]]), rows(&[&["one"]])], rows(&[&["two"]])));
     assert_eq!(f.reads(), 1);
+    assert_eq!(f.requests("values:batchGetByDataFilter")[0].body["dataFilters"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn a_caller_changing_what_it_read_does_not_change_what_is_kept() {
+    let f = fixture();
+    f.write(1, "A2:A2", rows(&[&["a"]]));
+
+    f.read(1, "A2:D")[0].push("mutated".into());
+    f.read(1, "A2:D").push(vec!["mutated".into()]);
+
+    assert_eq!(f.read(1, "A2:D"), rows(&[&["a"]]));
+}
+
+// -- writes keep what's kept current, and send only what changes -------------------------------------
+
+/// Tab "Second" kept, with a header and three rows.
+fn kept_fixture() -> Fixture {
+    let f = fixture();
+    f.write(1, "A1:C4", rows(&[&["id", "name", "n"], &["a", "Ann", "1"], &["b", "Bo", "2"], &["c", "Cy", "3"]]));
+    f.read(1, "A1:C");
+    f.fake.clear_requests();
+    f
+}
+
+fn written_ranges(f: &Fixture) -> Vec<Vec<(i64, i64)>> {
+    f.requests("values:batchUpdateByDataFilter")
+        .iter()
+        .map(|r| {
+            r.body["data"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|d| {
+                    let grid = &d["dataFilter"]["gridRange"];
+                    (grid["startRowIndex"].as_i64().unwrap(), grid["endRowIndex"].as_i64().unwrap())
+                })
+                .collect()
+        })
+        .collect()
+}
+
+#[test]
+fn a_write_sends_only_the_rows_it_changes_in_one_request() {
+    let f = kept_fixture();
+
+    f.write(1, "A2:C", rows(&[&["a", "Ann", "1"], &["b", "Bob", "2"], &["c", "Cy", "3"]]));
+    f.write(1, "A2:C", rows(&[&["a", "Anne", "1"], &["b", "Bob", "2"], &["c", "Cy", ""]]));
+
+    assert_eq!(written_ranges(&f), vec![vec![(2, 3)], vec![(1, 2), (3, 4)]]);
+    assert_eq!(f.read(1, "A2:C"), rows(&[&["a", "Anne", "1"], &["b", "Bob", "2"], &["c", "Cy"]]));
+    assert_eq!(f.fake.rows(&f.spreadsheet, "Second"), rows(&[&["id", "name", "n"], &["a", "Anne", "1"], &["b", "Bob", "2"], &["c", "Cy"]]));
+    assert_eq!(f.reads(), 0);
+}
+
+#[test]
+fn a_write_that_changes_nothing_sends_nothing() {
+    let f = kept_fixture();
+
+    f.write(1, "A2:C", rows(&[&["a", "Ann", "1"], &["b", "Bo", "2"]]));
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.write_tabs(&f.spreadsheet, &[TabWrite { sheet_id: 1, range: "A1:C1".into(), rows: rows(&[&["id", "name", "n"]]) }]).unwrap();
+    }
+
+    assert!(f.fake.requests().is_empty());
+}
+
+#[test]
+fn rows_added_and_blanked_are_written_and_kept() {
+    let f = kept_fixture();
+
+    f.write(1, "A2:C", rows(&[&["a", "Ann", "1"], &["c", "Cy", "3"], &["", "", ""], &["d", "Di"]]));
+
+    assert_eq!(written_ranges(&f), vec![vec![(2, 5)]]);
+    assert_eq!(f.read(1, "A2:C"), rows(&[&["a", "Ann", "1"], &["c", "Cy", "3"], &[], &["d", "Di"]]));
+    assert_eq!(f.reads(), 0);
+}
+
+#[test]
+fn writes_to_several_tabs_are_one_request() {
+    let f = kept_fixture();
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.write_tabs(&f.spreadsheet, &[
+            TabWrite { sheet_id: 1, range: "A2:C2".into(), rows: rows(&[&["a", "Al", "1"]]) },
+            TabWrite { sheet_id: 0, range: "A1:A1".into(), rows: rows(&[&["new"]]) },
+        ]).unwrap();
+    }
+
+    assert_eq!(written_ranges(&f), vec![vec![(1, 2), (0, 1)]]);
+}
+
+#[test]
+fn deleting_rows_moves_the_kept_rows_up() {
+    let f = kept_fixture();
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.delete_rows(&f.spreadsheet, 1, 2, 3, 0).unwrap();
+    }
+
+    assert_eq!(f.read(1, "A1:C"), rows(&[&["id", "name", "n"], &["c", "Cy", "3"]]));
+    assert_eq!(f.reads(), 0);
+}
+
+#[test]
+fn an_a1_write_or_a_failed_one_forgets_what_is_kept() {
+    for how in ["write_rows", "failed write", "failed delete"] {
+        let f = kept_fixture();
+        {
+            let _held = WRITE_LOCK.hold();
+            match how {
+                "write_rows" => f.client.write_rows(&f.spreadsheet, "'Second'!A2", &rows(&[&["z"]])).unwrap(),
+                "failed write" => {
+                    f.fake.with(|s| s.fail_next.push(("POST".into(), "values:batchUpdateByDataFilter".into(), 500, "no".into())));
+                    f.client.write_rows_in_sheet(&f.spreadsheet, 1, "A2:A2", &rows(&[&["z"]])).unwrap_err();
+                }
+                _ => {
+                    f.fake.with(|s| s.fail_next.push(("POST".into(), ":batchUpdate".into(), 500, "no".into())));
+                    f.client.delete_rows(&f.spreadsheet, 1, 2, 2, 0).unwrap_err();
+                }
+            }
+        }
+
+        f.read(1, "A1:C");
+
+        assert_eq!(f.reads(), 1, "{how}");
+    }
+}
+
+#[test]
+fn a_new_tab_is_kept_empty_without_reading_it() {
+    let f = fixture();
+    let id = {
+        let _held = WRITE_LOCK.hold();
+        f.client.add_sheet(&f.spreadsheet, "New", None).unwrap()
+    };
+
+    assert!(f.read(id, "A1:Z").is_empty());
+    assert_eq!(f.reads(), 0);
+}
+
+#[test]
+fn a_write_moves_its_tab_on_as_it_begins_and_again_once_it_is_kept() {
+    // So neither a read nor a refresh that saw the tab mid-write takes
+    // what it saw as current.
+    let f = kept_fixture();
+    let generation = || f.client.kept(&f.spreadsheet, |tabs| tabs[&1].generation);
+    let before = generation();
+
+    f.write(1, "A2:A2", rows(&[&["z"]]));
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.delete_rows(&f.spreadsheet, 1, 4, 4, 0).unwrap();
+    }
+
+    assert_eq!(generation(), before + 4);
+}
+
+// -- refreshing: what was changed by hand is put back -----------------------------------------------
+
+fn refresh(f: &Fixture) -> Refreshed {
+    f.client.refresh(&f.spreadsheet, &[], true).unwrap()
+}
+
+#[test]
+fn a_refresh_that_finds_nothing_changed_reads_once_and_writes_nothing() {
+    let f = kept_fixture();
+
+    assert_eq!(refresh(&f), Refreshed::default());
+    assert_eq!(f.reads(), 1);
+    assert!(f.requests("values:batchUpdateByDataFilter").is_empty());
+}
+
+#[test]
+fn a_refresh_puts_back_cells_changed_by_hand_and_says_which() {
+    let f = kept_fixture();
+    f.fake.edit_by_hand(&f.spreadsheet, "Second", 2, 1, "Robert");
+    f.fake.edit_by_hand(&f.spreadsheet, "Second", 2, 4, "note");
+    f.fake.edit_by_hand(&f.spreadsheet, "Second", 0, 2, "count");
+
+    let found = refresh(&f);
+
+    let cells: Vec<(String, String, String)> = found.changed[0].cells.iter().map(|d| (kept::a1(d.row, d.column), d.found.clone(), d.kept.clone())).collect();
+    assert_eq!(
+        cells,
+        vec![
+            ("C1".into(), "count".into(), "n".into()),
+            ("B3".into(), "Robert".into(), "Bo".into()),
+            ("E3".into(), "note".into(), String::new()),
+        ]
+    );
+    assert!(found.changed[0].restored && !found.deferred);
+    assert_eq!(f.fake.rows(&f.spreadsheet, "Second"), rows(&[&["id", "name", "n"], &["a", "Ann", "1"], &["b", "Bo", "2"], &["c", "Cy", "3"]]));
+    assert_eq!(written_ranges(&f), vec![vec![(0, 1), (2, 3)]]);
+    assert_eq!(refresh(&f), Refreshed::default());
+}
+
+#[test]
+fn a_row_inserted_by_hand_is_taken_out_again() {
+    let f = kept_fixture();
+    // Row 3 inserted: what was rows 3 and 4 is now rows 4 and 5.
+    for (row, cells) in [(2, ["inserted", "", ""]), (3, ["b", "Bo", "2"]), (4, ["c", "Cy", "3"])] {
+        for (column, text) in cells.iter().enumerate() {
+            f.fake.edit_by_hand(&f.spreadsheet, "Second", row, column, text);
+        }
+    }
+
+    let found = refresh(&f);
+
+    assert!(found.changed[0].restored);
+    assert_eq!(f.fake.rows(&f.spreadsheet, "Second"), rows(&[&["id", "name", "n"], &["a", "Ann", "1"], &["b", "Bo", "2"], &["c", "Cy", "3"]]));
+}
+
+#[test]
+fn a_tab_deleted_by_hand_is_made_again_as_it_was() {
+    let f = kept_fixture();
+    let identity = TabIdentity { title: "Second".into(), color: Some(json!({"red": 0.26})), key: "sheet-role".into(), value: "second".into() };
+    f.client.identify(&f.spreadsheet, 1, identity);
+    f.fake.delete_tab_by_hand(&f.spreadsheet, "Second");
+
+    let found = refresh(&f);
+
+    assert_eq!(found.deleted, vec![DeletedTab { sheet_id: 1, title: Some("Second".into()), restored: true }]);
+    assert_eq!(f.fake.rows(&f.spreadsheet, "Second"), rows(&[&["id", "name", "n"], &["a", "Ann", "1"], &["b", "Bo", "2"], &["c", "Cy", "3"]]));
+    assert_eq!(f.client.find_sheet_id(&f.spreadsheet, "sheet-role", "second").unwrap(), Some(1));
+    assert!(f.fake.tab_ids(&f.spreadsheet).contains(&(1, "Second".to_string())));
+}
+
+#[test]
+fn a_tab_deleted_by_hand_whose_title_was_taken_comes_back_beside_it() {
+    let f = kept_fixture();
+    f.client.identify(&f.spreadsheet, 1, TabIdentity { title: "Second".into(), color: None, key: "sheet-role".into(), value: "second".into() });
+    f.fake.delete_tab_by_hand(&f.spreadsheet, "Second");
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.batch_update(&f.spreadsheet, json!({"requests": [{"addSheet": {"properties": {"title": "Second", "sheetId": 7}}}]}), &[]).unwrap();
+    }
+
+    refresh(&f);
+
+    assert!(f.fake.tab_ids(&f.spreadsheet).contains(&(1, "Second (restored)".to_string())));
+}
+
+#[test]
+fn a_deleted_tab_it_cannot_make_again_is_forgotten() {
+    let f = kept_fixture();
+    f.fake.delete_tab_by_hand(&f.spreadsheet, "Second");
+
+    let found = refresh(&f);
+
+    assert_eq!(found.deleted, vec![DeletedTab { sheet_id: 1, title: None, restored: false }]);
+    assert!(f.client.kept_rows(&f.spreadsheet, 1).is_none());
+}
+
+#[test]
+fn a_refresh_gives_way_to_a_tool_holding_the_write_lock() {
+    let f = kept_fixture();
+    f.fake.edit_by_hand(&f.spreadsheet, "Second", 2, 1, "Robert");
+    let (held_tx, held_rx) = std::sync::mpsc::channel();
+    let (done_tx, done_rx) = std::sync::mpsc::channel::<()>();
+    let holder = std::thread::spawn(move || {
+        let _held = WRITE_LOCK.hold();
+        held_tx.send(()).unwrap();
+        done_rx.recv().unwrap();
+    });
+    held_rx.recv().unwrap();
+
+    let found = f.client.refresh(&f.spreadsheet, &[], false).unwrap();
+
+    done_tx.send(()).unwrap();
+    holder.join().unwrap();
+    assert!(found.deferred && !found.changed[0].restored);
+    assert_eq!(f.fake.rows(&f.spreadsheet, "Second")[2][1], "Robert");
+    assert!(refresh(&f).changed[0].restored);
+    assert_eq!(f.fake.rows(&f.spreadsheet, "Second")[2][1], "Bo");
+}
+
+#[test]
+fn a_refresh_leaves_out_the_tabs_it_is_told_to_skip_and_those_not_kept() {
+    let f = kept_fixture();
+    f.client.identify(&f.spreadsheet, 1, TabIdentity { title: "Second".into(), color: None, key: "sheet-role".into(), value: "health".into() });
+    f.fake.edit_by_hand(&f.spreadsheet, "Second", 2, 1, "Robert");
+    f.fake.edit_by_hand(&f.spreadsheet, "Sheet1", 0, 0, "never read");
+
+    assert_eq!(f.client.refresh(&f.spreadsheet, &["health"], true).unwrap(), Refreshed::default());
+    assert_eq!(f.reads(), 0);
 }
 
 // -- retrying a rate limit --------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 //! look at the calendar's metadata spreadsheet, then its tab.
 
 use crate::google::calendar::CalendarClient;
-use crate::google::sheets::SheetsClient;
+use crate::google::sheets::{Refreshed, SheetsClient};
 use crate::google::Google;
 use crate::health::{HealthRecorder, HealthTab, HealthWriter};
 use crate::sheet::{ensure_spreadsheet, retitle_spreadsheet};
@@ -23,8 +23,9 @@ use crate::stores::recurrences::Recurrences;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::write_lock::WRITE_LOCK;
 use anyhow::{anyhow, Context};
+use chrono::{DateTime, Utc};
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
 pub struct Config {
     pub calendar_id: Option<String>,
@@ -78,7 +79,48 @@ pub struct App {
     scoring_defaults: OnceLock<ScoringDefaultsTab>,
     recurrences: OnceLock<Recurrences>,
     writer: OnceLock<Arc<HealthWriter>>,
+    sheets_refresh: OnceLock<SheetsRefresh>,
+    /// What the last refreshes found changed by hand, newest last.
+    repairs: Mutex<Vec<SheetsRepair>>,
     me: OnceLock<std::sync::Weak<App>>,
+}
+
+/// How often the server checks the metadata spreadsheet against what it
+/// keeps of it (TIME_TRACKER_SHEETS_REFRESH): every so many seconds, in
+/// the background (the default, every 300); before every tool call
+/// ("every_call", for tests that edit it by hand); or never ("off").
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SheetsRefresh {
+    Every(std::time::Duration),
+    EveryCall,
+    Off,
+}
+
+pub const SHEETS_REFRESH_SECONDS: u64 = 300;
+/// How many refreshes' findings are kept.
+pub const KEEP_REPAIRS: usize = 100;
+
+impl SheetsRefresh {
+    pub fn from_var(value: Option<&str>) -> SheetsRefresh {
+        match value.map(str::trim) {
+            Some("off") => SheetsRefresh::Off,
+            Some("every_call") => SheetsRefresh::EveryCall,
+            Some(seconds) => match seconds.parse::<u64>() {
+                Ok(n) if n > 0 => SheetsRefresh::Every(std::time::Duration::from_secs(n)),
+                _ => SheetsRefresh::Every(std::time::Duration::from_secs(SHEETS_REFRESH_SECONDS)),
+            },
+            None => SheetsRefresh::Every(std::time::Duration::from_secs(SHEETS_REFRESH_SECONDS)),
+        }
+    }
+}
+
+/// A refresh that found the spreadsheet changed under the server: when,
+/// which spreadsheet, and what it found and put back.
+#[derive(Clone, Debug)]
+pub struct SheetsRepair {
+    pub at: DateTime<Utc>,
+    pub spreadsheet_id: String,
+    pub refreshed: Refreshed,
 }
 
 /// Build a store once, under WRITE_LOCK -- checking again once the lock is
@@ -118,6 +160,8 @@ impl App {
             scoring_defaults: OnceLock::new(),
             recurrences: OnceLock::new(),
             writer: OnceLock::new(),
+            sheets_refresh: OnceLock::new(),
+            repairs: Mutex::new(Vec::new()),
             me: OnceLock::new(),
         }
     }
@@ -347,6 +391,55 @@ impl App {
         if let Err(error) = spawned {
             tracing::error!("couldn't start series renewal: {error}");
         }
+    }
+
+    pub fn sheets_refresh(&self) -> SheetsRefresh {
+        *self.sheets_refresh.get_or_init(|| SheetsRefresh::from_var(std::env::var("TIME_TRACKER_SHEETS_REFRESH").ok().as_deref()))
+    }
+
+    /// Check each spreadsheet the server keeps against Sheets, putting back
+    /// whatever was changed by hand (see `SheetsClient::refresh`), and keep
+    /// what each found. With `wait`, wait for the write lock to put things
+    /// back; else a tool writing leaves them for the next refresh. Its
+    /// failures are logged, not returned: nothing waits on a refresh.
+    pub fn refresh_sheets(&self, wait: bool) {
+        let Some(google) = self.google.get() else { return };
+        let sheets = SheetsClient::new(google.clone());
+        for spreadsheet_id in sheets.kept_spreadsheets() {
+            match sheets.refresh(&spreadsheet_id, &[crate::sheet::HEALTH.0], wait) {
+                Ok(refreshed) if refreshed.is_empty() => {}
+                Ok(refreshed) => {
+                    tracing::warn!("the metadata spreadsheet was changed by hand: {refreshed:?}");
+                    let mut repairs = self.repairs.lock().unwrap_or_else(|e| e.into_inner());
+                    repairs.push(SheetsRepair { at: Utc::now(), spreadsheet_id, refreshed });
+                    let over = repairs.len().saturating_sub(KEEP_REPAIRS);
+                    repairs.drain(..over);
+                }
+                Err(error) => tracing::warn!("couldn't check the metadata spreadsheet {spreadsheet_id}: {error:#}"),
+            }
+        }
+    }
+
+    /// What the last refreshes found changed by hand, newest last.
+    pub fn sheets_repairs(&self) -> Vec<SheetsRepair> {
+        self.repairs.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    /// Refresh the spreadsheets every so often from a thread of its own
+    /// (unless TIME_TRACKER_SHEETS_REFRESH says otherwise). It gives way to
+    /// tools: it reads without the write lock, and puts back what it finds
+    /// only when no tool holds the lock.
+    pub fn start_sheets_refresher(self: &Arc<Self>) {
+        let SheetsRefresh::Every(period) = self.sheets_refresh() else { return };
+        let app = Arc::downgrade(self);
+        std::thread::Builder::new()
+            .name("sheets-refresher".into())
+            .spawn(move || loop {
+                std::thread::sleep(period);
+                let Some(app) = app.upgrade() else { return };
+                app.refresh_sheets(false);
+            })
+            .expect("starting the sheets refresher");
     }
 
     pub fn health_writer(&self) -> Option<&Arc<HealthWriter>> {

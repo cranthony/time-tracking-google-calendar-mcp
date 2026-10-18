@@ -32,13 +32,27 @@ impl WriteLock {
     /// Hold the lock until the returned guard is dropped. Taking it again
     /// on the same thread just nests.
     pub fn hold(&'static self) -> Held {
+        self.take(|mutex| Some(mutex.lock().unwrap_or_else(|e| e.into_inner()))).expect("lock() always takes it")
+    }
+
+    /// Hold the lock if it's free (or this thread holds it already), else
+    /// `None` at once: for background work that gives way to tools.
+    pub fn try_hold(&'static self) -> Option<Held> {
+        self.take(|mutex| match mutex.try_lock() {
+            Ok(guard) => Some(guard),
+            Err(std::sync::TryLockError::Poisoned(e)) => Some(e.into_inner()),
+            Err(std::sync::TryLockError::WouldBlock) => None,
+        })
+    }
+
+    fn take(&'static self, lock: impl FnOnce(&'static Mutex<()>) -> Option<MutexGuard<'static, ()>>) -> Option<Held> {
         let (bits, write_depth, health_depth) = HELD.get();
         let depth = if self.id == 1 { write_depth } else { health_depth };
-        let guard = if depth == 0 { Some(self.mutex.lock().unwrap_or_else(|e| e.into_inner())) } else { None };
+        let guard = if depth == 0 { Some(lock(&self.mutex)?) } else { None };
         let (write_depth, health_depth) =
             if self.id == 1 { (write_depth + 1, health_depth) } else { (write_depth, health_depth + 1) };
         HELD.set((bits | self.id, write_depth, health_depth));
-        Held { _guard: guard, id: self.id }
+        Some(Held { _guard: guard, id: self.id })
     }
 }
 

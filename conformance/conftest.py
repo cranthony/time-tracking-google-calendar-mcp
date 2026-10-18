@@ -112,7 +112,8 @@ def now() -> str:
 
 @pytest.fixture
 def session(request, google, calendar_id, now):
-    runner = ServerThread(google, calendar_id, now=now)
+    marker = request.node.get_closest_marker("server_env")
+    runner = ServerThread(google, calendar_id, now=now, env=dict(marker.kwargs) if marker else None)
     server = runner.start()
     try:
         yield server
@@ -126,3 +127,4 @@ def session(request, google, calendar_id, now):
 def pytest_configure(config):
     config.addinivalue_line("markers", "no_golden: don't compare this scenario with a golden record")
     config.addinivalue_line("markers", "calendar(**kwargs): how to make the scenario's calendar (see the calendar_id fixture)")
+    config.addinivalue_line("markers", "server_env(**kwargs): environment variables to start the server with")

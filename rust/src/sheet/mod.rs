@@ -3,6 +3,7 @@
 pub mod rows;
 
 use crate::google::calendar::CalendarClient;
+use crate::google::kept::TabIdentity;
 use crate::google::sheets::SheetsClient;
 use serde_json::{json, Value};
 
@@ -59,16 +60,29 @@ pub fn retitle_spreadsheet(sheets: &SheetsClient, id: &str) -> anyhow::Result<()
 /// The tab tagged `role`, and whether it was just made (tagged first: for
 /// a tab that starts empty).
 pub fn ensure_tab(sheets: &SheetsClient, spreadsheet_id: &str, role: &str, title: &str) -> anyhow::Result<(i64, bool)> {
-    if let Some(id) = sheets.find_sheet_id(spreadsheet_id, SHEET_ROLE_METADATA_KEY, role)? {
+    if let Some(id) = find_tab(sheets, spreadsheet_id, role, title)? {
         return Ok((id, false));
     }
     let id = sheets.add_sheet(spreadsheet_id, title, Some(&tab_color()))?;
     sheets.create_sheet_metadata(spreadsheet_id, id, SHEET_ROLE_METADATA_KEY, role)?;
+    identify(sheets, spreadsheet_id, id, role, title);
     Ok((id, true))
 }
 
-pub fn find_tab(sheets: &SheetsClient, spreadsheet_id: &str, role: &str) -> anyhow::Result<Option<i64>> {
-    sheets.find_sheet_id(spreadsheet_id, SHEET_ROLE_METADATA_KEY, role)
+/// The tab tagged `role` (titled `title` when it was made), if there is one.
+pub fn find_tab(sheets: &SheetsClient, spreadsheet_id: &str, role: &str, title: &str) -> anyhow::Result<Option<i64>> {
+    let id = sheets.find_sheet_id(spreadsheet_id, SHEET_ROLE_METADATA_KEY, role)?;
+    if let Some(id) = id {
+        identify(sheets, spreadsheet_id, id, role, title);
+    }
+    Ok(id)
+}
+
+/// Tell the kept copy what tab `id` is, so it can be made again if it's
+/// deleted by hand.
+fn identify(sheets: &SheetsClient, spreadsheet_id: &str, id: i64, role: &str, title: &str) {
+    let identity = TabIdentity { title: title.into(), color: Some(tab_color()), key: SHEET_ROLE_METADATA_KEY.into(), value: role.into() };
+    sheets.identify(spreadsheet_id, id, identity);
 }
 
 /// Make (or adopt `reuse_sheet_id`, renamed and colored) a tab for
@@ -91,6 +105,7 @@ pub fn create_tab(
     };
     populate(id)?;
     sheets.create_sheet_metadata(spreadsheet_id, id, SHEET_ROLE_METADATA_KEY, role)?;
+    identify(sheets, spreadsheet_id, id, role, title);
     Ok(id)
 }
 

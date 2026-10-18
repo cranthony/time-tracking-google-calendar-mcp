@@ -211,7 +211,7 @@ fn leaves_out_compacted_notes_without_renumbering_the_rest() {
 }
 
 #[test]
-fn reads_the_header_and_every_row_in_one_request() {
+fn reads_the_header_and_every_row_in_one_request_for_the_whole_tab() {
     let f = fixture(vec![row(&[T1, "a", "cmp1"]), row(&[T2, "open"])]);
 
     let (notes, latest) = f.sheet.read_with_latest_compacted().unwrap();
@@ -221,7 +221,7 @@ fn reads_the_header_and_every_row_in_one_request() {
     assert_eq!(latest.unwrap().description.as_deref(), Some("a"));
     let reads = f.reads();
     assert_eq!(reads.len(), 1);
-    assert_eq!(reads[0].len(), 2);
+    assert_eq!(reads[0].len(), 1);
 }
 
 #[test]
@@ -481,12 +481,12 @@ fn refuses_a_note_already_compacted_by_a_different_compaction() {
 }
 
 #[test]
-fn stamping_again_with_the_same_compaction_is_harmless() {
+fn stamping_again_with_the_same_compaction_is_harmless_and_sends_nothing() {
     let f = fixture(vec![row(&[T1, "A", "cmp1"])]);
 
     stamp(&f, &[id(T1, 2)], "cmp1").unwrap();
 
-    assert_eq!(f.writes().len(), 1);
+    assert!(f.writes().is_empty());
 }
 
 #[test]

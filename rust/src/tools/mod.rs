@@ -16,7 +16,6 @@ mod stores;
 
 use crate::app::App;
 use crate::google::calendar::{is_label_conflict, is_time_zone_not_set};
-use crate::google::sheets::CachedReads;
 use crate::google::calendar::CachedListings;
 use crate::write_lock::WRITE_LOCK;
 use serde_json::{Map, Value};
@@ -174,8 +173,8 @@ pub fn listed() -> Vec<(&'static str, bool)> {
     registry().iter().map(|t| (t.name, t.writes)).collect()
 }
 
-/// Run `name` with `arguments`: inside one call's read caches, holding
-/// WRITE_LOCK if it writes, telling the model to set a time zone if the
+/// Run `name` with `arguments`: inside one call's cache of Calendar
+/// listings, holding WRITE_LOCK if it writes, telling the model to set a time zone if the
 /// calendar has none. A write sent again -- its answer lost on the way --
 /// is made once by what it names and the version it was made from (see
 /// rows::Versioned), not by anything kept of the call.
@@ -187,8 +186,10 @@ pub fn run(app: &Arc<App>, name: &str, arguments: Value) -> Result<Outcome, Tool
     let Some(tool) = registry().iter().find(|t| t.name == name) else {
         return Err(ToolError::Unexpected(anyhow::anyhow!("no tool is called {name}")));
     };
+    if app.sheets_refresh() == crate::app::SheetsRefresh::EveryCall {
+        app.refresh_sheets(true);
+    }
     let _held = tool.writes.then(|| WRITE_LOCK.hold());
-    let _reads = CachedReads::start();
     let _listings = CachedListings::start();
     let written = crate::sheet::rows::Written::start();
     // A write says which version of each item it changes it last saw.

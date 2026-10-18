@@ -77,3 +77,16 @@ fn the_calendar_client_is_on_the_configured_calendar() {
 
     assert_eq!(t.app.calendar_client().unwrap().calendar_id(), t.calendar_id);
 }
+
+#[test]
+fn the_spreadsheet_is_refreshed_every_five_minutes_unless_told_otherwise() {
+    let every = |seconds| SheetsRefresh::Every(std::time::Duration::from_secs(seconds));
+
+    assert_eq!(SheetsRefresh::from_var(None), every(300));
+    assert_eq!(SheetsRefresh::from_var(Some("60")), every(60));
+    assert_eq!(SheetsRefresh::from_var(Some("off")), SheetsRefresh::Off);
+    assert_eq!(SheetsRefresh::from_var(Some("every_call")), SheetsRefresh::EveryCall);
+    for nonsense in ["0", "soon", ""] {
+        assert_eq!(SheetsRefresh::from_var(Some(nonsense)), every(300), "{nonsense}");
+    }
+}
