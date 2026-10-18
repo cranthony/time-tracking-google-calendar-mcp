@@ -4,8 +4,9 @@ The server is the Rust build in rust/target (debug, or else release --
 `cargo build` first), or whatever command line `TIME_TRACKER_SERVER` names. It's
 started as a subprocess over stdio, with its Google API root pointed at
 the fake, a fixed clock (`TIME_TRACKER_NOW`), deterministic ids
-(`TIME_TRACKER_DETERMINISTIC_IDS`) and no background health writer
-(`TIME_TRACKER_HEALTH_WRITER=off`) -- see rust/src/determinism.rs.
+(`TIME_TRACKER_DETERMINISTIC_IDS`) and no background health writer or series renewal
+(`TIME_TRACKER_HEALTH_WRITER=off`, `TIME_TRACKER_SERIES_RENEWAL=off`) -- see
+rust/src/determinism.rs.
 
 What each call returned, the requests the server sent Google, and the
 fake's state afterwards are all recorded on the `Session`, for a
@@ -357,6 +358,7 @@ async def running_server(google: FakeGoogle, calendar_id: str, *, now: str = DEF
             "TIME_TRACKER_NOW": now,
             "TIME_TRACKER_DETERMINISTIC_IDS": "1",
             "TIME_TRACKER_HEALTH_WRITER": "off",
+            "TIME_TRACKER_SERIES_RENEWAL": "off",
             "PYTHONIOENCODING": "utf-8",
             **(env or {}),
         }

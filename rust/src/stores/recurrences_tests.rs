@@ -550,6 +550,86 @@ fn refuses_to_split_a_google_split_series_with_a_count() {
     assert!(f.writes().is_empty());
 }
 
+// -- renewing series before Google stops expanding them -------------------------------------------
+
+/// 08:00 New York on Sunday, October 18, 2026.
+fn renewal_now() -> Moment {
+    at(18, 8)
+}
+
+/// 09:00 New York, `days` days before October 18, 2026.
+fn nine_days_before(days: i64) -> Moment {
+    let day = NaiveDate::from_ymd_opt(2026, 10, 18).unwrap() - Duration::days(days);
+    NY.from_local_datetime(&day.and_hms_opt(9, 0, 0).unwrap()).unwrap().fixed_offset()
+}
+
+/// A 09:00-10:00 series `id` begun `days` days ago, by `rule`.
+fn begun(id: &str, days: i64, rule: &str) -> Event {
+    let start = nine_days_before(days);
+    Event { id: Some(id.into()), start: Some(start), end: Some(start + Duration::hours(1)), recurrence: Some(vec![rule.into()]), ..weekly(rule) }
+}
+
+/// The events listed over `days` days from `from`, in series `series`.
+fn listed_in(f: &Fixture, series: &str, from: Moment, days: i64) -> Vec<Event> {
+    let client = f.t.app.calendar_client().unwrap();
+    client.list_events(&from, &(from + Duration::days(days))).unwrap().into_iter().filter(|e| e.recurring_event_id.as_deref() == Some(series)).collect()
+}
+
+#[test]
+fn google_lists_no_instances_of_a_series_past_its_730th() {
+    let f = fixture(&[begun("old", 1000, "RRULE:FREQ=DAILY")]);
+    let client = f.t.app.calendar_client().unwrap();
+
+    assert_eq!(listed_in(&f, "old", renewal_now(), 30).len(), 0);
+    assert_eq!(client.instances_from("old", &renewal_now()).unwrap().len(), 0);
+    assert!(client.get_event("old_20261019T130000Z").is_err());
+    let all = client.list_instances("old", &renewal_now()).unwrap();
+    assert_eq!((all.len(), all.last().unwrap().start()), (INSTANCE_CAP, nine_days_before(1000 - 729)));
+    assert_eq!(client.list_series(&renewal_now(), None).unwrap().len(), 0);
+}
+
+#[test]
+fn renew_splits_a_series_at_its_730th_instance_so_it_goes_on() {
+    // Its 730th instance is 129 days from now.
+    let f = fixture(&[begun("daily", 600, "RRULE:FREQ=DAILY")]);
+    let last = nine_days_before(600 - 729);
+
+    let renewed = f.held(|r| r.renew(&renewal_now())).unwrap();
+
+    assert_eq!(renewed.len(), 1);
+    let later = &renewed[0];
+    assert_eq!((later.id.clone(), later.start), (Some(split_series_id("daily", &last)), Some(last)));
+    assert_eq!((later.recurrence.clone(), later.action_ids.clone()), (Some(strings(&["RRULE:FREQ=DAILY"])), Some(strings(&["work"]))));
+    assert!(ends_before(&f.event("daily"), &last));
+    let later_id = later.id.clone().unwrap();
+    assert_eq!(listed_in(&f, "daily", renewal_now(), 7).len(), 7);
+    // Past what Google expands of the series it was, it goes on.
+    let past = renewal_now() + Duration::days(400);
+    assert_eq!(listed_in(&f, &later_id, past, 7).len(), 7);
+    assert_eq!(listed_in(&f, "daily", past, 7).len(), 0);
+    // Renewed, it's left alone.
+    f.t.fake.clear_requests();
+    assert_eq!(f.held(|r| r.renew(&renewal_now())).unwrap().len(), 0);
+    assert!(f.writes().is_empty());
+}
+
+#[test]
+fn renew_leaves_series_that_go_on_or_end_by_their_own_rules() {
+    let f = fixture(&[
+        begun("young", 10, "RRULE:FREQ=DAILY"),
+        begun("weekly", 1000, MONDAYS),
+        begun("until", 600, "RRULE:FREQ=DAILY;UNTIL=20261117T235959Z"),
+        begun("counted", 600, "RRULE:FREQ=DAILY;COUNT=700"),
+    ]);
+
+    let renewed = f.held(|r| r.renew(&renewal_now())).unwrap();
+
+    assert!(renewed.is_empty());
+    assert!(f.writes().is_empty());
+    // A listing of the series alive now, and of those alive past the horizon.
+    assert_eq!(f.t.fake.quota_counts(), [0, 0, 2, 0]);
+}
+
 // -- ids, words and rules -----------------------------------------------------------------------
 
 #[test]

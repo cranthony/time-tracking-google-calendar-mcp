@@ -16,6 +16,7 @@ fn main() -> anyhow::Result<()> {
     let transport = std::env::var("MCP_TRANSPORT").unwrap_or_else(|_| "stdio".into());
     let runtime = tokio::runtime::Builder::new_multi_thread().enable_all().build()?;
     app.start_health_writer();
+    app.start_series_renewal();
     let served = match transport.as_str() {
         "streamable-http" => runtime.block_on(mcp::http::serve(app.clone())),
         _ => runtime.block_on(mcp::stdio::serve(app.clone())),
