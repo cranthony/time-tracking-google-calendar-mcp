@@ -146,7 +146,7 @@ fn a_goal_cant_be_closed_with_open_sub_goals_but_can_be_with_them_closed_or_move
     let b = f.create(json!({"title": "B", "parent_id": top, "status": "inactive"})).unwrap();
     let c = f.create(json!({"title": "C", "parent_id": top, "deadline": "2026-11-15"})).unwrap();
 
-    refused(f.change(&[], vec![edit(json!({"id": top, "status": "done"}))], vec![]), "is active, but its parent .* is done: mark it done or obsolete, move it");
+    refused(f.change(&[], vec![edit(json!({"id": top, "status": "done"}))], vec![]), "is active, but its parent .* is done: mark it done, missed or obsolete, move it");
 
     // Done, with A done, B obsolete and C moved under a new top-level goal made in the same change.
     let changed = f
@@ -168,6 +168,27 @@ fn a_goal_cant_be_closed_with_open_sub_goals_but_can_be_with_them_closed_or_move
     assert_eq!(f.get(&c)["path"], json!(["Prioritize unstructured goals"]));
     // Closed under a closed parent, a sub-goal can't be reopened until the parent is.
     refused(f.change(&[], vec![edit(json!({"id": a, "status": "active"}))], vec![]), "reopen its parent");
+}
+
+#[test]
+fn a_missed_goal_is_closed_like_a_done_one() {
+    let f = fixture();
+    let top = f.create(json!({"title": "Top", "deadline": "2026-12-01"})).unwrap();
+    let a = f.create(json!({"title": "A", "parent_id": top, "deadline": "2026-11-01", "required": true})).unwrap();
+
+    // Missed, it can't keep an open sub-goal.
+    refused(f.change(&[], vec![edit(json!({"id": top, "status": "missed"}))], vec![]), "is active, but its parent .* is missed");
+
+    // A required sub-goal missed doesn't stop its parent being done.
+    f.change(&[], vec![edit(json!({"id": a, "status": "missed"})), edit(json!({"id": top, "status": "done"}))], vec![]).unwrap();
+    assert_eq!(f.get(&a)["closed_at"], json!("2026-10-17T09:00:00-04:00"));
+    let missed: Vec<Option<String>> = f.goals.get_goals(Some(&crate::testing::strings(&["missed"]))).unwrap().into_iter().map(|g| g.title).collect();
+    assert_eq!(missed, vec![Some("A".to_string())]);
+    assert!(f.goals.get_goals(None).unwrap().is_empty());
+
+    // Reopened, with its parent.
+    f.change(&[], vec![edit(json!({"id": top, "status": "active"})), edit(json!({"id": a, "status": "active"}))], vec![]).unwrap();
+    assert_eq!(f.get(&a)["closed_at"], Value::Null);
 }
 
 #[test]

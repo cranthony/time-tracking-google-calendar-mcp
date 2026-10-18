@@ -44,7 +44,7 @@ pub struct GoalDelete {
 
 /// The user's goals: outcomes they mean to reach and can mark done (not
 /// ongoing practices -- those are habits). By default the inactive and
-/// active ones, not done or obsolete ones; every depth, each with its
+/// active ones, not done, missed or obsolete ones; every depth, each with its
 /// parent_id and path (its parents' titles, outermost first). A goal
 /// can sit under another to any depth: a sub-goal is a piece of reaching
 /// its parent, and required says whether its parent needs it done.
@@ -52,10 +52,10 @@ pub struct GoalDelete {
 /// expected to take: a guide for comparing with the time spent, never
 /// enforced), a deadline ("2026-11-01", due at the end of that day, or
 /// "2026-11-01T17:00", in the calendar's time zone; needed while
-/// active), a status (inactive, active, done or obsolete) and its
-/// history (each change of status and when, oldest first; started_at is
-/// when it first became active, closed_at when it was done or made
-/// obsolete), a description and definition_of_done (HTML), and
+/// active), a status (inactive, active, done, missed -- not reached,
+/// and no longer pursued -- or obsolete) and its history (each change of
+/// status and when, oldest first; started_at is when it first became
+/// active, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and
 /// attribution_hints (a guide for telling which events are for it).
 /// Events are tagged with goals, apart from their actions (see
 /// list_events' goals): tag an event with a goal only when the goal is
@@ -84,7 +84,7 @@ pub fn get_goal(app: &App, id_or_title: String) -> Result<ListedGoal, ToolError>
 /// with its status, now, unless given one (to backdate it, say). A
 /// sub-goal can't be due after its parent, or be expected to take
 /// longer; it can't be active under an inactive parent, or open
-/// (inactive or active) under a done or obsolete one. id is assigned
+/// (inactive or active) under a done, missed or obsolete one. id is assigned
 /// unless given (a client's own, so it can name the goal before it's
 /// made; the same create sent again gives the goal as it was made).
 /// Returns the goal and its id as created_id.
@@ -104,7 +104,7 @@ pub fn create_goal(app: &App, goal: Goal) -> Result<CreatedGoal, ToolError> {
 /// goal's status.
 ///
 /// The rules (see get_goals and create_goal) hold for the result, not
-/// for each step: to mark a goal done or obsolete, close or move its
+/// for each step: to mark a goal done, missed or obsolete, close or move its
 /// open sub-goals in the same call; to delete one, delete or move its
 /// sub-goals too; to make an earlier deadline fit, change its sub-goals'
 /// in the same call. Nothing is moved or changed to make things fit: a

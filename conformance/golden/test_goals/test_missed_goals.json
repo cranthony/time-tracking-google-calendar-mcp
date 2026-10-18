@@ -1,0 +1,878 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "goal": {
+     "deadline": "2026-12-01",
+     "title": "Run a marathon"
+    }
+   },
+   "content": {
+    "created_id": "co2yzn",
+    "goal": {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": "2026-12-01",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      }
+     ],
+     "id": "co2yzn",
+     "parent_id": null,
+     "path": [],
+     "required": null,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Run a marathon",
+     "version": 1
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Run a marathon\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-12-01\",\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "deadline": "2026-11-01",
+     "parent_id": "co2yzn",
+     "required": true,
+     "title": "Run a half first"
+    }
+   },
+   "content": {
+    "created_id": "3dnjav",
+    "goal": {
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": "2026-11-01",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      }
+     ],
+     "id": "3dnjav",
+     "parent_id": "co2yzn",
+     "path": [
+      "Run a marathon"
+     ],
+     "required": true,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Run a half first",
+     "version": 1
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Run a half first\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-11-01\",\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [\n      \"Run a marathon\"\n    ],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "updates": [
+     {
+      "goal": {
+       "id": "co2yzn",
+       "status": "missed",
+       "version": 1
+      }
+     }
+    ]
+   },
+   "content": "Error executing tool update_goals: goal 3dnjav ('Run a half first') is active, but its parent goal co2yzn ('Run a marathon') is missed: mark it done, missed or obsolete, move it under another goal, or reopen its parent",
+   "is_error": true,
+   "text": "Error executing tool update_goals: goal 3dnjav ('Run a half first') is active, but its parent goal co2yzn ('Run a marathon') is missed: mark it done, missed or obsolete, move it under another goal, or reopen its parent",
+   "tool": "update_goals"
+  },
+  {
+   "arguments": {
+    "updates": [
+     {
+      "goal": {
+       "id": "3dnjav",
+       "status": "missed",
+       "version": 1
+      }
+     },
+     {
+      "goal": {
+       "id": "co2yzn",
+       "status": "done",
+       "version": 1
+      }
+     }
+    ]
+   },
+   "content": {
+    "deleted_ids": [],
+    "goals": [
+     {
+      "attribution_hints": null,
+      "closed_at": "2026-10-07T15:30:00-04:00",
+      "deadline": "2026-11-01",
+      "definition_of_done": null,
+      "description": null,
+      "expected_minutes": null,
+      "history": [
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "active"
+       },
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "missed"
+       }
+      ],
+      "id": "3dnjav",
+      "parent_id": "co2yzn",
+      "path": [
+       "Run a marathon"
+      ],
+      "required": true,
+      "started_at": "2026-10-07T15:30:00-04:00",
+      "status": "missed",
+      "title": "Run a half first",
+      "version": 2
+     },
+     {
+      "attribution_hints": null,
+      "closed_at": "2026-10-07T15:30:00-04:00",
+      "deadline": "2026-12-01",
+      "definition_of_done": null,
+      "description": null,
+      "expected_minutes": null,
+      "history": [
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "active"
+       },
+       {
+        "at": "2026-10-07T15:30:00-04:00",
+        "status": "done"
+       }
+      ],
+      "id": "co2yzn",
+      "parent_id": null,
+      "path": [],
+      "required": null,
+      "started_at": "2026-10-07T15:30:00-04:00",
+      "status": "done",
+      "title": "Run a marathon",
+      "version": 2
+     }
+    ]
+   },
+   "is_error": false,
+   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"3dnjav\",\n      \"title\": \"Run a half first\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"expected_minutes\": null,\n      \"deadline\": \"2026-11-01\",\n      \"status\": \"missed\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"missed\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [\n        \"Run a marathon\"\n      ],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Run a marathon\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"expected_minutes\": null,\n      \"deadline\": \"2026-12-01\",\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    }\n  ],\n  \"deleted_ids\": []\n}",
+   "tool": "update_goals"
+  },
+  {
+   "arguments": {},
+   "content": [],
+   "is_error": false,
+   "text": "",
+   "tool": "get_goals"
+  },
+  {
+   "arguments": {
+    "statuses": [
+     "missed"
+    ]
+   },
+   "content": [
+    {
+     "attribution_hints": null,
+     "closed_at": "2026-10-07T15:30:00-04:00",
+     "deadline": "2026-11-01",
+     "definition_of_done": null,
+     "description": null,
+     "expected_minutes": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "active"
+      },
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "status": "missed"
+      }
+     ],
+     "id": "3dnjav",
+     "parent_id": "co2yzn",
+     "path": [
+      "Run a marathon"
+     ],
+     "required": true,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "missed",
+     "title": "Run a half first",
+     "version": 2
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"title\": \"Run a half first\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"expected_minutes\": null,\n  \"deadline\": \"2026-11-01\",\n  \"status\": \"missed\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    },\n    {\n      \"status\": \"missed\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [\n    \"Run a marathon\"\n  ],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
+   "tool": "get_goals"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "outcome-goals"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Outcome Goals"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "outcome-goals",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Run a marathon",
+        "",
+        "",
+        "",
+        "2026-12-01",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Run a marathon",
+        "",
+        "",
+        "",
+        "2026-12-01",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ],
+       [
+        "3dnjav",
+        "Run a half first",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-01",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Run a marathon",
+        "",
+        "",
+        "",
+        "2026-12-01",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "3dnjav",
+        "Run a half first",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-01",
+        "missed",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"missed\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "endRowIndex": 1,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 1
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {},
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "outcome-goals",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata"
+    },
+    "tabs": {
+     "Outcome Goals": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Outcome Goals"
+      },
+      "rows": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "expected_minutes",
+        "deadline",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "version"
+       ],
+       [
+        "co2yzn",
+        "Run a marathon",
+        "",
+        "",
+        "",
+        "2026-12-01",
+        "done",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ],
+       [
+        "3dnjav",
+        "Run a half first",
+        "co2yzn",
+        "True",
+        "",
+        "2026-11-01",
+        "missed",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"missed\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
+        "",
+        "",
+        "",
+        "2"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}
