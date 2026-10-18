@@ -4,6 +4,7 @@
 
 use super::additions::REF_PREFIX;
 use super::plan::{CompactionChange, EventDecision};
+use crate::stores::actions::ActionShare;
 use crate::event::Moment;
 use crate::facts::Facts;
 use crate::py;
@@ -335,7 +336,7 @@ pub struct ProposalEvent {
     pub description: Option<String>,
     pub location: Option<String>,
     pub priority: Option<i64>,
-    pub action_ids: Option<Vec<String>>,
+    pub action_ids: Option<Vec<ActionShare>>,
     pub goals: Option<Vec<GoalShare>>,
     pub facts: Option<Facts>,
     pub decided_by: Option<String>,
@@ -949,8 +950,14 @@ pub fn settle_refs(decision: &EventDecision, settled: &Dict<AdditionSettled>) ->
         }
     };
     let mut out = decision.clone();
-    if let Some(ids) = &decision.action_ids {
-        out.action_ids = Some(named(ids));
+    if let Some(shares) = &decision.action_ids {
+        let mut settled_ids: Vec<ActionShare> = Vec::new();
+        for share in shares {
+            if let Some(id) = id_of(&share.action_id).filter(|id| !settled_ids.iter().any(|s| s.action_id == *id)) {
+                settled_ids.push(ActionShare { action_id: id, ..share.clone() });
+            }
+        }
+        out.action_ids = Some(settled_ids);
     }
     if let Some(facts) = &decision.facts {
         let notes = match &facts.notes {

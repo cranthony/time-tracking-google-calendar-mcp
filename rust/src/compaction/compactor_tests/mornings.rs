@@ -271,7 +271,7 @@ fn yesterday(event: &Event, actions: &[&str]) -> Event {
         id: Some(format!("y{}", event.id.as_deref().unwrap())),
         start: Some(event.start() - Duration::days(1)),
         end: Some(event.end() - Duration::days(1)),
-        action_ids: Some(strings(actions)),
+        action_ids: Some(crate::testing::shares(actions)),
         ..event.clone()
     }
 }
@@ -283,7 +283,7 @@ fn prepare_lists_actions_and_suggests_them_from_earlier_events_with_the_same_tit
         yesterday(&events[0], &["gone", "mail"]), // Email: a deleted action isn't suggested
         yesterday(&events[1], &["work"]),
     ];
-    events[1].action_ids = Some(strings(&["work"])); // Report already has one: nothing suggested
+    events[1].action_ids = Some(crate::testing::shares(&["work"])); // Report already has one: nothing suggested
     all.extend(events);
     let setup = with_actions(&[("09:05", "x")], all);
 
@@ -365,9 +365,9 @@ fn a_dry_run_refuses_unknown_or_deleted_actions() {
     let setup = bare_with_actions();
     let mut decisions = setup.coffee_instead_of_email();
 
-    decisions[0].action_ids = Some(strings(&["wrk"]));
+    decisions[0].action_ids = Some(crate::testing::shares(&["wrk"]));
     refused(setup.try_dry_run(decisions.clone(), DryRun::default()), "no action with the id or name 'wrk'; did you mean work");
-    decisions[0].action_ids = Some(strings(&["gone"]));
+    decisions[0].action_ids = Some(crate::testing::shares(&["gone"]));
     refused(setup.try_dry_run(decisions, DryRun::default()), "Deleted actions can't be given to an event");
 }
 
@@ -375,7 +375,7 @@ fn a_dry_run_refuses_unknown_or_deleted_actions() {
 fn created_events_are_written_with_their_actions() {
     let setup = bare_with_actions();
     let mut decisions = setup.coffee_instead_of_email();
-    decisions[0].action_ids = Some(strings(&["work"]));
+    decisions[0].action_ids = Some(crate::testing::shares(&["work"]));
     let id = setup.dry_run(decisions).compaction_id.unwrap();
 
     setup.commit(&id);
@@ -383,16 +383,16 @@ fn created_events_are_written_with_their_actions() {
     let created = setup.creates();
     assert_eq!(created.len(), 1);
     let id = created[0]["id"].as_str().unwrap();
-    assert_eq!(setup.event(id).action_ids, Some(strings(&["work"])));
+    assert_eq!(setup.event(id).action_ids, Some(crate::testing::shares(&["work"])));
 }
 
 #[test]
 fn an_actions_only_change_is_patched_as_just_that() {
     let setup = with_actions(&[("09:05", "x")], day());
-    let id = setup.dry_run(vec![EventDecision { action_ids: Some(strings(&["mail"])), ..keep("e1") }]).compaction_id.unwrap();
+    let id = setup.dry_run(vec![EventDecision { action_ids: Some(crate::testing::shares(&["mail"])), ..keep("e1") }]).compaction_id.unwrap();
 
     setup.commit(&id);
 
     assert!(setup.patches().iter().any(|(id, _)| id == "e1"));
-    assert_eq!(setup.event("e1").action_ids, Some(strings(&["mail"])));
+    assert_eq!(setup.event("e1").action_ids, Some(crate::testing::shares(&["mail"])));
 }

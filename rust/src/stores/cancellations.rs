@@ -6,6 +6,7 @@ use crate::event::{parse_iso, Event, Moment};
 use crate::facts::{Facts, SELF_ID};
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
+use crate::stores::actions::{share_ids, ActionShare};
 use crate::contract::{DateTimeText, RowItem, Schema};
 use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::CANCELLATIONS;
@@ -78,7 +79,7 @@ pub fn to_event(row: &Cancellation) -> anyhow::Result<Event> {
         summary: row.summary.clone(),
         start: Some(parse_iso(row.start.as_deref().unwrap_or_default(), None)?),
         end: Some(parse_iso(row.end.as_deref().unwrap_or_default(), None)?),
-        action_ids: Some(row.action_ids.clone().unwrap_or_default()),
+        action_ids: Some(row.action_ids.iter().flatten().map(|id| ActionShare::whole(id.clone())).collect()),
         facts: Some(facts),
         status: Some("cancelled".into()),
         ..Default::default()
@@ -263,7 +264,7 @@ impl Cancellations {
                 summary: event.summary.clone(),
                 start: Some(py::isoformat(&event.start())),
                 end: Some(py::isoformat(&event.end())),
-                action_ids: Some(event.action_ids.clone().unwrap_or_default()),
+                action_ids: Some(share_ids(event.action_ids.as_deref().unwrap_or_default())),
                 parts: Some(m.parts),
                 cancelled_at: Some(py::isoformat(&at)),
                 source: Some(source.to_string()),
@@ -331,7 +332,7 @@ pub fn of_action(events: &[Event], action_id: Option<&Value>, tree: Option<&Acti
         let Some(action) = tree.by_id(candidate) else { return false };
         tree.groups.enclosing(action).iter().any(|g| g.id.as_deref().is_some() && g.id.as_deref() == action_id.as_str())
     };
-    events.iter().filter(|e| e.action_ids.iter().flatten().any(|a| matches(a))).cloned().collect()
+    events.iter().filter(|e| e.action_ids.iter().flatten().any(|a| matches(&a.action_id))).cloned().collect()
 }
 
 #[cfg(test)]

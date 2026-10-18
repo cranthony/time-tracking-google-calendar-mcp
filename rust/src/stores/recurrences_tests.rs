@@ -37,7 +37,7 @@ fn weekly(rule: &str) -> Event {
         end: Some(at(5, 10)),
         time_zone: Some("America/New_York".into()),
         recurrence: Some(vec![rule.into()]),
-        action_ids: Some(strings(&["work"])),
+        action_ids: Some(crate::testing::shares(&["work"])),
         ..Default::default()
     }
 }
@@ -181,7 +181,7 @@ fn this_and_following_splits_then_edits_only_the_later_part() {
     assert_eq!(later.summary.as_deref(), Some("Team standup"));
     // Moved an hour later, from the event it was split at.
     assert_eq!((later.start, later.end), (Some(at(19, 10)), Some(at(19, 11))));
-    assert_eq!(later.action_ids, Some(strings(&["work"])));
+    assert_eq!(later.action_ids, Some(crate::testing::shares(&["work"])));
 }
 
 #[test]
@@ -602,7 +602,7 @@ fn renew_splits_a_series_at_its_730th_instance_so_it_goes_on() {
     assert_eq!(renewed.len(), 1);
     let later = &renewed[0];
     assert_eq!((later.id.clone(), later.start), (Some(split_series_id("daily", &last)), Some(last)));
-    assert_eq!((later.recurrence.clone(), later.action_ids.clone()), (Some(strings(&["RRULE:FREQ=DAILY"])), Some(strings(&["work"]))));
+    assert_eq!((later.recurrence.clone(), later.action_ids.clone()), (Some(strings(&["RRULE:FREQ=DAILY"])), Some(crate::testing::shares(&["work"]))));
     assert!(ends_before(&f.event("daily"), &last));
     let later_id = later.id.clone().unwrap();
     assert_eq!(listed_in(&f, "daily", renewal_now(), 7).len(), 7);

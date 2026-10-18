@@ -119,7 +119,7 @@ fn each_persons_recent_history_is_given_once() {
     let mut events = vec![Event {
         start: Some(time_at("09:00") - Duration::days(1)),
         end: Some(time_at("10:00") - Duration::days(1)),
-        action_ids: Some(strings(&["guitar"])),
+        action_ids: Some(crate::testing::shares(&["guitar"])),
         facts: Some(facts(json!({"with": ["sam"]}))),
         ..event_at("09:00-10:00").id("g1").summary("Guitar").build()
     }];
@@ -190,8 +190,8 @@ fn backfill_setup(status: &str) -> Setup {
     // Email, and Lunch after the compaction, are both in the habit's scope;
     // only Email is settled.
     setup.t.seed(ACTIONS.1, &[json!({"id": "mail", "name": "Do email", "status": "active"})]);
-    setup.change_event(Event { id: Some("e1".into()), action_ids: Some(strings(&["mail"])), ..Default::default() });
-    setup.change_event(Event { id: Some("e3".into()), action_ids: Some(strings(&["mail"])), facts: Some(facts(json!({"notes": {"self": "late"}}))), ..Default::default() });
+    setup.change_event(Event { id: Some("e1".into()), action_ids: Some(crate::testing::shares(&["mail"])), ..Default::default() });
+    setup.change_event(Event { id: Some("e3".into()), action_ids: Some(crate::testing::shares(&["mail"])), facts: Some(facts(json!({"notes": {"self": "late"}}))), ..Default::default() });
     setup.t.seed(HABITS.1, &[json!({"id": "inbox", "name": "Inbox", "action_id": "mail", "status": status})]);
     setup
 }
@@ -469,7 +469,7 @@ fn a_compacted_event_is_given_its_actions_priority_as_its_own() {
     let mut events = day();
     for (i, event) in events.iter_mut().enumerate().take(3) {
         event.priority = if i == 1 { Some(3) } else { None }; // The report's own: kept.
-        event.action_ids = Some(strings(&["mail"]));
+        event.action_ids = Some(crate::testing::shares(&["mail"]));
     }
     let setup = Setup::with(
         &[("09:05", "email")],

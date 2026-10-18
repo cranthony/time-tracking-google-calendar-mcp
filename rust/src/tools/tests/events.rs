@@ -35,13 +35,13 @@ fn day_at(hour: u32) -> Moment {
 
 #[test]
 fn actions_inferred_from_a_label_are_marked_and_not_written_back() {
-    let public = public_event(&Event { id: Some("e1".into()), action_ids: Some(strings(&["g1"])), actions_from_label: true, ..Default::default() }, None);
+    let public = public_event(&Event { id: Some("e1".into()), action_ids: Some(crate::testing::shares(&["g1"])), actions_from_label: true, ..Default::default() }, None);
 
     assert_eq!(public["actions_from_label"], true);
     assert_eq!(to_event(&public, &[]).ok().unwrap().action_ids, None);
     let mut confirmed = public.clone();
     confirmed["actions_from_label"] = json!(false); // Confirmed: stored.
-    assert_eq!(to_event(&confirmed, &[]).ok().unwrap().action_ids, Some(strings(&["g1"])));
+    assert_eq!(to_event(&confirmed, &[]).ok().unwrap().action_ids, Some(crate::testing::shares(&["g1"])));
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn shows_but_never_writes_back_sleep_series_label_and_effective_priority() {
 
 #[test]
 fn effective_priority_comes_from_the_events_actions_when_it_has_none() {
-    let public = public_event(&Event { action_ids: Some(strings(&["g1"])), action_priority: Some(0), ..focus("abc123", day_at(9), day_at(10)) }, None);
+    let public = public_event(&Event { action_ids: Some(crate::testing::shares(&["g1"])), action_priority: Some(0), ..focus("abc123", day_at(9), day_at(10)) }, None);
 
     assert_eq!((public["priority"].clone(), public["effective_priority"].clone()), (Value::Null, json!(0)));
     assert_eq!(to_event(&json!({"id": "abc123", "effective_priority": 0}), &[]).ok().unwrap().priority, None);
@@ -89,13 +89,13 @@ fn effective_priority_comes_from_the_events_actions_when_it_has_none() {
 
 #[test]
 fn names_the_events_actions_and_writes_back_only_their_ids() {
-    let event = Event { action_ids: Some(strings(&["g2", "g1", "gone"])), ..focus("abc123", day_at(9), day_at(10)) };
+    let event = Event { action_ids: Some(crate::testing::shares(&["g2", "g1", "gone"])), ..focus("abc123", day_at(9), day_at(10)) };
 
     let public = public_event(&event, Some(&tree(&[action("g1", "Cooking", None), action("g2", "Hosting", None)])));
 
     assert_eq!(public["action_ids"], json!(["g2", "g1", "gone"]));
     assert_eq!(public["action_names"], json!(["Hosting", "Cooking", "(unknown action gone)"]));
-    assert_eq!(to_event(&json!({"id": "abc123", "action_ids": ["g1", "g2"], "action_names": ["A", "B"]}), &[]).ok().unwrap().action_ids, Some(strings(&["g1", "g2"])));
+    assert_eq!(to_event(&json!({"id": "abc123", "action_ids": ["g1", "g2"], "action_names": ["A", "B"]}), &[]).ok().unwrap().action_ids, Some(crate::testing::shares(&["g1", "g2"])));
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn fills_in_actions_and_effective_priority_from_the_event_label() {
 fn an_events_own_priority_wins_over_its_actions() {
     let server = Server::new();
     with_actions(&server, &[action("g1", "Focus", Some(0))]);
-    server.seed(&[Event { action_ids: Some(strings(&["g1"])), priority: Some(3), ..focus("abc123", day_at(9), day_at(10)) }]);
+    server.seed(&[Event { action_ids: Some(crate::testing::shares(&["g1"])), priority: Some(3), ..focus("abc123", day_at(9), day_at(10)) }]);
 
     assert_eq!(listed(&server)[0]["effective_priority"], 3);
 }
@@ -179,7 +179,7 @@ fn an_events_own_priority_wins_over_its_actions() {
 fn gets_an_event_filled_in_from_its_actions() {
     let server = Server::new();
     with_actions(&server, &[action("g1", "Focus", Some(0))]);
-    server.seed(&[Event { action_ids: Some(strings(&["g1"])), is_end_of_day_sleep: Some(true), ..focus("abc123", day_at(9), day_at(10)) }]);
+    server.seed(&[Event { action_ids: Some(crate::testing::shares(&["g1"])), is_end_of_day_sleep: Some(true), ..focus("abc123", day_at(9), day_at(10)) }]);
 
     let event = server.ok("get_event", json!({"id": "abc123"}));
 
@@ -508,6 +508,35 @@ fn notes_are_listed_uncompacted_sorted_by_timestamp_or_with_the_compacted_ones()
     assert_eq!(ids(json!({})), vec![nine, half]);
     assert_eq!(ids(json!({"include_compacted": true})).len(), 3);
     assert_eq!(server.ok("get_notes", json!({}))[0]["description"], "Started work");
+}
+
+#[test]
+fn an_events_action_shares_are_written_and_read_back() {
+    let server = two();
+    with_actions(&server, &[action("g1", "Cooking", None), action("g2", "Email", None), action("g3", "Calls", None)]);
+
+    let shares = json!([{"action_id": "g1", "minutes": 20, "remaining": true}, "g2", {"action_id": "g3", "percent": 50}]);
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"action_ids": shares}))]}));
+
+    let stored = server.event("abc123").action_ids.unwrap();
+    assert_eq!(crate::stores::shares::shares_text(&stored), "g1=20m+r g2 g3=50%");
+    let got = server.ok("get_event", json!({"id": "abc123"}));
+    assert_eq!(got["action_ids"], shares);
+    assert_eq!(got["action_names"], json!(["Cooking", "Email", "Calls"]));
+}
+
+#[test]
+fn an_events_action_shares_must_fit_in_it() {
+    let server = two();
+    with_actions(&server, &[action("g1", "Cooking", None), action("g2", "Email", None)]);
+
+    server.refused(
+        "update_event",
+        json!({"updates": [update("abc123", json!({"action_ids": [{"action_id": "g1", "minutes": 40}, {"action_id": "g2", "minutes": 21}]}))]}),
+        "its actions' minutes add up to 61, more than the event's 60",
+    );
+    server.refused("update_event", json!({"updates": [update("abc123", json!({"action_ids": [{"action_id": "g1", "percent": 0}]}))]}), "percent must be 1 to 100");
+    assert_eq!(server.event_writes(), 0);
 }
 
 // -- goals -----------------------------------------------------------------------------

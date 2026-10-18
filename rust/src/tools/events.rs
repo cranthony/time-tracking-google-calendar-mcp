@@ -9,7 +9,7 @@ use crate::contract::{tool, DateTimeText, Schema};
 use crate::facts::{fact_problems, Facts as EventFacts};
 use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
-use crate::stores::actions::ActionTree;
+use crate::stores::actions::{share_ids, ActionShare, ActionTree};
 use crate::stores::event_changes::{self, Cancel, EventChanges, StaleEvent, StaleEvents};
 use crate::stores::goals::{settled_shares, GoalShare};
 use crate::stores::notes::NotedTime as StoredNote;
@@ -58,7 +58,13 @@ pub struct Facts {
 ///
 /// action_ids are what was done at the event (see get_actions), the
 /// first setting its label and color; setting them is how an event is
-/// tied to actions. action_names (their names, in the same order) and
+/// tied to actions. Each is an action's id, taking an even part of the
+/// remaining time (what the minutes and percents leave), or an object
+/// {action_id, minutes?, percent?, remaining?}: minutes (a fixed share),
+/// percent (of what the minutes leave), and remaining true for its part of
+/// the remaining time as well. The minutes must fit in the event and the
+/// percents add up to no more than 100; read back, minutes are cut to fit
+/// an event shortened since. action_names (their names, in the same order) and
 /// event_label_id (derived from the first action) are read-only: an
 /// update ignores them.
 ///
@@ -86,7 +92,9 @@ pub struct Facts {
 ///
 /// goals are the goals the event is for (see get_goals): each a goal_id,
 /// with minutes (a fixed share of the event), percent (of what the
-/// minutes leave), or neither (the whole event). The minutes must fit in
+/// minutes leave), or neither (the remaining time, what the minutes and
+/// percents leave); remaining true gives one with minutes or percent the
+/// remaining time too. The minutes must fit in
 /// the event, and the percents add up to no more than 100; read back,
 /// minutes are cut to fit an event shortened since, and goals deleted
 /// since are left out. Set them to replace them whole ([] for none).
@@ -130,7 +138,7 @@ pub struct PublicEvent {
     pub description: Option<String>,
     pub location: Option<String>,
     pub priority: Option<i64>,
-    pub action_ids: Option<Vec<String>>,
+    pub action_ids: Option<Vec<ActionShare>>,
     pub action_names: Option<Vec<String>>,
     #[schema(default = "false")]
     #[serde(default)]
@@ -236,7 +244,8 @@ impl From<&Facts> for EventFacts {
 
 /// An event as every tool returns it (PublicEvent), fields in order: its
 /// goal shares settled (see `settled_shares`) against the goals there are
-/// (`goal_ids`; all of them, if None).
+/// (`goal_ids`; all of them, if None), and its action shares settled
+/// against its length.
 #[cfg(test)]
 pub fn public_event(event: &Event, tree: Option<&ActionTree>) -> Value {
     public_event_among(event, tree, None)
@@ -244,8 +253,9 @@ pub fn public_event(event: &Event, tree: Option<&ActionTree>) -> Value {
 
 /// `public_event`, with only `goal_ids`' goals (all, if None) shown.
 pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Option<&[String]>) -> Value {
-    let names = match (tree, &event.action_ids) {
-        (Some(tree), Some(ids)) => Some(ids.iter().map(|i| tree.name(i)).collect::<Vec<_>>()),
+    let action_ids = shown_action_shares(event);
+    let names = match (tree, &action_ids) {
+        (Some(tree), Some(ids)) => Some(ids.iter().map(|a| tree.name(&a.action_id)).collect::<Vec<_>>()),
         _ => None,
     };
     let mut out = Map::new();
@@ -256,7 +266,7 @@ pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Op
     out.insert("description".into(), json!(event.description));
     out.insert("location".into(), json!(event.location));
     out.insert("priority".into(), json!(event.priority));
-    out.insert("action_ids".into(), json!(event.action_ids));
+    out.insert("action_ids".into(), json!(action_ids));
     out.insert("action_names".into(), json!(names));
     out.insert("actions_from_label".into(), json!(event.actions_from_label));
     out.insert("goals".into(), json!(shown_shares(event, goal_ids)));
@@ -271,14 +281,28 @@ pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Op
     Value::Object(out)
 }
 
+/// `event`'s action shares, settled (see `public_event`) if any has
+/// minutes or percent; as they are, if none does.
+pub fn shown_action_shares(event: &Event) -> Option<Vec<ActionShare>> {
+    let shares = event.action_ids.as_ref()?;
+    if shares.iter().all(|s| s.minutes.is_none() && s.percent.is_none()) {
+        return Some(shares.clone());
+    }
+    Some(settled_shares(shares, event_minutes(event), &|_| true))
+}
+
+/// `event`'s length in minutes, or no end to it if it has no start or end.
+fn event_minutes(event: &Event) -> i64 {
+    match (event.start, event.end) {
+        (Some(start), Some(end)) => (end - start).num_minutes(),
+        _ => i64::MAX,
+    }
+}
+
 /// `event`'s goal shares, settled (see `public_event`).
 pub fn shown_shares(event: &Event, goal_ids: Option<&[String]>) -> Option<Vec<GoalShare>> {
     let shares = event.goals.as_ref()?;
-    let minutes = match (event.start, event.end) {
-        (Some(start), Some(end)) => (end - start).num_minutes(),
-        _ => i64::MAX,
-    };
-    Some(settled_shares(shares, minutes, &|id| goal_ids.is_none_or(|ids| ids.iter().any(|i| i == id))))
+    Some(settled_shares(shares, event_minutes(event), &|id| goal_ids.is_none_or(|ids| ids.iter().any(|i| i == id))))
 }
 
 /// The ids of the goals there are, read only if any of `events` has goals.
@@ -321,8 +345,8 @@ pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Even
 
 /// `_check_action_ids`: an event's (or series') action_ids must be
 /// actions, not newly deleted ones -- unless they're from its label.
-pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[String]>, from_label: bool, existing: bool) -> Result<(), ToolError> {
-    let ids = action_ids.unwrap_or_default();
+pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[ActionShare]>, from_label: bool, existing: bool) -> Result<(), ToolError> {
+    let ids = share_ids(action_ids.unwrap_or_default());
     if ids.is_empty() || from_label {
         return Ok(());
     }
@@ -334,11 +358,11 @@ pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[String
                 ids.iter().any(|a| tree.by_id(a).is_some_and(|action| action.status == Some(crate::stores::actions::ActionStatus::Deleted)));
             if any_deleted {
                 let current = fill_in_from_actions(&[app.calendar_client()?.get_event(id)?], &tree).remove(0);
-                already = current.action_ids.unwrap_or_default();
+                already = share_ids(current.action_ids.as_deref().unwrap_or_default());
             }
         }
     }
-    tree.check_action_ids(ids, &already).map_err(|e| ToolError::Message(e.to_string()))
+    tree.check_action_ids(&ids, &already).map_err(|e| ToolError::Message(e.to_string()))
 }
 
 /// An event's (or series') goal shares must name goals there are.

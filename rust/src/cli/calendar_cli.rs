@@ -218,7 +218,7 @@ fn set_event_attribute(event: &mut Event, pair: &str) -> Result<String, Failure>
         }
         "is_end_of_day_sleep" => event.is_end_of_day_sleep = Some(parse_bool(raw).map_err(|e| invalid(key, e))?),
         "event_label_id" => event.event_label_id = Some(raw.into()),
-        "action_ids" => event.action_ids = Some(raw.split(',').map(str::trim).filter(|a| !a.is_empty()).map(str::to_string).collect()),
+        "action_ids" => event.action_ids = Some(raw.split(',').flat_map(crate::stores::shares::parse_shares).collect()),
         "facts" => event.facts = Some(parse_facts(raw).map_err(|e| invalid(key, e))?),
         _ => {
             let value: Value = serde_json::from_str(raw).map_err(|e| invalid(key, e.to_string()))?;
@@ -284,7 +284,7 @@ fn event_details(event: &Event) -> String {
     put("priority", event.priority.map(|p| p.to_string()));
     put("is_end_of_day_sleep", event.is_end_of_day_sleep.map(|b| if b { "True" } else { "False" }.to_string()));
     put("event_label_id", event.event_label_id.clone());
-    put("action_ids", str_opt_list(&event.action_ids));
+    put("action_ids", event.action_ids.as_ref().map(|shares| py::repr_list(&shares.iter().map(|s| crate::stores::shares::shares_text(std::slice::from_ref(s))).collect::<Vec<_>>())));
     put("facts", event.facts.as_ref().map(facts_repr));
     put("judgments", event.judgments.as_ref().map(|j| python_repr(&Value::Object(j.clone()))));
     put("action_priority", event.action_priority.map(|p| p.to_string()));
@@ -643,7 +643,7 @@ mod tests {
     fn event_attributes_parsed_as_python_does() {
         let mut event = Event::default();
         set_event_attribute(&mut event, "action_ids= a, ,b").ok().unwrap();
-        assert_eq!(event.action_ids, Some(vec!["a".to_string(), "b".to_string()]));
+        assert_eq!(event.action_ids, Some(crate::testing::shares(&["a", "b"])));
         set_event_attribute(&mut event, "is_end_of_day_sleep=Yes").ok().unwrap();
         assert_eq!(event.is_end_of_day_sleep, Some(true));
         set_event_attribute(&mut event, "start=2026-01-01T09:00:00Z").ok().unwrap();

@@ -24,7 +24,7 @@ fn goals_setup() -> Setup {
 }
 
 fn share(id: &str, minutes: Option<i64>, percent: Option<i64>) -> GoalShare {
-    GoalShare { goal_id: id.into(), minutes, percent }
+    GoalShare { goal_id: id.into(), minutes, percent, remaining: false }
 }
 
 #[test]

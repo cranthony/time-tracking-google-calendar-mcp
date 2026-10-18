@@ -37,7 +37,7 @@ fn event() -> Event {
 }
 
 fn doing(ids: &[&str]) -> Event {
-    Event { action_ids: Some(ids.iter().map(|s| s.to_string()).collect()), ..event() }
+    Event { action_ids: Some(crate::testing::shares(ids)), ..event() }
 }
 
 fn labelled(label: &str) -> Event {
@@ -58,7 +58,7 @@ fn takes_the_highest_priority_among_the_actions_and_their_groups() {
 fn an_event_without_actions_is_read_as_doing_its_labels() {
     let filled = fill_in_from_actions(&[labelled("l-cook")], &tree()).remove(0);
 
-    assert_eq!((filled.action_ids, filled.actions_from_label), (Some(vec!["cook".to_string()]), true));
+    assert_eq!((filled.action_ids, filled.actions_from_label), (Some(crate::testing::shares(&["cook"])), true));
 }
 
 #[test]

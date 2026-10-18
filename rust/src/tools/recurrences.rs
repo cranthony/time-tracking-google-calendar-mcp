@@ -1,7 +1,7 @@
 //! The recurring-series tools (get_recurrence, update_recurrence,
 //! split_recurrence, delete_recurrence).
 
-use super::events::{check_action_ids, check_facts, check_goal_ids, goal_ids_for, shown_shares, when_given, EventField, Facts};
+use super::events::{check_action_ids, check_facts, check_goal_ids, goal_ids_for, shown_action_shares, shown_shares, when_given, EventField, Facts};
 use super::stores::prefetch_stores;
 use super::{from_store, texts, ToolError};
 use crate::contract::wire_text;
@@ -11,7 +11,7 @@ use crate::contract::{tool, DateOrDateTime, DateTimeText, Nth, Schema};
 use crate::facts::Facts as EventFacts;
 use crate::py;
 use crate::stores::action_calendar::fill_in_from_actions;
-use crate::stores::actions::ActionTree;
+use crate::stores::actions::{ActionShare, ActionTree};
 use crate::stores::recurrences::{describe_rules, is_refusal, PyDt, Repeat as StoredRepeat, Until};
 use chrono::NaiveDate;
 use crate::zoned;
@@ -160,7 +160,7 @@ pub struct PublicRecurrence {
     pub description: Option<String>,
     pub location: Option<String>,
     pub priority: Option<i64>,
-    pub action_ids: Option<Vec<String>>,
+    pub action_ids: Option<Vec<ActionShare>>,
     pub action_names: Option<Vec<String>>,
     #[schema(default = "false")]
     pub actions_from_label: bool,
@@ -173,7 +173,8 @@ pub struct PublicRecurrence {
 /// A series as the recurrence tools return it (PublicRecurrence).
 fn public_recurrence(event: &Event, tree: &ActionTree, goal_ids: Option<&[String]>) -> Value {
     let zone: Option<Tz> = event.time_zone.as_deref().filter(|z| !z.is_empty()).and_then(|z| z.parse().ok());
-    let names = event.action_ids.as_ref().map(|ids| ids.iter().map(|i| tree.name(i)).collect::<Vec<_>>());
+    let action_ids = shown_action_shares(event);
+    let names = action_ids.as_ref().map(|ids| ids.iter().map(|a| tree.name(&a.action_id)).collect::<Vec<_>>());
     let shown = |m: Option<crate::event::Moment>| m.map(|m| match &zone {
         Some(zone) => py::pydantic_datetime(&zoned::in_zone(&m, zone)),
         None => py::pydantic_datetime(&m),
@@ -190,7 +191,7 @@ fn public_recurrence(event: &Event, tree: &ActionTree, goal_ids: Option<&[String
     out.insert("description".into(), json!(event.description));
     out.insert("location".into(), json!(event.location));
     out.insert("priority".into(), json!(event.priority));
-    out.insert("action_ids".into(), json!(event.action_ids));
+    out.insert("action_ids".into(), json!(action_ids));
     out.insert("action_names".into(), json!(names));
     out.insert("actions_from_label".into(), json!(event.actions_from_label));
     out.insert("goals".into(), json!(shown_shares(event, goal_ids)));

@@ -2,6 +2,7 @@
 //! from a model's decisions, into calendar changes and a timeline --
 //! deterministic, no API access.
 
+use crate::stores::actions::ActionShare;
 use crate::event::{parse_iso, Event, Moment, MAX_DESCRIPTION_BYTES};
 use crate::facts::Facts;
 use crate::google::calendar::python_splitlines;
@@ -63,7 +64,7 @@ pub struct EventDecision {
     pub dropped_notes: Option<Vec<String>>,
     pub location: Option<String>,
     pub priority: Option<i64>,
-    pub action_ids: Option<Vec<String>>,
+    pub action_ids: Option<Vec<ActionShare>>,
     pub goals: Option<Vec<GoalShare>>,
     pub facts: Option<Facts>,
     pub counts_against_follow_through: Option<bool>,
@@ -129,7 +130,7 @@ impl EventDecision {
             dropped_notes: data.get("dropped_notes").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()),
             location: text("location"),
             priority: data.get("priority").and_then(Value::as_i64),
-            action_ids: data.get("action_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()),
+            action_ids: data.get("action_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| serde_json::from_value(v.clone()).ok()).collect()),
             goals: shares_from(data.get("goals")),
             facts: data.get("facts").map(|f| facts_from_dict(Some(f))),
             counts_against_follow_through: data.get("counts_against_follow_through").and_then(Value::as_bool),
@@ -179,7 +180,7 @@ pub struct EventState {
     pub status: Option<String>,
     pub priority: Option<i64>,
     pub event_label_id: Option<String>,
-    pub action_ids: Option<Vec<String>>,
+    pub action_ids: Option<Vec<ActionShare>>,
     pub goals: Option<Vec<GoalShare>>,
     pub facts: Option<Value>,
 }
@@ -257,7 +258,7 @@ impl EventState {
             status: text("status"),
             priority: data.get("priority").and_then(Value::as_i64),
             event_label_id: text("event_label_id"),
-            action_ids: data.get("action_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()),
+            action_ids: data.get("action_ids").and_then(Value::as_array).map(|a| a.iter().filter_map(|v| serde_json::from_value(v.clone()).ok()).collect()),
             goals: shares_from(data.get("goals")),
             facts: data.get("facts").filter(|f| !f.is_null()).cloned(),
         })
@@ -1234,7 +1235,7 @@ fn timeline_of(
     now: Moment,
     names: &[(String, String)],
 ) -> Timeline {
-    let named = |ids: Option<&Vec<String>>| -> Vec<String> { ids.into_iter().flatten().map(|a| name_of(names, a)).collect() };
+    let named = |ids: Option<&Vec<ActionShare>>| -> Vec<String> { ids.into_iter().flatten().map(|a| name_of(names, &a.action_id)).collect() };
     let fact_fields = |final_: &Event, original: Option<&Event>| -> (Vec<String>, bool) {
         let said = facts_lines(final_.facts.as_ref(), names);
         let changed = !said.is_empty() && original.is_none_or(|o| facts_dict(final_.facts.as_ref()) != facts_dict(o.facts.as_ref()));
@@ -1399,7 +1400,7 @@ pub fn planned_timeline(
                 end: e.end,
                 planned_start: e.start,
                 planned_end: e.end,
-                actions: e.action_ids.iter().flatten().map(|a| name_of(names, a)).collect(),
+                actions: e.action_ids.iter().flatten().map(|a| name_of(names, &a.action_id)).collect(),
                 new_actions: suggested.iter().find(|(k, _)| *k == id).map(|(_, v)| v.iter().map(|a| name_of(names, a)).collect()).unwrap_or_default(),
                 facts: facts_lines(e.facts.as_ref(), names),
                 ..Default::default()

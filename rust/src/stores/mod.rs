@@ -14,4 +14,5 @@ pub mod people;
 pub mod recurrences;
 pub mod schedule;
 pub mod scoring;
+pub mod shares;
 pub mod traits;

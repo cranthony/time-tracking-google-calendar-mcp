@@ -594,7 +594,7 @@ impl Judging {
                     .iter()
                     .filter(|e| e.start() >= before - Duration::days(*days) && subjects.part_of(tree.as_ref(), e, person_id))
                     .collect();
-                let actions = most_common(past.iter().flat_map(|e| e.action_ids.iter().flatten().map(|a| lookup(&names, a))));
+                let actions = most_common(past.iter().flat_map(|e| e.action_ids.iter().flatten().map(|a| lookup(&names, &a.action_id))));
                 let locations = most_common(past.iter().flat_map(|e| facts_locations(e).into_iter().map(|l| lookup(&names, &l))));
                 history.push((person_id.clone(), PersonHistory { days: *days, actions, locations }));
             }

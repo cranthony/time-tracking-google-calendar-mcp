@@ -13,6 +13,7 @@ use crate::stores::groups::{
     GroupTree, Palette, Placed, GROUP_CLEARABLE_FIELDS, GROUP_ROW, PRIORITIES,
 };
 use crate::stores::locations::dedup;
+use crate::stores::shares::{is_false, Share};
 use anyhow::bail;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -216,6 +217,121 @@ impl Placed for Action {
 /// An action's status as its text ("active"), if it has one.
 pub fn status_of(action: &Action) -> Option<String> {
     action.status.as_ref().map(wire_text)
+}
+
+// -- events' action shares -----------------------------------------------------
+
+/// One action an event is of, and how much of the event it takes:
+/// minutes (a fixed share), percent (of what the fixed shares leave), or
+/// neither -- an even part of the remaining time, what the minutes and
+/// percents leave, with the others that take it. One with minutes or
+/// percent can take its part of the remaining time too (`remaining`).
+/// One with neither is sent and shown as its bare id, as every action was
+/// before shares; one with a share as an object.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ActionShare {
+    pub action_id: String,
+    pub minutes: Option<i64>,
+    pub percent: Option<i64>,
+    pub remaining: bool,
+}
+
+impl ActionShare {
+    /// The action, with neither minutes nor percent.
+    pub fn whole(action_id: impl Into<String>) -> ActionShare {
+        ActionShare { action_id: action_id.into(), ..Default::default() }
+    }
+}
+
+impl From<&str> for ActionShare {
+    fn from(id: &str) -> ActionShare {
+        ActionShare::whole(id)
+    }
+}
+
+impl From<String> for ActionShare {
+    fn from(id: String) -> ActionShare {
+        ActionShare::whole(id)
+    }
+}
+
+impl Share for ActionShare {
+    const KIND: &'static str = "action";
+    const NEITHER: &'static str = "an even part of the remaining time";
+
+    fn new(action_id: String, minutes: Option<i64>, percent: Option<i64>, remaining: bool) -> Self {
+        ActionShare { action_id, minutes, percent, remaining: remaining && (minutes.is_some() || percent.is_some()) }
+    }
+    fn id(&self) -> &str {
+        &self.action_id
+    }
+    fn minutes(&self) -> Option<i64> {
+        self.minutes
+    }
+    fn percent(&self) -> Option<i64> {
+        self.percent
+    }
+    fn remaining(&self) -> bool {
+        self.remaining
+    }
+}
+
+/// An action and how much of the event it takes: minutes (a fixed
+/// share), or percent (of what the minutes leave).
+#[derive(Serialize, Deserialize, Schema)]
+#[serde(deny_unknown_fields)]
+#[schema(deny_unknown)]
+pub struct ActionSplit {
+    action_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    minutes: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    percent: Option<i64>,
+    /// An even part of the remaining time too, what the minutes and
+    /// percents leave, with the actions given as bare ids.
+    #[schema(default = "false")]
+    #[serde(default, skip_serializing_if = "is_false")]
+    remaining: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum GivenShare {
+    Id(String),
+    Split(ActionSplit),
+}
+
+impl Serialize for ActionShare {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if self.minutes.is_none() && self.percent.is_none() {
+            return serializer.serialize_str(&self.action_id);
+        }
+        ActionSplit { action_id: self.action_id.clone(), minutes: self.minutes, percent: self.percent, remaining: self.remaining }.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ActionShare {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(match GivenShare::deserialize(deserializer)? {
+            GivenShare::Id(id) => ActionShare::whole(id),
+            GivenShare::Split(s) => ActionShare::new(s.action_id, s.minutes, s.percent, s.remaining),
+        })
+    }
+}
+
+impl Schema for ActionShare {
+    fn schema(defs: &mut crate::contract::Defs) -> serde_json::Value {
+        let split = ActionSplit::schema(defs);
+        serde_json::json!({"anyOf": [
+            {"description": "An action's id: it takes an even part of the remaining time, what the minutes and percents leave.", "type": "string"},
+            split
+        ]})
+    }
+}
+
+/// The ids of `shares`' actions, in order.
+pub fn share_ids(shares: &[ActionShare]) -> Vec<String> {
+    shares.iter().map(|s| s.action_id.clone()).collect()
 }
 
 /// Read-only lookups over one snapshot of the actions and their groups.

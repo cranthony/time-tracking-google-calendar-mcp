@@ -45,7 +45,7 @@ fn event(id: &str, actions: &[&str], with: &[&str], for_: &[&str]) -> Event {
         summary: Some("Gym".into()),
         start: Some(at()),
         end: Some(at() + chrono::Duration::hours(1)),
-        action_ids: Some(strings(actions)),
+        action_ids: Some(crate::testing::shares(actions)),
         facts: Some(Facts { with_ids: list(with), for_ids: list(for_), ..Default::default() }),
         ..Default::default()
     }
@@ -144,7 +144,7 @@ fn recording_writes_a_row_per_person_and_again_harmlessly() {
         ]
     );
     let sam = to_event(&rows::item_of(rows.iter().find(|r| text(r, "person_id") == "sam").unwrap().clone())).unwrap();
-    assert_eq!((sam.start, sam.end, sam.action_ids.clone()), (Some(at()), Some(at() + chrono::Duration::hours(1)), Some(strings(&["gym"]))));
+    assert_eq!((sam.start, sam.end, sam.action_ids.clone()), (Some(at()), Some(at() + chrono::Duration::hours(1)), Some(crate::testing::shares(&["gym"]))));
     assert_eq!(sam.facts.unwrap().with(), strings(&["sam"]));
 }
 
