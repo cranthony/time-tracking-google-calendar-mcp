@@ -15,6 +15,8 @@ pub enum GoalField {
     Required,
     #[serde(rename = "priority")]
     Priority,
+    #[serde(rename = "sort_order")]
+    SortOrder,
     #[serde(rename = "expected_minutes")]
     ExpectedMinutes,
     #[serde(rename = "deadline")]
@@ -54,7 +56,10 @@ pub struct GoalDelete {
 /// its parent, and required says whether its parent needs it done.
 /// A priority (0 the most, as actions'; optional) says how much it
 /// matters: without one, a goal takes its nearest parent's that has one,
-/// and with none up its tree it's treated as 3.
+/// and with none up its tree it's treated as 3. sort_order (optional)
+/// is the user's own order among goals that otherwise list alike (the
+/// same priority, due the same day): the lowest first, those without one
+/// after them; leave it as it is unless asked to reorder goals.
 /// Each has a title, an optional expected_minutes (how long it's
 /// expected to take: a guide for comparing with the time spent, never
 /// enforced), a deadline ("2026-11-01", due at the end of that day, or
