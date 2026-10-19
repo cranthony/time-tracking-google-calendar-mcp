@@ -185,6 +185,36 @@ fn a_persons_trait_fact_summaries_are_listed_and_set_by_hand() {
 }
 
 #[test]
+fn a_persons_own_fact_prompts_are_kept_until_their_fact_is_let_go_of() {
+    let server = Server::new();
+    let own = json!({"facts": {"thoughtful": {"what_matters": {"summary_prompt": {"text": "Their kids' names, too.", "how": "append"}}}}});
+    let sam = server.ok("create_person", json!({"person": {"name": "Sam", "traits": own}}));
+    let (id, version) = (sam["created_id"].clone(), sam["person"]["version"].clone());
+    assert_eq!(sam["person"]["traits"]["facts"]["thoughtful"]["what_matters"]["summary_prompt"]["how"], json!("append"));
+    server.refused(
+        "update_person",
+        json!({"person": {"id": id, "version": version, "traits": {"facts": {"thoughtful": {"hobbies": {"log_prompt": {"text": "x"}}}}}}}),
+        "names fact 'hobbies', which it doesn't have",
+    );
+
+    // The trait lets go of the fact: the next save of them lets go of theirs.
+    let thoughtful = server.ok("get_traits", json!({})).as_array().unwrap().iter().find(|t| t["id"] == "thoughtful").unwrap().clone();
+    let parts: Vec<Value> = thoughtful["parts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| {
+            let mut p = p.clone();
+            p["facts"] = json!(["action", "general_notes"]);
+            p
+        })
+        .collect();
+    server.ok("update_trait", json!({"trait": {"id": "thoughtful", "version": thoughtful["version"], "parts": parts, "facts": []}}));
+    let saved = server.ok("update_person", json!({"person": {"id": id, "version": version, "context": "from salsa"}}));
+    assert_eq!(saved["traits"], json!({}));
+}
+
+#[test]
 fn location_tools_run_the_store() {
     let server = Server::new();
 

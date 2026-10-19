@@ -11,7 +11,7 @@ use crate::py;
 use crate::stores::cancellations::traits_for;
 use crate::stores::people::Person;
 use crate::stores::person_facts::{PersonFacts, SummariesByPerson, SummaryChange, MAX_SUMMARY_CHARS};
-use crate::stores::traits::{Trait, TraitStatus, Traits};
+use crate::stores::traits::{effective_prompts, Trait, TraitStatus, Traits, PROMPT_THE_TRAITS};
 use serde_json::{json, Map, Value};
 
 /// What compaction keeps people's trait facts with.
@@ -100,17 +100,34 @@ fn every_fact(traits: &[Trait]) -> Vec<String> {
     facts_for(None, traits)
 }
 
-/// Each of `person`'s facts, with their summary of it if they have one.
+/// Each of `person`'s facts, with their summary of it if they have one --
+/// and, where they have prompts of their own for it, the prompts it's
+/// kept by for them (see traits::effective_prompts), each with where it
+/// came from.
 pub fn person_facts(person: &Person, traits: &[Trait], summaries: &SummariesByPerson) -> Vec<Value> {
     let id = person.id.clone().unwrap_or_default();
     let theirs = summaries.iter().find(|(p, _)| *p == id).map(|(_, s)| s.as_slice()).unwrap_or_default();
-    facts_for(person.traits.clone().map(Value::Object).as_ref(), traits)
-        .into_iter()
-        .map(|key| {
-            let summary = theirs.iter().find(|(t, f, _)| format!("{t}/{f}") == key).map(|(_, _, s)| s.clone());
-            json!({"fact": key, "summary": summary})
-        })
-        .collect()
+    let spec = person.traits.clone().map(Value::Object);
+    let mut out = Vec::new();
+    for (t, _) in traits_for(spec.as_ref(), traits) {
+        let trait_id = t.id.clone().unwrap_or_default();
+        for fact in t.facts.iter().flatten() {
+            let fact_id = fact.get("id").and_then(Value::as_str).unwrap_or_default();
+            let key = format!("{trait_id}/{fact_id}");
+            let summary = theirs.iter().find(|(t, f, _)| *t == trait_id && f == fact_id).map(|(_, _, s)| s.clone());
+            let mut listed = json!({"fact": key, "summary": summary});
+            let ((summary_prompt, summary_from), log) = effective_prompts(fact, spec.as_ref(), &trait_id);
+            let log_from = log.as_ref().map(|(_, from)| *from).unwrap_or(PROMPT_THE_TRAITS);
+            if summary_from != PROMPT_THE_TRAITS || log_from != PROMPT_THE_TRAITS {
+                listed["summary_prompt"] = json!(summary_prompt);
+                listed["summary_prompt_from"] = json!(summary_from);
+                listed["log_prompt"] = json!(log.as_ref().map(|(text, _)| text));
+                listed["log_prompt_from"] = json!(log.as_ref().map(|(_, from)| from));
+            }
+            out.push(listed);
+        }
+    }
+    out
 }
 
 /// What's wrong with Claude's logs (in its decisions' facts) and

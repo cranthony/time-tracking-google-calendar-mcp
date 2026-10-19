@@ -9495,7 +9495,7 @@
     }
   },
   {
-    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]},\n\"part_scoring\": {trait id: scoring}, \"scoring\": scoring}, all\noptional -- the traits that apply to them (by default every active\none); parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}; how a trait's parts combine\nfor them, in place of the trait's scoring (weights by part id: their\nown parts' ids, if they have them); and how their traits combine into\ntheir score, in place of the scoring defaults' traits (weights by\ntrait id) -- each an aggregation (see get_scoring_defaults); and\nfoundations (see\nget_people: habits as \"habit:<id>\", people by id; none of them\ndeleted, and never making a cycle). Active unless given a status. id\nis assigned. facts sets their trait facts' summaries (see get_people).\nReturns the person and their id as created_id.",
+    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]},\n\"part_scoring\": {trait id: scoring}, \"scoring\": scoring}, all\noptional -- the traits that apply to them (by default every active\none); parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}; how a trait's parts combine\nfor them, in place of the trait's scoring (weights by part id: their\nown parts' ids, if they have them); and how their traits combine into\ntheir score, in place of the scoring defaults' traits (weights by\ntrait id) -- each an aggregation (see get_scoring_defaults); and their\nown prompts for a trait's facts (see get_traits), {\"facts\": {trait\nid: {fact id: {\"summary_prompt\": {\"text\": ..., \"how\": \"replace\" or\n\"append\"}, \"log_prompt\": {...}}}}}, each optional -- \"replace\" (the\ndefault) keeps their summary by their text in place of the trait's,\n\"append\" by the trait's with theirs after it -- kept for a trait that\ndoesn't apply to them too, and let go of once the trait no longer has\nthe fact (when they're next saved); and\nfoundations (see\nget_people: habits as \"habit:<id>\", people by id; none of them\ndeleted, and never making a cycle). Active unless given a status. id\nis assigned. facts sets their trait facts' summaries (see get_people).\nReturns the person and their id as created_id.",
     "inputSchema": {
       "properties": {
         "person": {
@@ -15884,12 +15884,36 @@
           "type": "object"
         },
         "ContextPersonFact": {
-          "description": "One of a person's trait facts (\"<trait id>/<fact id>\", described in\n`trait_facts`), and their summary of it, if they have one.",
+          "description": "One of a person's trait facts (\"<trait id>/<fact id>\", described in\n`trait_facts`), and their summary of it, if they have one. Where they\nhave prompts of their own for it, the prompts it's kept by for them --\nto follow in place of the trait's -- each with where it came from\n(\"the trait's\", \"their own\", or \"the trait's, plus theirs\").",
           "properties": {
             "fact": {
               "type": "string"
             },
             "summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "summary_prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "summary_prompt_from": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "log_prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "log_prompt_from": {
               "type": [
                 "string",
                 "null"

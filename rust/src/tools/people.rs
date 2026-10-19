@@ -307,7 +307,14 @@ pub fn get_person(app: &App, id_or_name: String) -> Result<ListedPerson, ToolErr
 /// for them, in place of the trait's scoring (weights by part id: their
 /// own parts' ids, if they have them); and how their traits combine into
 /// their score, in place of the scoring defaults' traits (weights by
-/// trait id) -- each an aggregation (see get_scoring_defaults); and
+/// trait id) -- each an aggregation (see get_scoring_defaults); and their
+/// own prompts for a trait's facts (see get_traits), {"facts": {trait
+/// id: {fact id: {"summary_prompt": {"text": ..., "how": "replace" or
+/// "append"}, "log_prompt": {...}}}}}, each optional -- "replace" (the
+/// default) keeps their summary by their text in place of the trait's,
+/// "append" by the trait's with theirs after it -- kept for a trait that
+/// doesn't apply to them too, and let go of once the trait no longer has
+/// the fact (when they're next saved); and
 /// foundations (see
 /// get_people: habits as "habit:<id>", people by id; none of them
 /// deleted, and never making a cycle). Active unless given a status. id

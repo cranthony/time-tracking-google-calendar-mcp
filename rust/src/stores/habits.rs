@@ -12,7 +12,7 @@ use crate::stores::actions::{Action, ActionStatus};
 use crate::stores::groups::{repr_or_none, set, str_or_none, GroupTree};
 use crate::stores::locations::dedup;
 use crate::stores::people::{Status, TraitIds};
-use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids};
+use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids, SpecOf};
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -337,7 +337,7 @@ pub fn habit_problems(habits: &[Habit], scopes: Option<&Scopes>, trait_ids: Opti
             problems.push(format!("{label}'s status must be one of {}", HABIT_STATUSES.join(", ")));
         }
         if let Some(traits) = &habit.traits {
-            for p in person_traits_problems(&Value::Object(traits.clone()), trait_ids) {
+            for p in person_traits_problems(&Value::Object(traits.clone()), trait_ids, SpecOf::Habit) {
                 problems.push(format!("{label}'s traits {p}"));
             }
         }

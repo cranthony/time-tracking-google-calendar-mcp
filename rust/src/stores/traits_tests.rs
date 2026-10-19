@@ -393,7 +393,7 @@ fn accepts_valid_person_trait_specs() {
         json!({"scoring": {"limit": 2, "limit_by": "worst"}, "part_scoring": {"reliable": {"weights": {"count": 2}}}}),
         json!({"parts": {"creative": [with(judgment(), "id", json!("mine"))]}, "part_scoring": {"creative": {"weights": {"mine": 3}}}}),
     ] {
-        assert!(person_traits_problems(&spec, Some(&ids)).is_empty(), "{spec}");
+        assert!(person_traits_problems(&spec, Some(&ids), SpecOf::Person).is_empty(), "{spec}");
     }
 }
 
@@ -412,7 +412,7 @@ fn refuses_invalid_person_trait_specs() {
     ];
 
     for (spec, problem) in cases {
-        let problems = person_traits_problems(&spec, Some(&ids));
+        let problems = person_traits_problems(&spec, Some(&ids), SpecOf::Person);
         assert!(problems.first().is_some_and(|p| p.starts_with(problem)), "{spec}: {problems:?}");
     }
 }
@@ -517,3 +517,80 @@ fn refuses_what_isnt_a_fact() {
     }
 }
 
+
+// -- a person's own fact prompts -------------------------------------------------------------------
+
+fn worries_trait() -> Trait {
+    given(json!({"id": "caring", "name": "Caring", "status": "active", "parts": [judgment()], "facts": [
+        {"id": "worries", "name": "Worries", "summary_prompt": "What weighs on them.", "log_prompt": "What new worry showed."},
+        {"id": "joys", "name": "Joys", "summary_prompt": "What delights them."}
+    ]}))
+}
+
+fn spec_map(value: Value) -> Map<String, Value> {
+    value.as_object().unwrap().clone()
+}
+
+#[test]
+fn a_persons_own_fact_prompts_are_checked_for_their_shape() {
+    let ids = strings(&["caring", "reliable"]);
+    let fine = json!({"select": ["reliable"], "facts": {"caring": {"worries": {
+        "summary_prompt": {"text": "Their health, mostly.", "how": "replace"},
+        "log_prompt": {"text": "Say who told me."}
+    }}}});
+    // Kept for a trait that doesn't apply to them, too.
+    assert!(person_traits_problems(&fine, Some(&ids), SpecOf::Person).is_empty());
+    let long = "x".repeat(MAX_PROMPT_CHARS + 1);
+    for (facts, problem) in [
+        (json!([]), "\"facts\" must be {trait id"),
+        (json!({"kind": {}}), "\"facts\" names 'kind', which isn't a trait"),
+        (json!({"caring": {"worries": "x"}}), "\"facts\" for 'caring''s 'worries' must be"),
+        (json!({"caring": {"worries": {"rubric": {}}}}), "\"facts\" for 'caring''s 'worries' has no field \"rubric\""),
+        (json!({"caring": {"worries": {"summary_prompt": {"text": " "}}}}), "\"facts\" for 'caring''s 'worries''s \"summary_prompt\" needs \"text\""),
+        (json!({"caring": {"worries": {"summary_prompt": {"text": "x", "how": "prepend"}}}}), "\"facts\" for 'caring''s 'worries''s \"summary_prompt\" \"how\" must be"),
+        (json!({"caring": {"worries": {"log_prompt": {"text": long}}}}), "\"facts\" for 'caring''s 'worries''s \"log_prompt\" text is longer"),
+    ] {
+        let problems = person_traits_problems(&json!({"facts": facts}), Some(&ids), SpecOf::Person);
+        assert!(problems.first().is_some_and(|p| p.starts_with(problem)), "{facts}: {problems:?}");
+    }
+    // A habit has none of its own.
+    let problems = person_traits_problems(&fine, Some(&ids), SpecOf::Habit);
+    assert!(problems.first().is_some_and(|p| p.contains("only a person has prompts of their own")), "{problems:?}");
+}
+
+#[test]
+fn a_fact_its_trait_doesnt_have_is_refused_when_given_and_let_go_of_when_kept() {
+    let traits = vec![worries_trait()];
+    let stale = spec_map(json!({"facts": {"caring": {"gone": {"summary_prompt": {"text": "x", "how": "replace"}}}}}));
+    let problems = fact_override_problems(&stale, None, &traits);
+    assert_eq!(problems, vec!["\"facts\" for 'caring' names fact 'gone', which it doesn't have (worries, joys)"]);
+    // Kept as it was, it isn't refused, and is let go of.
+    assert!(fact_override_problems(&stale, Some(&stale), &traits).is_empty());
+    assert_eq!(settled_fact_overrides(&stale, Some(&traits)), Map::new());
+    // Settled, each prompt says how, and empty ones are dropped.
+    let given = spec_map(json!({"select": "all", "facts": {"caring": {"worries": {"summary_prompt": {"text": "x"}}, "joys": {}}, "reliable": {}}}));
+    assert_eq!(
+        Value::Object(settled_fact_overrides(&given, None)),
+        json!({"select": "all", "facts": {"caring": {"worries": {"summary_prompt": {"text": "x", "how": "replace"}}}}})
+    );
+}
+
+#[test]
+fn a_persons_prompts_replace_or_follow_the_traits() {
+    let t = worries_trait();
+    let (worries, joys) = (t.fact("worries").unwrap(), t.fact("joys").unwrap());
+    let spec = json!({"facts": {"caring": {
+        "worries": {"summary_prompt": {"text": "Their health.", "how": "append"}, "log_prompt": {"text": "Who told me.", "how": "replace"}},
+        "joys": {"log_prompt": {"text": "Say when.", "how": "append"}}
+    }}});
+    assert_eq!(
+        effective_prompts(worries, Some(&spec), "caring"),
+        (("What weighs on them.\n\nTheir health.".to_string(), PROMPT_BOTH), Some(("Who told me.".to_string(), PROMPT_THEIR_OWN)))
+    );
+    // The trait has no log prompt: theirs is all there is.
+    assert_eq!(
+        effective_prompts(joys, Some(&spec), "caring"),
+        (("What delights them.".to_string(), PROMPT_THE_TRAITS), Some(("Say when.".to_string(), PROMPT_THEIR_OWN)))
+    );
+    assert_eq!(effective_prompts(joys, None, "caring"), (("What delights them.".to_string(), PROMPT_THE_TRAITS), None));
+}

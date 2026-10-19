@@ -331,11 +331,22 @@ pub struct ContextPerson {
 }
 
 /// One of a person's trait facts ("<trait id>/<fact id>", described in
-/// `trait_facts`), and their summary of it, if they have one.
+/// `trait_facts`), and their summary of it, if they have one. Where they
+/// have prompts of their own for it, the prompts it's kept by for them --
+/// to follow in place of the trait's -- each with where it came from
+/// ("the trait's", "their own", or "the trait's, plus theirs").
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ContextPersonFact {
     pub fact: String,
     pub summary: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary_prompt_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_prompt_from: Option<String>,
 }
 
 /// A trait fact, described once: what its summary of each person keeps
