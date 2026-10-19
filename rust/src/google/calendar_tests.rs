@@ -254,7 +254,7 @@ fn updating_an_event_nulls_only_the_properties_it_has() {
     body.insert("id".into(), json!("ev1"));
     body.insert(
         "extendedProperties".into(),
-        json!({"private": {"cascading-time-tracker-facts": "{}", "cascading-time-tracker-facts-2": "x", "cascading-time-tracker-priority": "1"}}),
+        json!({"private": {"cascading-time-tracker-facts": "{}", "cascading-time-tracker-facts-2": "x", "cascading-time-tracker-priority": "1", "cascading-time-tracker-person-p2": "1"}}),
     );
     f.fake.add_event(&f.calendar_id, Value::Object(body));
     let patch = Event {
@@ -272,7 +272,14 @@ fn updating_an_event_nulls_only_the_properties_it_has() {
     let sent = &f.requests("PATCH", "/events/ev1")[0].body;
     assert_eq!(
         sent["extendedProperties"]["private"],
-        json!({"cascading-time-tracker-facts": "{\"with\":[\"p1\"]}", "cascading-time-tracker-facts-2": null, "cascading-time-tracker-priority": null})
+        json!({
+            "cascading-time-tracker-facts": "{\"with\":[\"p1\"]}",
+            "cascading-time-tracker-facts-2": null,
+            "cascading-time-tracker-person-p1": "1",
+            "cascading-time-tracker-priority": null,
+            // No longer named, so no longer indexed under.
+            "cascading-time-tracker-person-p2": null,
+        })
     );
     assert_eq!(sent["location"], Value::Null);
 }
@@ -835,4 +842,70 @@ fn a_write_moves_what_is_kept_on_as_it_begins_and_again_as_it_ends() {
     f.client.delete_event("ev1").unwrap();
 
     assert_eq!(generation(), before + 2);
+}
+
+// -- what's kept starts a while back ----------------------------------------------------
+
+/// The fixture, its clock at `now`, so what's kept starts
+/// `synced::KEPT_DAYS` before it.
+fn fixture_at(now: &str) -> Fixture {
+    crate::determinism::TEST_NOW.with(|n| n.set(Some(at(now))));
+    fixture()
+}
+
+#[test]
+fn a_listing_from_before_whats_kept_asks_calendar_for_that_part() {
+    let f = fixture_at("2026-10-01T00:00:00+00:00");
+    f.add("long_ago", "2024-06-01T09:00:00+00:00", "2024-06-01T10:00:00+00:00");
+    f.add("lately", "2026-09-01T09:00:00+00:00", "2026-09-01T10:00:00+00:00");
+
+    let events = f.client.list_events(&at("2024-01-01T00:00:00+00:00"), &at("2026-10-01T00:00:00+00:00")).unwrap();
+
+    assert_eq!(ids(&events), vec!["long_ago", "lately"]);
+    let asked: Vec<LoggedRequest> = f.requests("GET", "/events").into_iter().filter(|r| query(r, "singleEvents") == Some("true")).collect();
+    assert_eq!(asked.len(), 1);
+    assert_eq!(query(&asked[0], "timeMax"), Some("2025-08-27T00:00:00+00:00"));
+    // What's lately comes from what's kept.
+    let before = f.requests("GET", "/events").len();
+    assert_eq!(ids(&f.client.list_events(&at("2026-09-01T00:00:00+00:00"), &at("2026-09-02T00:00:00+00:00")).unwrap()), vec!["lately"]);
+    assert_eq!(f.requests("GET", "/events").len(), before);
+}
+
+#[test]
+fn an_instance_from_before_whats_kept_is_got_from_calendar() {
+    let f = fixture_at("2026-10-01T00:00:00+00:00");
+    let mut series = event(Some("walks"), "2024-06-01T09:00:00+00:00", "2024-06-01T10:00:00+00:00");
+    series.recurrence = Some(vec!["RRULE:FREQ=DAILY;COUNT=5".into()]);
+    series.time_zone = Some("UTC".into());
+    let mut body = series.insert_body().unwrap();
+    body.insert("id".into(), json!("walks"));
+    f.fake.add_event(&f.calendar_id, Value::Object(body));
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.update_event(&Event { id: Some("walks_20240603T090000Z".into()), summary: Some("Long walk".into()), ..Default::default() }).unwrap();
+    }
+
+    let got = f.client.get_event("walks_20240603T090000Z").unwrap();
+
+    assert_eq!(got.summary.as_deref(), Some("Long walk"));
+    assert!(!f.requests("GET", "/events/walks_20240603T090000Z").is_empty());
+}
+
+#[test]
+fn listing_by_a_private_property_before_whats_kept_asks_calendar_with_it() {
+    let f = fixture_at("2026-10-01T00:00:00+00:00");
+    let mut old = event(Some("old"), "2024-06-01T09:00:00+00:00", "2024-06-01T10:00:00+00:00");
+    old.facts = Some(crate::testing::facts(json!({"with": ["sam"]})));
+    f.fake.add_event(&f.calendar_id, Value::Object({
+        let mut body = old.insert_body().unwrap();
+        body.insert("id".into(), json!("old"));
+        body
+    }));
+    f.add("other", "2024-06-02T09:00:00+00:00", "2024-06-02T10:00:00+00:00");
+
+    let listed = f.client.list_event_resources(&at("2024-01-01T00:00:00+00:00"), &at("2026-10-01T00:00:00+00:00"), Some("cascading-time-tracker-person-sam=1")).unwrap();
+
+    assert_eq!(listed.iter().map(|e| e["id"].as_str().unwrap()).collect::<Vec<_>>(), vec!["old"]);
+    let asked = f.requests("GET", "/events").into_iter().find(|r| query(r, "singleEvents") == Some("true")).unwrap();
+    assert_eq!(query(&asked, "privateExtendedProperty"), Some("cascading-time-tracker-person-sam=1"));
 }

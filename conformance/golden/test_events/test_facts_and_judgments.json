@@ -1670,7 +1670,8 @@
     "eventLabelId": "d47efd31-3b45-5318-88a5-73959ba725fa",
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-facts": "{\"locations\":[\"3dnjav\"],\"with\":[\"co2yzn\"],\"notes\":{\"co2yzn\":\"enjoyed it\",\"self\":\"tired\"}}"
+      "cascading-time-tracker-facts": "{\"locations\":[\"3dnjav\"],\"with\":[\"co2yzn\"],\"notes\":{\"co2yzn\":\"enjoyed it\",\"self\":\"tired\"}}",
+      "cascading-time-tracker-person-co2yzn": "1"
      }
     },
     "start": {
@@ -1844,7 +1845,8 @@
     "extendedProperties": {
      "private": {
       "cascading-time-tracker-facts": null,
-      "cascading-time-tracker-judgments": null
+      "cascading-time-tracker-judgments": null,
+      "cascading-time-tracker-person-co2yzn": null
      }
     }
    },

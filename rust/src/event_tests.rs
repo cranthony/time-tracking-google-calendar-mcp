@@ -301,7 +301,7 @@ fn long_facts_are_split_across_properties_and_joined_on_read() {
     let set: Map<String, Value> = private(&sent).as_object().unwrap().iter().filter(|(_, v)| !v.is_null()).map(|(k, v)| (k.clone(), v.clone())).collect();
     let mut keys: Vec<&String> = set.keys().collect();
     keys.sort();
-    assert_eq!(keys, vec!["cascading-time-tracker-facts", "cascading-time-tracker-facts-2"]);
+    assert_eq!(keys, vec!["cascading-time-tracker-facts", "cascading-time-tracker-facts-2", "cascading-time-tracker-person-p1"]);
     assert!(set.values().all(|v| v.as_str().unwrap().chars().count() <= 1024));
     let data = json!({
         "id": "abc123",
@@ -320,7 +320,18 @@ fn an_insert_sends_no_null_properties() {
 
     let sent = event.insert_body().unwrap();
 
-    assert_eq!(private(&sent), json!({"cascading-time-tracker-facts": "{\"with\":[\"p1\"]}"}));
+    assert_eq!(private(&sent), json!({"cascading-time-tracker-facts": "{\"with\":[\"p1\"]}", "cascading-time-tracker-person-p1": "1"}));
+}
+
+#[test]
+fn facts_index_the_event_under_each_person_they_name_but_the_user() {
+    let event = Event { facts: Some(facts(json!({"with": ["p1"], "for": ["p2"], "notes": {"self": "glad", "p3": "quiet"}}))), ..focus() };
+
+    let sent = event.insert_body().unwrap();
+
+    let mut keys: Vec<String> = private(&sent).as_object().unwrap().keys().filter(|k| is_person_key(k)).cloned().collect();
+    keys.sort();
+    assert_eq!(keys, vec![person_key("p1"), person_key("p2"), person_key("p3")]);
 }
 
 #[test]

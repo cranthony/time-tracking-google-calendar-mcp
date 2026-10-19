@@ -360,20 +360,23 @@ impl CalendarClient {
         let lock = synced::sync_lock(&self.root(), &self.calendar_id);
         let _syncing = lock.lock().unwrap_or_else(|e| e.into_inner());
         let (token, generation) = self.store(|store| (store.token.clone(), store.generation));
+        let from = synced::kept_from_now();
         let (changes, full) = match token {
-            Some(token) => match self.changes(Some(&token)) {
+            Some(token) => match self.changes(Some(&token), from) {
                 Ok(changes) => (changes, false),
-                Err(error) if status_of(&error) == Some(410) => (self.changes(None)?, true),
+                Err(error) if status_of(&error) == Some(410) => (self.changes(None, from)?, true),
                 Err(error) => return Err(error),
             },
-            None => (self.changes(None)?, true),
+            None => (self.changes(None, from)?, true),
         };
         let now = std::time::Instant::now();
         self.store(|store| {
+            store.zone = changes.zone.or(store.zone);
+            store.start_at(from);
             let listed: Option<std::collections::HashSet<String>> =
                 full.then(|| changes.items.iter().filter_map(|item| item["id"].as_str().map(str::to_string)).collect());
             for item in changes.items {
-                if !full && !store.is_ours(&item, now) {
+                if !full && !store.is_ours(&item, now) && !store.only_reindexed(&item) {
                     store.outside.push(item.clone());
                 }
                 store.brought(&item);
@@ -383,7 +386,6 @@ impl CalendarClient {
             if let Some(listed) = listed {
                 store.keep_only(&listed, now);
             }
-            store.zone = changes.zone.or(store.zone);
             // Up to date only if no write began or ended while this ran.
             if store.generation == generation {
                 store.stale = false;
@@ -405,8 +407,11 @@ impl CalendarClient {
     }
 
     /// What changed since `token` (everything, for `None`): every event,
-    /// series master and exception, cancelled ones included, unexpanded.
-    fn changes(&self, token: Option<&str>) -> anyhow::Result<Changes> {
+    /// series master and exception, cancelled ones included, unexpanded --
+    /// though everything leaves out those too old to keep from `from`
+    /// (see `synced`) as each page comes, so a long history is never held
+    /// whole.
+    fn changes(&self, token: Option<&str>, from: chrono::DateTime<chrono::Utc>) -> anyhow::Result<Changes> {
         let mut items = Vec::new();
         let mut page_token: Option<String> = None;
         loop {
@@ -417,37 +422,124 @@ impl CalendarClient {
             if let Some(page) = &page_token {
                 query.push(("pageToken", page.clone()));
             }
-            let response = self.call("GET", &self.events_path(), &query, None)?;
-            items.extend(response.get("items").and_then(Value::as_array).cloned().unwrap_or_default());
+            let mut response = self.call("GET", &self.events_path(), &query, None)?;
+            let zone: Option<Tz> = response.get("timeZone").and_then(Value::as_str).and_then(|z| z.parse().ok());
+            if let Some(Value::Array(page)) = response.get_mut("items").map(Value::take) {
+                let old = |item: &Value| token.is_none() && synced::too_old(item, from, zone.unwrap_or(chrono_tz::UTC));
+                items.extend(page.into_iter().filter(|item| !old(item)));
+            }
             page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
             if page_token.is_none() {
                 let token = response.get("nextSyncToken").and_then(Value::as_str).ok_or_else(|| anyhow!("Calendar gave no nextSyncToken"))?;
-                let zone = response.get("timeZone").and_then(Value::as_str).and_then(|z| z.parse().ok());
                 return Ok(Changes { items, token: token.to_string(), zone });
             }
         }
     }
 
     /// The events in [`time_min`, `time_max`) as a singleEvents=true listing
-    /// gives them (cancelled ones left out), from what's kept; with
+    /// gives them (cancelled ones left out), sorted by start; with
     /// `private_property` ("key=value"), only those with that private
-    /// extended property.
+    /// extended property. What's kept gives those from where it starts
+    /// on; Calendar itself, those before.
     fn listed(&self, time_min: &Moment, time_max: &Moment, private_property: Option<&str>) -> anyhow::Result<Vec<Value>> {
         self.ensure_synced()?;
-        let (events, zone) = self.store(|store| (store.events.values().cloned().collect::<Vec<Value>>(), store.zone));
         let (min, max) = (time_min.with_timezone(&chrono::Utc), time_max.with_timezone(&chrono::Utc));
-        let mut listed = expand::expand(zone.unwrap_or(chrono_tz::UTC), &events, Some(min), Some(max), false, max);
+        let (events, zone, from) = self.store(|store| {
+            let zone = store.zone.unwrap_or(chrono_tz::UTC);
+            let from = store.from.unwrap_or(min);
+            // Only what may be in the range: not every event kept, each time.
+            let near = |e: &Value| {
+                expand::is_master(e)
+                    || synced::reach(e, zone).is_none_or(|(earliest, latest)| {
+                        latest >= min.max(from) - chrono::Duration::days(1) && earliest <= max + chrono::Duration::days(1)
+                    })
+            };
+            let events: Vec<Value> = if max > from { store.events.values().filter(|e| near(e)).cloned().collect() } else { Vec::new() };
+            (events, zone, from)
+        });
+        let mut listed = if max > from { expand::expand(zone, &events, Some(min.max(from)), Some(max), false, max) } else { Vec::new() };
         if let Some((key, value)) = private_property.map(|p| p.split_once('=').unwrap_or((p, ""))) {
             listed.retain(|e| e.pointer("/extendedProperties/private").and_then(|p| p.get(key)).and_then(Value::as_str) == Some(value));
+        }
+        if min < from {
+            let kept: std::collections::HashSet<String> = listed.iter().filter_map(|e| e["id"].as_str().map(str::to_string)).collect();
+            let earlier = self.asked(&min, &max.min(from), private_property)?;
+            listed.extend(earlier.into_iter().filter(|e| e["id"].as_str().is_none_or(|id| !kept.contains(id))));
+            expand::sort_by_start(zone, &mut listed);
         }
         Ok(listed)
     }
 
+    /// Every event, series master and exception on the calendar, as
+    /// Calendar itself lists them (singleEvents=false, cancelled ones left
+    /// out) -- not from what's kept, which starts `synced::KEPT_DAYS` back.
+    /// For going over the whole history (calendar_cli index_people).
+    pub fn every_event_resource(&self) -> anyhow::Result<Vec<Value>> {
+        let mut items = Vec::new();
+        let mut page_token: Option<String> = None;
+        loop {
+            let mut query = vec![("singleEvents", "false".to_string()), ("maxResults", LIST_PAGE_SIZE.to_string())];
+            if let Some(token) = &page_token {
+                query.push(("pageToken", token.clone()));
+            }
+            let response = self.call("GET", &self.events_path(), &query, None)?;
+            items.extend(response.get("items").and_then(Value::as_array).cloned().unwrap_or_default());
+            page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
+            if page_token.is_none() {
+                return Ok(items);
+            }
+        }
+    }
+
+    /// The request that sets event `event_id`'s private properties to
+    /// `private` (a null removing one), made on version `etag`, for
+    /// `send_writes`.
+    pub fn private_properties_request(&self, event_id: &str, private: Map<String, Value>, etag: Option<&str>) -> BatchRequest {
+        BatchRequest {
+            method: "PATCH",
+            path: self.event_path(event_id),
+            query: Vec::new(),
+            body: Some(json!({"extendedProperties": {"private": private}})),
+            if_match: etag.map(str::to_string),
+        }
+    }
+
+    /// The events in [`time_min`, `time_max`) as Calendar itself lists them
+    /// (singleEvents=true, cancelled ones left out), with `private_property`
+    /// as `listed` takes it: for what's from before what's kept.
+    fn asked(&self, time_min: &chrono::DateTime<chrono::Utc>, time_max: &chrono::DateTime<chrono::Utc>, private_property: Option<&str>) -> anyhow::Result<Vec<Value>> {
+        let mut items = Vec::new();
+        let mut page_token: Option<String> = None;
+        loop {
+            let mut query = vec![
+                ("timeMin", py::isoformat(&time_min.fixed_offset())),
+                ("timeMax", py::isoformat(&time_max.fixed_offset())),
+                ("singleEvents", "true".to_string()),
+                ("maxResults", LIST_PAGE_SIZE.to_string()),
+            ];
+            if let Some(property) = private_property {
+                query.push(("privateExtendedProperty", property.to_string()));
+            }
+            if let Some(token) = &page_token {
+                query.push(("pageToken", token.clone()));
+            }
+            let response = self.call("GET", &self.events_path(), &query, None)?;
+            items.extend(response.get("items").and_then(Value::as_array).cloned().unwrap_or_default());
+            page_token = response.get("nextPageToken").and_then(Value::as_str).map(str::to_string);
+            if page_token.is_none() {
+                return Ok(items);
+            }
+        }
+    }
+
     /// Event `event_id` as kept: stored, or an instance made from its
     /// series' master. `None` for one not kept, or cancelled.
+    /// Nor one of a series from before what's kept starts, which may
+    /// have been edited on its own, its exception no longer kept.
     fn kept_event(&self, event_id: &str) -> Option<Value> {
         self.store(|store| {
             let zone = store.zone.unwrap_or(chrono_tz::UTC);
+            let from = store.from;
             let live = |e: Value| (e["status"] != "cancelled").then_some(e);
             if let Some(event) = store.events.get(event_id) {
                 let master = event["recurringEventId"].as_str().and_then(|m| store.events.get(m));
@@ -461,6 +553,9 @@ impl CalendarClient {
             for master in parts {
                 let original: Option<When> = expand::occurrences(zone, master, until).into_iter().find(|o| o.suffix() == when);
                 if let Some(original) = original {
+                    if from.is_some_and(|from| original.key(zone) < from - chrono::Duration::days(1)) {
+                        return None;
+                    }
                     return live(expand::instance(zone, master, original, None));
                 }
             }
@@ -595,12 +690,11 @@ impl CalendarClient {
     pub fn update_event_request(&self, event: &Event) -> anyhow::Result<BatchRequest> {
         let id = event.id.as_deref().ok_or_else(|| anyhow!("event.id is required to update an event"))?;
         let mut body = event.to_api_body()?;
-        let private_has_null = body
-            .get("extendedProperties")
-            .and_then(|e| e.get("private"))
-            .and_then(Value::as_object)
-            .is_some_and(|p| !p.is_empty() && p.values().any(Value::is_null));
-        if private_has_null {
+        let private = body.get("extendedProperties").and_then(|e| e.get("private")).and_then(Value::as_object);
+        let private_has_null = private.is_some_and(|p| !p.is_empty() && p.values().any(Value::is_null));
+        // Facts written, set or cleared, replace the people it's indexed under.
+        let writes_facts = private.is_some_and(|p| p.contains_key(&format!("{}facts", crate::event::PREFIX)));
+        if private_has_null || writes_facts {
             // A null removes a property -- but Calendar refuses one an
             // instance doesn't have, and facts null every chunk they don't
             // use. Removing what isn't there is nothing, so drop those.
@@ -615,7 +709,12 @@ impl CalendarClient {
                 .and_then(|e| e.get("private"))
                 .and_then(Value::as_object)
                 .unwrap_or(&empty);
-            let private = body["extendedProperties"]["private"].as_object().unwrap().clone();
+            let mut private = body["extendedProperties"]["private"].as_object().unwrap().clone();
+            if writes_facts {
+                for key in current_private.keys().filter(|k| crate::event::is_person_key(k)) {
+                    private.entry(key.clone()).or_insert(Value::Null);
+                }
+            }
             let kept: Map<String, Value> =
                 private.into_iter().filter(|(k, v)| !v.is_null() || current_private.contains_key(k)).collect();
             if kept.is_empty() {

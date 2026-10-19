@@ -26,6 +26,27 @@ pub fn chunks(name: &str) -> usize {
 
 const CHUNK_CHARS: usize = 1024;
 
+/// What a person's index property is set to: Calendar can list events by
+/// a private property only as key=value.
+pub const PERSON_INDEXED: &str = "1";
+
+/// The private property each person an event's facts name has on it, so
+/// Calendar can list their events (`privateExtendedProperty`) without
+/// reading every one: with, for or noted alike.
+pub fn person_key(person_id: &str) -> String {
+    format!("{PREFIX}person-{person_id}")
+}
+
+/// Whether `key` is a person's index property.
+pub fn is_person_key(key: &str) -> bool {
+    key.starts_with(&format!("{PREFIX}person-"))
+}
+
+/// The index properties `facts` call for, by key.
+pub fn person_properties(facts: &Facts) -> Vec<String> {
+    facts.people().into_iter().filter(|id| id != "self").map(|id| person_key(&id)).collect()
+}
+
 pub type Moment = DateTime<FixedOffset>;
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -227,6 +248,11 @@ impl Event {
             let text = if facts.is_empty() { None } else { Some(facts.to_json()) };
             for (key, value) in write_chunks("facts", text.as_deref())? {
                 set(&mut private, key, value);
+            }
+            // Those it no longer names are removed as it's written (see
+            // CalendarClient::update_event_request).
+            for key in person_properties(facts) {
+                set(&mut private, key, Some(PERSON_INDEXED.into()));
             }
         }
         if let Some(judgments) = &self.judgments {

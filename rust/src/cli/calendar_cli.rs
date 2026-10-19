@@ -20,6 +20,7 @@
 //!     calendar_cli get_notes
 //!     calendar_cli edit_note <note_id> [--ago <ago> | --at <time>] [--description <text>]
 //!     calendar_cli delete_note <note_id>
+//!     calendar_cli index_people [--dry-run]
 //!
 //! See ../README.md ("calendar_cli") for what each does. Durations (`list`'s
 //! from/to, `note`'s ago) are pytimeparse's: "1h", "90m", "2d", "1:30".
@@ -331,6 +332,69 @@ fn print_actions(out: &mut dyn Write, listed: &Value, key: &str, none: &str) {
 
 // -- the commands -------------------------------------------------------------
 
+/// Give every event on the calendar, back to its first, the person index
+/// properties its facts call for (see event::person_key), and none it
+/// doesn't: those written before the index was, or since by hand. A
+/// series' master is left alone and listed -- a patch to one resets every
+/// instance edited on its own -- as are those Calendar refuses (changed
+/// meanwhile: run it again). With `dry_run`, only says what it would do.
+fn index_people(app: &Arc<App>, dry_run: bool, out: &mut dyn Write) -> Result<(), Failure> {
+    use crate::event::{is_person_key, person_properties, PERSON_INDEXED};
+    let client = app.calendar_client()?;
+    let (mut indexed, mut series) = (0, Vec::new());
+    let mut writes = Vec::new();
+    let mut changed = Vec::new();
+    for item in client.every_event_resource()? {
+        let event = Event::from_api(&item)?;
+        let want: Vec<String> = event.facts.as_ref().map(person_properties).unwrap_or_default();
+        let private = item.pointer("/extendedProperties/private").and_then(Value::as_object).cloned().unwrap_or_default();
+        let mut patch = serde_json::Map::new();
+        for key in &want {
+            if private.get(key).and_then(Value::as_str) != Some(PERSON_INDEXED) {
+                patch.insert(key.clone(), json!(PERSON_INDEXED));
+            }
+        }
+        for key in private.keys().filter(|k| is_person_key(k) && !want.contains(k)) {
+            patch.insert(key.clone(), Value::Null);
+        }
+        let id = event.id.clone().unwrap_or_default();
+        if patch.is_empty() {
+            indexed += usize::from(!want.is_empty());
+            continue;
+        }
+        if crate::google::expand::is_master(&item) {
+            series.push(id);
+            continue;
+        }
+        let summary = event.summary.clone().unwrap_or_default();
+        let (added, removed) = (patch.values().filter(|v| !v.is_null()).count(), patch.values().filter(|v| v.is_null()).count());
+        changed.push(format!("{id}	{summary}	+{added} -{removed}"));
+        writes.push(client.private_properties_request(&id, patch, event.etag.0.as_deref()));
+    }
+    let mut failed = 0;
+    if dry_run {
+        for line in &changed {
+            wln!(out, "{line}");
+        }
+    } else {
+        for (line, answer) in changed.iter().zip(client.send_writes(&writes)?) {
+            match answer {
+                Ok(_) => wln!(out, "{line}"),
+                Err(error) => {
+                    failed += 1;
+                    wln!(out, "{line}	failed: {error:#}");
+                }
+            }
+        }
+    }
+    let verb = if dry_run { "Would index" } else { "Indexed" };
+    wln!(out, "{verb} {} event(s); {indexed} already were; {failed} failed.", changed.len() - failed);
+    if !series.is_empty() {
+        wln!(out, "Left alone, as series (a patch would reset their instances): {}", series.join(", "));
+    }
+    Ok(())
+}
+
 fn positional<'a>(args: &'a [String], index: usize, name: &str) -> Result<&'a str, Failure> {
     args.get(index).map(String::as_str).ok_or_else(|| usage(format!("the following arguments are required: {name}")))
 }
@@ -584,6 +648,14 @@ pub fn run_with(args: &[String], app: &Arc<App>, now: Moment, out: &mut dyn Writ
             wln!(out, "Deleted:");
             // Without a version, a note that isn't there is refused.
             wln!(out, "{}", note_details(&deleted.expect("refused if it isn't there").note));
+        }
+        "index_people" => {
+            let dry_run = match rest {
+                [] => false,
+                [flag] if flag == "--dry-run" => true,
+                [other, ..] => return Err(usage(format!("unrecognized arguments: {other}"))),
+            };
+            index_people(app, dry_run, out)?;
         }
         other => return Err(usage(format!("argument command: invalid choice: {}", py::repr(other)))),
     }

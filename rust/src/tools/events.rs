@@ -545,11 +545,24 @@ fn stale(app: &App, error: anyhow::Error) -> ToolError {
 /// PublicEvent). action_names, effective_priority, is_end_of_day_sleep,
 /// recurring_event_id and event_label_id are read-only: update_event and
 /// create_event ignore them. repeat is write-only, and never listed.
+///
+/// `person_id`: only the events whose facts name that person (with, for,
+/// or noted) -- an id, or a name get_person takes. Quick over any span,
+/// years included: search a person's history with a wide range.
 #[tool]
-pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText) -> Result<Vec<PublicEvent>, ToolError> {
+pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText, person_id: Option<String>) -> Result<Vec<PublicEvent>, ToolError> {
     prefetch_stores(app)?;
     let (min, max) = (when(&min_time)?, when(&max_time)?);
-    let events: Vec<Event> = app.calendar_client()?.list_events(&min, &max)?.into_iter().filter(|e| !e.is_cancelled()).collect();
+    let calendar = app.calendar_client()?;
+    let listed = match person_id {
+        Some(person) => {
+            let id = app.people()?.get_person(&person).map_err(refused)?.id.unwrap_or(person);
+            let property = format!("{}={}", crate::event::person_key(&id), crate::event::PERSON_INDEXED);
+            calendar.list_event_resources(&min, &max, Some(&property))?.iter().map(Event::from_api).collect::<anyhow::Result<Vec<_>>>()?
+        }
+        None => calendar.list_events(&min, &max)?,
+    };
+    let events: Vec<Event> = listed.into_iter().filter(|e| !e.is_cancelled()).collect();
     from_store(public_events(app, &events)?)
 }
 

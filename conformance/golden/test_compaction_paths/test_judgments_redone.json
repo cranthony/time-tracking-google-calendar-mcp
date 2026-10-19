@@ -3618,7 +3618,8 @@
     "description": "Notes:\n- 12:30 lunch with Robin",
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"],\"notes\":{\"co2yzn\":\"laughed a lot\"}}"
+      "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"],\"notes\":{\"co2yzn\":\"laughed a lot\"}}",
+      "cascading-time-tracker-person-co2yzn": "1"
      }
     }
    },
@@ -4142,7 +4143,8 @@
       "extendedProperties": {
        "private": {
         "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"],\"notes\":{\"co2yzn\":\"laughed a lot\"}}",
-        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":0,\"scale\":3,\"reasoning\":\"on second thought\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"3dnjav\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"co2yzn\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"3dnjav\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}"
+        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":0,\"scale\":3,\"reasoning\":\"on second thought\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"3dnjav\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}},\"co2yzn\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"close and warm\"}},\"close\":{\"3dnjav\":{\"rating\":1,\"scale\":1,\"reasoning\":\"close and warm\"}}}}",
+        "cascading-time-tracker-person-co2yzn": "1"
        }
       },
       "iCalUID": "c5aefcb1a0e717b26c9d3d4839@google.com",

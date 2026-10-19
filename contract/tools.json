@@ -1,6 +1,6 @@
 [
   {
-    "description": "List events between min_time and max_time. action_ids are what was\ndone at each event, the first setting its color (action_names gives\ntheir names). effective_priority is the priority that applies:\nthe event's own priority, falling back to the highest priority of its\nactions.\nis_end_of_day_sleep marks the sleep event that\nends a day; recurring_event_id is the id of an instance's recurring\nseries (see get_recurrence and update_recurrence to read and edit the\nseries as a whole); event_label_id is the calendar label derived from\nits first action. facts are what compaction established about a past\nevent: where, who with, who for, and a note on each person there (see\nPublicEvent). action_names, effective_priority, is_end_of_day_sleep,\nrecurring_event_id and event_label_id are read-only: update_event and\ncreate_event ignore them. repeat is write-only, and never listed.",
+    "description": "List events between min_time and max_time. action_ids are what was\ndone at each event, the first setting its color (action_names gives\ntheir names). effective_priority is the priority that applies:\nthe event's own priority, falling back to the highest priority of its\nactions.\nis_end_of_day_sleep marks the sleep event that\nends a day; recurring_event_id is the id of an instance's recurring\nseries (see get_recurrence and update_recurrence to read and edit the\nseries as a whole); event_label_id is the calendar label derived from\nits first action. facts are what compaction established about a past\nevent: where, who with, who for, and a note on each person there (see\nPublicEvent). action_names, effective_priority, is_end_of_day_sleep,\nrecurring_event_id and event_label_id are read-only: update_event and\ncreate_event ignore them. repeat is write-only, and never listed.\n\n`person_id`: only the events whose facts name that person (with, for,\nor noted) -- an id, or a name get_person takes. Quick over any span,\nyears included: search a person's history with a wide range.",
     "inputSchema": {
       "properties": {
         "min_time": {
@@ -10,6 +10,12 @@
         "max_time": {
           "format": "date-time",
           "type": "string"
+        },
+        "person_id": {
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [

@@ -7581,7 +7581,8 @@
     "extendedProperties": {
      "private": {
       "cascading-time-tracker-action_ids": "lejxa2",
-      "cascading-time-tracker-facts": "{\"locations\":[\"onvtja\"],\"with\":[\"co2yzn\"]}"
+      "cascading-time-tracker-facts": "{\"locations\":[\"onvtja\"],\"with\":[\"co2yzn\"]}",
+      "cascading-time-tracker-person-co2yzn": "1"
      }
     }
    },
@@ -7600,7 +7601,8 @@
     "description": "Notes:\n- 19:00 dinner with Alex",
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-facts": "{\"locations\":[\"htmn3w\"],\"with\":[\"s3wod9\"]}"
+      "cascading-time-tracker-facts": "{\"locations\":[\"htmn3w\"],\"with\":[\"s3wod9\"]}",
+      "cascading-time-tracker-person-s3wod9": "1"
      }
     }
    },
@@ -8025,7 +8027,8 @@
       "extendedProperties": {
        "private": {
         "cascading-time-tracker-action_ids": "lejxa2",
-        "cascading-time-tracker-facts": "{\"locations\":[\"onvtja\"],\"with\":[\"co2yzn\"]}"
+        "cascading-time-tracker-facts": "{\"locations\":[\"onvtja\"],\"with\":[\"co2yzn\"]}",
+        "cascading-time-tracker-person-co2yzn": "1"
        }
       },
       "iCalUID": "c5aefcb1a0e717b26c9d3d4839@google.com",
@@ -8121,7 +8124,8 @@
       },
       "extendedProperties": {
        "private": {
-        "cascading-time-tracker-facts": "{\"locations\":[\"htmn3w\"],\"with\":[\"s3wod9\"]}"
+        "cascading-time-tracker-facts": "{\"locations\":[\"htmn3w\"],\"with\":[\"s3wod9\"]}",
+        "cascading-time-tracker-person-s3wod9": "1"
        }
       },
       "iCalUID": "f43e48437258cfca35d17613c4@google.com",
