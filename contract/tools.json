@@ -15934,6 +15934,10 @@
                 "string",
                 "null"
               ]
+            },
+            "revisited": {
+              "description": "Settled by an earlier compaction, and offered again for a late note\nwritten for a time it covers: its actions, facts, goals, summary\nand notes can change, but not its times.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -19203,6 +19207,10 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "revisited": {
+              "description": "Settled by an earlier compaction, and revisited for a late note:\nonly what happened at it changes, not when.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -21281,6 +21289,10 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "revisited": {
+              "description": "Settled by an earlier compaction, and revisited for a late note:\nonly what happened at it changes, not when.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -22712,6 +22724,10 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "revisited": {
+              "description": "Settled by an earlier compaction, and revisited for a late note:\nonly what happened at it changes, not when.",
+              "type": "boolean"
             }
           },
           "required": [
@@ -23922,6 +23938,10 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "revisited": {
+              "description": "Settled by an earlier compaction, and revisited for a late note:\nonly what happened at it changes, not when.",
+              "type": "boolean"
             }
           },
           "required": [

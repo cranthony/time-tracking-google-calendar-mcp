@@ -349,6 +349,8 @@ pub struct ProposalEvent {
     pub is_end_of_day_sleep: bool,
     pub counts_against_follow_through: Option<bool>,
     pub follow_through: Vec<String>,
+    /// Settled by an earlier compaction, and revisited for a late note.
+    pub revisited: bool,
 }
 
 impl ProposalEvent {
@@ -372,6 +374,9 @@ impl ProposalEvent {
         out.insert("is_end_of_day_sleep".into(), json!(self.is_end_of_day_sleep));
         out.insert("counts_against_follow_through".into(), json!(self.counts_against_follow_through));
         out.insert("follow_through".into(), json!(self.follow_through));
+        if self.revisited {
+            out.insert("revisited".into(), json!(true));
+        }
         Value::Object(out)
     }
 }

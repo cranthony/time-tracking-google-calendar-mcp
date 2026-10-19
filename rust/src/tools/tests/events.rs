@@ -288,6 +288,7 @@ fn history_is_changed_only_when_allowed() {
             ignore_notes: vec![],
             additions: Default::default(),
             note_targets: vec![],
+            revisits: Vec::new(),
         };
         journal.start_batch(&[day], None, &[]).unwrap();
         let mut prev = journal.load("prev").unwrap();

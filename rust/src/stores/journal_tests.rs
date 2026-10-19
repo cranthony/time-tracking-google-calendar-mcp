@@ -90,6 +90,7 @@ fn start_with(journal: &CompactionJournal, compaction_id: &str, decisions: &[Eve
         ignore_notes: strings(ignore_notes),
         additions: Map::new(),
         note_targets: Vec::new(),
+        revisits: Vec::new(),
     };
     let _held = crate::write_lock::WRITE_LOCK.hold();
     journal.start_batch(&[day], None, &[]).unwrap();

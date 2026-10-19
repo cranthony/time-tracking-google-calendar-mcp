@@ -1,6 +1,7 @@
 """Compaction's less-traveled paths, beyond test_compaction.py's: a
 backlog longer than a week (two compactions, the second over history the
-first settled), the calendar or notes changing under a proposal (a
+first settled), a late note revisiting what the first settled, the
+calendar or notes changing under a proposal (a
 recheck, a proposal handed back to Claude), writes failing partway
 through applying one (rebuilt, or finished later), the user's edits of
 notes, descriptions and additions, Claude answering feedback, actions
@@ -76,6 +77,45 @@ async def test_backlog_over_a_week(session, google, calendar_id):
     await session.call("confirm_proposal", proposal_id=pid, revision=revision)
     assert await session.call("get_notes") == []
     await session.call("prepare_compaction")
+
+
+async def test_late_note_revisits_history(session, google, calendar_id):
+    # The first compaction takes a week of the backlog and judges it; then a
+    # note comes in for a breakfast it settled, which the second revisits.
+    days = seed.planned_days(google, calendar_id, date(2026, 9, 26), 12)
+    breakfast = days[date(2026, 9, 27)]["Breakfast"]
+    friend = (await session.call("create_person", person={"name": "Robin Example"}))["created_id"]
+    await session.call("create_trait", trait={
+        "name": "Close", "parts": [{"kind": "judgment", "rubric": "How connected?", "ratings": {"0": "apart", "1": "close"}, "facts": ["general_notes"], "engagement_type": "with"}],
+    })
+    await notes(session, ("2026-09-27T07:20:00-04:00", "breakfast with Robin"), ("2026-10-06T19:30:00-04:00", "late dinner done"))
+    first = ids_of(await session.call("prepare_compaction"))
+    proposed = await propose(session, updates=[{"event_id": breakfast, "facts": {"with_ids": [friend]}}], ignore_notes=[first["breakfast with Robin"]])
+    await session.call("confirm_proposal", proposal_id=proposed["proposal_id"], revision=proposed["revision"])
+    due = await session.call("prepare_judgments")
+    requests = [f"{e['event_id']}/{person}/{part}" for e in due["events"] for person, parts in e["people"].items() for part in parts]
+    await session.call("record_judgments", compaction_id=due["compaction_id"], judgments=[{"request_id": r, "rating": 1, "reasoning": "close"} for r in requests])
+    await notes(session, ("2026-09-27T07:25:00-04:00", "Robin starts a new job Monday"))
+    second = await session.call("prepare_compaction")
+    revisited = [e["id"] for e in second["events"] if e.get("revisited")]
+    assert revisited == [breakfast]
+    assert "revisited" in second["timeline"]["text"]
+    note = ids_of(second)
+    await session.call_error("compact_notes", recap=RECAP, updates=[{"event_id": breakfast, "end": "2026-09-27T07:40:00-04:00"}])
+    proposed = await propose(
+        session,
+        updates=[
+            {"event_id": breakfast, "facts": {"with_ids": [friend], "notes": {friend: "starts a new job Monday"}}},
+            {"event_id": days[date(2026, 10, 6)]["Dinner"], "end_note": note["late dinner done"]},
+        ],
+    )
+    shown = await session.call("get_proposal")
+    assert [e["id"] for e in shown["events"] if e.get("revisited")] == [breakfast]
+    await session.call("confirm_proposal", proposal_id=proposed["proposal_id"], revision=proposed["revision"])
+    assert await session.call("get_notes") == []
+    again = await session.call("prepare_judgments")
+    assert [e["event_id"] for e in again["events"]][0] == breakfast
+    await session.call("get_event", id=breakfast)
 
 
 async def test_recheck_after_a_note_changes(session, plan):

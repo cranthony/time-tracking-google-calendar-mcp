@@ -138,28 +138,39 @@ pub fn build_timeline(
     timeline
 }
 
+/// What heads a day revisited for late notes, after its date.
+pub const REVISITED_LABEL: &str = "revisited";
+
 /// Several days' timelines as one, each under a heading with its date.
 pub fn join_days(days: Vec<(Moment, Timeline)>) -> Timeline {
+    join_labelled(days.into_iter().map(|(start, t)| (start, "", t)).collect())
+}
+
+/// `join_days`, each heading with its label (if any) after the date.
+pub fn join_labelled(days: Vec<(Moment, &str, Timeline)>) -> Timeline {
     if days.len() == 1 {
-        return days.into_iter().next().unwrap().1;
+        return days.into_iter().next().unwrap().2;
     }
     let count = days.len();
     let mut joined = Timeline {
-        notes: days.iter().flat_map(|(_, t)| t.notes.clone()).collect(),
-        events: days.iter().flat_map(|(_, t)| t.events.clone()).collect(),
-        now: days.last().unwrap().1.now,
-        last_compaction: days[0].1.last_compaction,
-        decided: days[0].1.decided,
+        notes: days.iter().flat_map(|(_, _, t)| t.notes.clone()).collect(),
+        events: days.iter().flat_map(|(_, _, t)| t.events.clone()).collect(),
+        now: days.last().unwrap().2.now,
+        last_compaction: days.iter().find_map(|(_, _, t)| t.last_compaction),
+        decided: days[0].2.decided,
         text: String::new(),
     };
     let mut lines: Vec<String> = Vec::new();
-    for (number, (start, timeline)) in days.into_iter().enumerate() {
+    for (number, (start, label, timeline)) in days.into_iter().enumerate() {
         let mut timeline = timeline;
         if number < count - 1 {
             timeline.now = None;
         }
         let tz = display_tz(&timeline);
-        let heading = start.with_timezone(&tz).format("━━ %a %d %b ").to_string();
+        let mut heading = start.with_timezone(&tz).format("━━ %a %d %b ").to_string();
+        if !label.is_empty() {
+            heading.push_str(&format!("· {label} "));
+        }
         if !lines.is_empty() {
             lines.push(String::new());
         }

@@ -208,6 +208,7 @@ pub struct JournalCompaction {
     pub ignore_notes: Vec<String>,
     pub steps: Vec<JournalStep>,
     pub note_targets: Vec<(String, Option<String>)>,
+    pub revisits: Vec<String>,
     pub row: i64,
     pub batch: Option<String>,
     pub day: i64,
@@ -250,6 +251,9 @@ pub struct PlannedDay<'a> {
     pub ignore_notes: Vec<String>,
     pub additions: Map<String, Value>,
     pub note_targets: Vec<(String, Option<String>)>,
+    /// The settled events it revisits for late notes, judged again once
+    /// it's applied.
+    pub revisits: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -340,6 +344,9 @@ impl CompactionJournal {
                     "note_targets".into(),
                     Value::Object(day.note_targets.iter().map(|(k, v)| (k.clone(), json!(v))).collect()),
                 );
+            }
+            if !day.revisits.is_empty() {
+                detail.insert("revisits".into(), json!(day.revisits));
             }
             if let Some(meta) = meta {
                 if number == 1 {
@@ -826,6 +833,7 @@ fn load_from(rows: &Rows, compaction_id: &str) -> anyhow::Result<JournalCompacti
                         .and_then(Value::as_object)
                         .map(|m| m.iter().map(|(k, v)| (k.clone(), v.as_str().map(str::to_string))).collect())
                         .unwrap_or_default(),
+                    revisits: strings(detail.get("revisits")),
                     row: sheet_row,
                     batch: detail.get("batch").and_then(Value::as_str).map(str::to_string),
                     day: detail.get("day").and_then(Value::as_i64).unwrap_or(1),

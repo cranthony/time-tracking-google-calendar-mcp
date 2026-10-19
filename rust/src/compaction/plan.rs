@@ -326,6 +326,9 @@ pub struct PlanOptions<'a> {
     pub note_targets: Option<&'a [(String, Option<String>)]>,
     pub closing_id: Option<&'a str>,
     pub nights: Option<&'a [String]>,
+    /// Events an earlier compaction settled whole, offered again for late
+    /// notes: what happened at them can change, but not when, nor whether.
+    pub revisits: Option<&'a [String]>,
 }
 
 fn name_of(names: &[(String, String)], id: &str) -> String {
@@ -340,6 +343,9 @@ fn valid_notes(notes: &[PlanNote]) -> String {
 fn strip(text: Option<&str>) -> String {
     text.unwrap_or("").trim().to_string()
 }
+
+/// Why a revisited event's times stay as they are.
+const REVISITED: &str = "an earlier compaction settled it, and a late note can change what happened at it (its actions, facts, goals, summary and notes) but not when. Change those with update_event, if the user says to.";
 
 /// `plan_compaction`.
 pub fn plan_compaction(
@@ -407,7 +413,8 @@ pub fn plan_compaction(
         unmergeable.push(closing.id.clone().unwrap());
     }
 
-    let resolved = resolve(decisions, notes, &events_by_id, closing.as_ref(), now, &mut problems, options.history_until, &unmergeable);
+    let revisits: Vec<String> = options.revisits.map(|r| r.to_vec()).unwrap_or_default();
+    let resolved = resolve(decisions, notes, &events_by_id, closing.as_ref(), now, &mut problems, options.history_until, &unmergeable, &revisits);
     if !problems.is_empty() {
         return Err(error_of(&problems, "malformed_decision"));
     }
@@ -518,6 +525,7 @@ fn resolve(
     problems: &mut Vec<Issue>,
     history_until: Option<Moment>,
     unmergeable: &[String],
+    revisits: &[String],
 ) -> Resolved {
     let mut sorted_ids: Vec<&String> = events_by_id.iter().map(|(k, _)| k).collect();
     sorted_ids.sort();
@@ -605,6 +613,11 @@ fn resolve(
                 problems.push(Issue::plain(format!("{label}: the end-of-day sleep event can't be merged")));
                 continue;
             }
+            let revisited = [&event_id, &into].into_iter().find(|i| revisits.contains(i)).cloned();
+            if let Some(revisited) = revisited {
+                problems.push(Issue::tagged("compacted", format!("{label}: {revisited} is revisited for a late note, so it can't be merged: {REVISITED}")));
+                continue;
+            }
         } else if decision.into.is_some() {
             problems.push(Issue::plain(format!("{label}: 'into' only goes with 'merge'")));
             continue;
@@ -647,6 +660,13 @@ fn resolve(
 
     for (event_id, decision) in &by_event {
         let base = event(event_id).unwrap();
+        if decision.action == "cancel" && revisits.contains(event_id) {
+            problems.push(Issue::tagged(
+                "compacted",
+                format!("{} ({event_id}) is revisited for a late note, so it can't be cancelled: {REVISITED}", repr_opt(base.summary.as_deref())),
+            ));
+            continue;
+        }
         let compacted = if decision.allow_history == Some(true) { None } else { settled(base) };
         if (decision.action == "cancel" || decision.action == "merge") && compacted.is_some() {
             problems.push(Issue::tagged(
@@ -703,6 +723,18 @@ fn resolve(
                     repr_opt(base.summary.as_deref()),
                     py::isoformat(&start),
                     py::isoformat(&end)
+                ),
+            ));
+            continue;
+        }
+        if revisits.contains(&event_id) && (start, end) != (base.start(), base.end()) {
+            problems.push(Issue::tagged(
+                "compacted",
+                format!(
+                    "{label}: {} ({} to {}) is revisited for a late note, so its times can't move: {REVISITED}",
+                    repr_opt(base.summary.as_deref()),
+                    py::isoformat(&base.start()),
+                    py::isoformat(&base.end())
                 ),
             ));
             continue;

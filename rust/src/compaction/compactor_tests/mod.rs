@@ -18,6 +18,7 @@ mod dry_run;
 mod facts;
 mod goals;
 mod judging;
+mod late_notes;
 mod mornings;
 mod new_goals;
 mod prepare;
@@ -278,6 +279,7 @@ impl Setup {
             ignore_notes: Vec::new(),
             additions: Map::new(),
             note_targets: Vec::new(),
+            revisits: Vec::new(),
         };
         self.call(|c| c.journal.start_batch(&[day], None, &[]).unwrap());
     }

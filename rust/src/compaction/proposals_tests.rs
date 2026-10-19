@@ -190,6 +190,7 @@ fn revision(journal: &CompactionJournal, number: i64) -> Vec<crate::stores::jour
         ignore_notes: Vec::new(),
         additions: Map::new(),
         note_targets: Vec::new(),
+        revisits: Vec::new(),
     };
     let _held = crate::write_lock::WRITE_LOCK.hold();
     journal.start_batch(&[day(format!("{P}r{number}")), day(format!("{P}r{number}d2"))], Some(&meta), &[]).unwrap();
