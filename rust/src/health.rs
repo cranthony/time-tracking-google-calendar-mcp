@@ -38,6 +38,17 @@ pub const RESTARTS: &str = "restarts";
 pub const MEMORY_PARTS: &str = "memory-parts";
 /// What get_health calls the memory not in any part kept.
 pub const REST: &str = "Rest of server";
+/// What get_health calls the heap in use beyond the parts kept: what the
+/// allocator has handed out (its blocks, and those mapped for large
+/// allocations) less the parts' estimates (Linux only).
+pub const HEAP_UNTRACKED: &str = "Heap in use (untracked)";
+/// What get_health calls what the allocator holds free: freed by the
+/// server, but not given back to the system (Linux only).
+pub const ALLOCATOR_FREE: &str = "Allocator: free but held";
+/// Not a part, though kept among a sample's parts (so the Health tab keeps
+/// it too): how many threads the server ran then. get_health gives it as
+/// the sample's `threads`.
+pub const THREADS: &str = "threads";
 pub const TOOL_PREFIX: &str = "tool:";
 /// The series of what the spreadsheet refreshes found changed by hand.
 pub const SHEET_WARNINGS: &str = "sheet-warnings";
@@ -246,6 +257,10 @@ thread_local! {
     pub static TEST_RSS: std::cell::Cell<Option<Option<i64>>> = const { std::cell::Cell::new(None) };
     /// The unit tests' clock: each reading 1234 ms after the last.
     pub static TEST_CLOCK_MS: std::cell::Cell<Option<i64>> = const { std::cell::Cell::new(None) };
+    /// The unit tests' allocator reading (unset: none, on every platform).
+    pub static TEST_HEAP: std::cell::Cell<Option<Heap>> = const { std::cell::Cell::new(None) };
+    /// The unit tests' thread count (unset: none, on every platform).
+    pub static TEST_THREADS: std::cell::Cell<Option<i64>> = const { std::cell::Cell::new(None) };
 }
 
 /// This process's resident memory, in KiB (Linux only).
@@ -254,8 +269,96 @@ pub fn rss_kib() -> Option<i64> {
     if let Some(rss) = TEST_RSS.with(std::cell::Cell::get) {
         return rss;
     }
+    status_field("VmRSS:")
+}
+
+/// How many threads this process runs (Linux only).
+pub fn threads() -> Option<i64> {
+    #[cfg(test)]
+    return TEST_THREADS.with(std::cell::Cell::get);
+    #[cfg(not(test))]
+    status_field("Threads:")
+}
+
+/// The number /proc/self/status gives for `field` ("VmRSS:").
+pub fn status_field(field: &str) -> Option<i64> {
     let status = std::fs::read_to_string("/proc/self/status").ok()?;
-    status.lines().find(|l| l.starts_with("VmRSS:"))?.split_whitespace().nth(1)?.parse().ok()
+    status.lines().find(|l| l.starts_with(field))?.split_whitespace().nth(1)?.parse().ok()
+}
+
+/// What the allocator holds, in KiB: handed out (in use), and free but not
+/// given back to the system.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Heap {
+    pub in_use_kib: i64,
+    pub free_kib: i64,
+}
+
+/// What the allocator holds now (glibc's, on Linux, only).
+pub fn heap() -> Option<Heap> {
+    #[cfg(test)]
+    return TEST_HEAP.with(std::cell::Cell::get);
+    #[cfg(not(test))]
+    glibc_heap()
+}
+
+/// glibc's mallinfo2, over all its arenas: in use, its blocks handed out
+/// (uordblks) and those mapped for large allocations (hblkhd); free, the
+/// rest of its arenas (fordblks). Looked up when first needed, so a glibc
+/// without it (before 2.33) gives none rather than failing to start.
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+pub fn glibc_heap() -> Option<Heap> {
+    use std::ffi::{c_char, c_void};
+    #[repr(C)]
+    #[allow(dead_code)] // glibc's layout: every field, read or not.
+    struct Mallinfo2 {
+        arena: usize,
+        ordblks: usize,
+        smblks: usize,
+        hblks: usize,
+        hblkhd: usize,
+        usmblks: usize,
+        fsmblks: usize,
+        uordblks: usize,
+        fordblks: usize,
+        keepcost: usize,
+    }
+    type Mallinfo2Fn = unsafe extern "C" fn() -> Mallinfo2;
+    extern "C" {
+        fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+    }
+    static MALLINFO2: std::sync::OnceLock<Option<Mallinfo2Fn>> = std::sync::OnceLock::new();
+    let mallinfo2 = (*MALLINFO2.get_or_init(|| {
+        // SAFETY: RTLD_DEFAULT (null) searches the loaded objects; the
+        // symbol, if there, is mallinfo2, of this signature.
+        let found = unsafe { dlsym(std::ptr::null_mut(), c"mallinfo2".as_ptr()) };
+        (!found.is_null()).then(|| unsafe { std::mem::transmute::<*mut c_void, Mallinfo2Fn>(found) })
+    }))?;
+    // SAFETY: mallinfo2 takes nothing and only reads the allocator's state.
+    let info = unsafe { mallinfo2() };
+    let kib = |bytes: usize| (bytes / 1024) as i64;
+    Some(Heap { in_use_kib: kib(info.uordblks + info.hblkhd), free_kib: kib(info.fordblks) })
+}
+
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+pub fn glibc_heap() -> Option<Heap> {
+    None
+}
+
+/// What the whole process adds to the parts `kept` (see MemoryParts): the
+/// heap in use beyond them, what the allocator holds free, and the thread
+/// count -- each when it can be had.
+pub fn process_parts(kept: &MemoryParts) -> MemoryParts {
+    let mut parts = MemoryParts::new();
+    if let Some(heap) = heap() {
+        let tracked: i64 = kept.iter().map(|(_, kib)| kib).sum();
+        parts.push((HEAP_UNTRACKED.into(), (heap.in_use_kib - tracked).max(0)));
+        parts.push((ALLOCATOR_FREE.into(), heap.free_kib));
+    }
+    if let Some(threads) = threads() {
+        parts.push((THREADS.into(), threads));
+    }
+    parts
 }
 
 pub fn now_ms() -> i64 {
@@ -345,9 +448,12 @@ struct Series {
     dirty: Vec<String>,
 }
 
-/// What each part of what the server keeps took at a memory sample, in
-/// KiB: each kept Sheet tab ("Sheet: <title>") and the kept calendar
-/// ("Calendar"). The rest of the total is the rest of the server.
+/// What each part of the server took at a memory sample, in KiB: each
+/// kept Sheet tab ("Sheet: <title>") and the kept calendar ("Calendar"),
+/// then, on Linux, the rest of the heap in use (HEAP_UNTRACKED) and what
+/// the allocator holds free (ALLOCATOR_FREE) -- and, not in KiB and no
+/// part of the total, the thread count (THREADS). The rest of the total is
+/// the rest of the server (the binary, stacks and the like).
 pub type MemoryParts = Vec<(String, i64)>;
 
 /// Where a memory sample's parts come from (the app, as it is then).
@@ -395,7 +501,10 @@ impl HealthRecorder {
 
     fn parts_now(&self) -> MemoryParts {
         let source = self.parts.lock().unwrap_or_else(|e| e.into_inner()).clone();
-        source.map(|s| s()).unwrap_or_default()
+        let mut parts = source.map(|s| s()).unwrap_or_default();
+        let process = process_parts(&parts);
+        parts.extend(process);
+        parts
     }
 
     /// Sample the server's memory, and what each part takes, now: after
