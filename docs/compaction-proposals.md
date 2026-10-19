@@ -71,8 +71,9 @@ The actions, people, locations and goals Claude's decisions add (by
 `new:` ref) are created only when the proposal is applied. The user can
 settle one sooner, without confirming the rest: `create` it now (with
 its name -- a goal's title --, a person's context or a location's hint
-corrected; a goal only once the new people it names are settled, and
-without any dropped), say it's one
+corrected; a goal with its status and deadline too -- activated, say --
+and only once the new people it names are settled, without any
+dropped), say it's one
 that's `existing`, or `drop` it. Every revision from then on names it by
 its id, or leaves it out of the events' actions and facts, wherever the
 decisions named its ref; Claude may keep sending the ref, and isn't

@@ -1556,6 +1556,10 @@ impl NoteCompactor {
                 problems.push(format!("additions: {} -- only 'existing' takes an id", choice.ref_));
                 continue;
             }
+            if (choice.status.is_some() || choice.deadline.is_some()) && !(choice.use_ == "create" && matches!(item, Added::Goal(_))) {
+                problems.push(format!("additions: {} -- only a goal made now takes a status or deadline", choice.ref_));
+                continue;
+            }
             found.push((choice.clone(), item.clone()));
         }
         if !problems.is_empty() {
@@ -1595,6 +1599,12 @@ impl NoteCompactor {
             Added::Goal(g) => {
                 if let Some(name) = &choice.name {
                     g.item.title = Some(name.clone());
+                }
+                if let Some(deadline) = &choice.deadline {
+                    g.item.deadline = Some(deadline.clone());
+                }
+                if let Some(status) = choice.status {
+                    g.item.status = Some(status);
                 }
                 let new_people: Vec<&String> = additions.people.iter().map(|p| &p.ref_).collect();
                 let waiting: Vec<&String> = goals::people_of(&g.item).into_iter().filter(|p| new_people.contains(p) && settled.get(p.as_str()).is_none()).collect();

@@ -114,7 +114,10 @@ unless the notes say otherwise.
 Compaction also proposes new goals: when a note says the user wants or
 means to do something, or told someone they would, `compact_notes`'
 `new_goals` adds one (with a `new:` ref, like a new action or person),
-naming the people it's with or for -- new people by their refs. It's
-active, so it has a deadline, and is created when the proposal is
-applied (an open goal with the same title is reused), or sooner if the
-user settles it; see [compaction proposals](compaction-proposals.md).
+naming the people it's with or for -- new people by their refs. Only
+for something longer term that no open goal covers: most "I want to"
+notes are done right away. It's inactive, its deadline only one the notes
+give, and is created when the proposal is applied (an open goal with the
+same title is reused), or sooner if the user settles it -- made active
+then, with a deadline, if they like; see
+[compaction proposals](compaction-proposals.md).

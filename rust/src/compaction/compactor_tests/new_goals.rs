@@ -55,7 +55,7 @@ fn prepare_lists_every_open_goal_with_its_people() {
 }
 
 #[test]
-fn a_new_goal_is_created_active_with_its_people_when_the_proposal_is() {
+fn a_new_goal_is_created_inactive_with_its_people_when_the_proposal_is() {
     let setup = new_goals_setup();
     let both = json!({"people": [{"ref": "new:alex", "name": "Alex"}], "goals": [fence()]});
 
@@ -66,7 +66,7 @@ fn a_new_goal_is_created_active_with_its_people_when_the_proposal_is() {
     assert_eq!(setup.call(|c| c.confirm(&p, 1)).unwrap().status, "applied");
 
     let made = goal_titled(&setup, "Help Sam move");
-    assert_eq!(made.status, Some(crate::stores::goals::GoalStatus::Active));
+    assert_eq!(made.status, Some(crate::stores::goals::GoalStatus::Inactive));
     assert_eq!((made.for_ids, made.with_ids), (Some(strings(&["sam"])), Some(vec![person_id(&setup, "alex")])));
     assert_eq!(made.attribution_hints.as_deref(), Some("helping Sam move"));
 }
@@ -86,12 +86,13 @@ fn new_goals_naming_strangers_or_breaking_the_goal_rules_are_refused() {
     let setup = new_goals_setup();
 
     refused(proposed(&setup, json!({"goals": [fence()]})), r"'new:help-sam' names \['new:alex'\], who aren't people");
-    refused(proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Someday"}]})), "is active, so it needs a deadline");
     refused(
         proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Both", "deadline": "2099-06-01", "with_ids": ["sam"], "for_ids": ["sam"]}]})),
         r"names \['sam'\] both with",
     );
     refused(proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Late", "deadline": "2100-06-01", "parent_id": "g1"}]})), "is after its parent");
+    // Inactive, it needs no deadline.
+    proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Someday"}]})).unwrap();
 }
 
 #[test]
@@ -105,10 +106,14 @@ fn a_goal_settled_now_waits_for_the_new_people_it_names() {
 
     refused(settle(1, vec![json!({"ref": "new:help-sam", "use": "create"})]), r"names \['new:alex'\]: settle them first");
     // Settled together, the person is made first.
-    let proposal = settle(1, vec![json!({"ref": "new:help-sam", "use": "create", "name": "Help Sam pack"}), json!({"ref": "new:alex", "use": "create"})]).unwrap();
+    refused(settle(1, vec![json!({"ref": "new:alex", "use": "create", "status": "active"})]), "only a goal made now takes a status or deadline");
+    // Settled together, the person is made first; the goal made active.
+    let activated = json!({"ref": "new:help-sam", "use": "create", "name": "Help Sam pack", "status": "active", "deadline": "2099-05-01"});
+    let proposal = settle(1, vec![activated, json!({"ref": "new:alex", "use": "create"})]).unwrap();
 
     let made = goal_titled(&setup, "Help Sam pack");
     assert_eq!(made.with_ids, Some(vec![person_id(&setup, "alex")]));
+    assert_eq!((made.status, made.deadline.as_deref()), (Some(crate::stores::goals::GoalStatus::Active), Some("2099-05-01")));
     assert!(proposal.settled_additions.iter().any(|s| s.ref_ == "new:help-sam" && s.id == made.id));
 }
 

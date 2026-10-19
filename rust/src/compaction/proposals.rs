@@ -8,7 +8,7 @@ use crate::stores::actions::ActionShare;
 use crate::event::Moment;
 use crate::facts::Facts;
 use crate::py;
-use crate::stores::goals::GoalShare;
+use crate::stores::goals::{GoalShare, GoalStatus};
 use crate::timeline::Timeline;
 use serde_json::{json, Map, Value};
 
@@ -180,6 +180,9 @@ pub struct AdditionChoice {
     pub name: Option<String>,
     pub context: Option<String>,
     pub hint: Option<String>,
+    /// A goal's, set as it's made: active, say, with its deadline.
+    pub status: Option<GoalStatus>,
+    pub deadline: Option<String>,
 }
 
 impl AdditionChoice {
@@ -192,6 +195,8 @@ impl AdditionChoice {
             name: text("name"),
             context: text("context"),
             hint: text("hint"),
+            status: value.get("status").and_then(|s| serde_json::from_value(s.clone()).ok()),
+            deadline: text("deadline"),
         }
     }
 }

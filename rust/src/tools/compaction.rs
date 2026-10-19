@@ -673,9 +673,9 @@ pub struct NewPerson {
 
 /// A goal to propose, from what the notes say the user means to do or
 /// told someone they'd do: `ref`, a `title`, and any of a goal's other
-/// fields (see get_goals) -- its status is active unless given (the user
-/// approves it with the plan), so it needs a deadline. `parent_id` is an
-/// open goal's id; `with_ids` (the people the user means to do it with)
+/// fields (see get_goals). It's inactive -- the user activates it, with a
+/// deadline, as they review it -- so a `deadline` is only for one the
+/// notes give. `parent_id` is an open goal's id; `with_ids` (the people the user means to do it with)
 /// and `for_ids` (those it's for, who aren't part of doing it: a promise
 /// to them, a favor) are people's ids or new_people refs. id is assigned
 /// when it's created.
@@ -688,7 +688,6 @@ pub struct NewGoal {
     pub priority: Option<i64>,
     pub expected_minutes: Option<i64>,
     pub deadline: Option<String>,
-    pub status: Option<GoalStatus>,
     pub description: Option<String>,
     pub definition_of_done: Option<String>,
     pub attribution_hints: Option<String>,
@@ -890,8 +889,10 @@ pub struct Proposal {
 /// The user's say on an action, person, location or goal Claude's
 /// decisions add (by its `ref`): `create` it now -- with any of `name` (a
 /// goal's title), `context` (a person's) and `hint` (a location's)
-/// corrected -- say it's one that's `existing` (its `id`), or `drop` it.
-/// A goal naming a new person can't be created until they're settled.
+/// corrected; a goal with its `status` and `deadline` set too -- made
+/// `active`, say, with a deadline -- say it's one that's `existing` (its
+/// `id`), or `drop` it. A goal naming a new person can't be created until
+/// they're settled.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct AdditionChoice {
     pub r#ref: String,
@@ -900,6 +901,8 @@ pub struct AdditionChoice {
     pub name: Option<String>,
     pub context: Option<String>,
     pub hint: Option<String>,
+    pub status: Option<GoalStatus>,
+    pub deadline: Option<String>,
 }
 
 /// The user's say on what a note is for: `annotate` -- add it to the
@@ -1353,9 +1356,10 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// new_actions, new_people and new_locations add what isn't there yet,
 /// each with a `ref` ("new:ukulele") the updates and creates use in
 /// place of its id; they're created when it's applied. new_goals propose
-/// goals from notes where the user says they want or mean to do
-/// something, or told someone they would -- with the people it's with or
-/// for (ids, or new_people refs) -- created when it's applied too. You get the
+/// goals -- inactive -- from notes where the user says they want or mean
+/// to do something longer term that no open goal covers, or told someone
+/// they would -- with the people it's with or for (ids, or new_people
+/// refs) -- created when it's applied too. You get the
 /// proposal's id and revision, the proposed changes, the additions, and
 /// a `timeline` of the notes beside the resulting events, each with its
 /// actions and facts -- in a conversation, show its `text` to the user in
@@ -1515,7 +1519,7 @@ pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Op
         let additions: Vec<proposals::AdditionChoice> = additions
             .unwrap_or_default()
             .into_iter()
-            .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint })
+            .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint, status: a.status, deadline: a.deadline })
             .collect();
         let through = when_given(through.as_ref())?;
         let proposal = compactor.amend(&proposal_id, revision, decisions, as_planned.unwrap_or_default(), notes, additions, through)?;

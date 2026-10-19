@@ -196,7 +196,8 @@ fn new_location(l: &Addition<Location>) -> Location {
     Location { id: None, ..l.item.clone() }
 }
 
-/// A new goal as its store takes it: active unless given, without the id
+/// A new goal as its store takes it: inactive unless given (the user
+/// activates it as they settle it), without the id
 /// it'll be given, its parent and people named as `rename` gives them
 /// (none, left out).
 fn new_goal(g: &Addition<Goal>, rename: &dyn Fn(&str) -> Option<String>) -> Goal {
@@ -206,7 +207,7 @@ fn new_goal(g: &Addition<Goal>, rename: &dyn Fn(&str) -> Option<String>) -> Goal
     };
     Goal {
         id: None,
-        status: Some(g.item.status.unwrap_or(GoalStatus::Active)),
+        status: Some(g.item.status.unwrap_or(GoalStatus::Inactive)),
         parent_id: g.item.parent_id.as_deref().and_then(rename),
         with_ids: people(&g.item.with_ids),
         for_ids: people(&g.item.for_ids),
@@ -304,7 +305,7 @@ fn goal_addition_problems(
     let now = DateTimeText(py::pydantic_datetime(&crate::determinism::now()));
     let refs: Vec<String> = additions.goals.iter().map(|g| g.ref_.clone()).collect();
     for g in &additions.goals {
-        let status = g.item.status.unwrap_or(GoalStatus::Active);
+        let status = g.item.status.unwrap_or(GoalStatus::Inactive);
         all.push(Goal {
             id: Some(g.ref_.clone()),
             status: Some(status),
