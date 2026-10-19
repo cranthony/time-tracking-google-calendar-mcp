@@ -13,6 +13,8 @@ pub enum GoalField {
     ParentId,
     #[serde(rename = "required")]
     Required,
+    #[serde(rename = "priority")]
+    Priority,
     #[serde(rename = "expected_minutes")]
     ExpectedMinutes,
     #[serde(rename = "deadline")]
@@ -50,6 +52,9 @@ pub struct GoalDelete {
 /// parent_id and path (its parents' titles, outermost first). A goal
 /// can sit under another to any depth: a sub-goal is a piece of reaching
 /// its parent, and required says whether its parent needs it done.
+/// A priority (0 the most, as actions'; optional) says how much it
+/// matters: without one, a goal takes its nearest parent's that has one,
+/// and with none up its tree it's treated as 3.
 /// Each has a title, an optional expected_minutes (how long it's
 /// expected to take: a guide for comparing with the time spent, never
 /// enforced), a deadline ("2026-11-01", due at the end of that day, or
@@ -83,7 +88,7 @@ pub fn get_goal(app: &App, id_or_title: String) -> Result<ListedGoal, ToolError>
 }
 
 /// Add a goal (see get_goals): a title, and optionally parent_id (the
-/// goal it's a piece of), required, expected_minutes, deadline,
+/// goal it's a piece of), required, priority, expected_minutes, deadline,
 /// description, definition_of_done and attribution_hints. Active unless
 /// given a status; an active goal needs a deadline. Its history starts
 /// with its status, now, unless given one (to backdate it, say). A

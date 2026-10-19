@@ -25,9 +25,10 @@ use serde::{Deserialize, Serialize};
 pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
-pub const CLEARABLE_FIELDS: [&str; 8] = [
+pub const CLEARABLE_FIELDS: [&str; 9] = [
     "parent_id",
     "required",
+    "priority",
     "expected_minutes",
     "deadline",
     "deadline_offset_minutes",
@@ -88,6 +89,10 @@ pub struct Goal {
     pub parent_id: Option<String>,
     /// Whether its parent needs it done to be done.
     pub required: Option<bool>,
+    /// How much it matters, 0 the most, as actions' priorities; none, it
+    /// takes its nearest parent's that has one, and with none up its tree,
+    /// it's treated as 3.
+    pub priority: Option<i64>,
     /// How long it's expected to take, in minutes of the user's time: a
     /// guide to compare the time spent with, never enforced.
     pub expected_minutes: Option<i64>,
@@ -123,6 +128,7 @@ pub struct ListedGoal {
     pub title: Option<String>,
     pub parent_id: Option<String>,
     pub required: Option<bool>,
+    pub priority: Option<i64>,
     pub expected_minutes: Option<i64>,
     pub deadline: Option<String>,
     pub deadline_offset_minutes: Option<i64>,
@@ -501,6 +507,9 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
             }
             Some(_) => {}
         }
+        if let Some(priority) = goal.priority.filter(|p| *p < 0) {
+            problems.push((me.clone(), format!("{name}'s priority must be 0 or more, not {priority}")));
+        }
         if let Some(minutes) = goal.expected_minutes.filter(|m| *m <= 0) {
             problems.push((me.clone(), format!("{name}'s expected_minutes must be more than 0, not {minutes}")));
         }
@@ -642,6 +651,7 @@ pub fn listed(goal: &Goal, goals: &[Goal]) -> ListedGoal {
         title: goal.title.clone(),
         parent_id: goal.parent_id.clone(),
         required: goal.required,
+        priority: goal.priority,
         expected_minutes: goal.expected_minutes,
         deadline: goal.deadline.clone(),
         deadline_offset_minutes: goal.deadline_offset_minutes,
