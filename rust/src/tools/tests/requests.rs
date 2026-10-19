@@ -98,7 +98,8 @@ fn the_requests_each_tool_makes() {
         // Events: the actions', people's and locations' tabs together.
         ("list_events", "list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}), [0, 0, 1, 0]),
         ("get_event", "get_event", json!({"id": "walked"}), [0, 0, 0, 0]),
-        ("update_event (facts)", "update_event", json!({"updates": [{"event": {"id": "walked", "facts": {"location_ids": [f.home], "notes": {"self": "nice"}}}}]}), [0, 0, 1, 1]),
+        // Facts null the chunks they don't use: which are there is read from Calendar.
+        ("update_event (facts)", "update_event", json!({"updates": [{"event": {"id": "walked", "facts": {"location_ids": [f.home], "notes": {"self": "nice"}}}}]}), [0, 0, 2, 1]),
         ("update_event", "update_event", json!({"updates": [{"event": {"id": "evening", "start": "2026-01-01T20:15:00Z"}}]}), [0, 0, 1, 1]),
         ("create_event", "create_event", json!({"events": [{"summary": "Stroll", "start": "2026-01-04T10:00:00Z", "end": "2026-01-04T11:00:00Z"}]}), [0, 0, 2, 1]),
         // The priority labels are made sure of once, not every call.

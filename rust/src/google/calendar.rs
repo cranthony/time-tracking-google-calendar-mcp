@@ -270,13 +270,18 @@ impl CalendarClient {
     /// kept (unless it's an instance of a series kept only as its master,
     /// which would be taken for an exception).
     pub fn fresh_event(&self, event_id: &str) -> anyhow::Result<Event> {
+        Event::from_api(&self.fresh_event_resource(event_id)?)
+    }
+
+    /// `fresh_event`, as Calendar gives it.
+    fn fresh_event_resource(&self, event_id: &str) -> anyhow::Result<Value> {
         let event = self.call("GET", &self.event_path(event_id), &[], None)?;
         self.store(|store| {
             if event["recurringEventId"].is_null() || store.events.contains_key(event_id) {
                 store.keep(event.clone());
             }
         });
-        Event::from_api(&event)
+        Ok(event)
     }
 
     /// Event `event_id` as kept -- an instance of a series made from its
@@ -352,9 +357,8 @@ impl CalendarClient {
         };
         let now = std::time::Instant::now();
         self.store(|store| {
-            if full {
-                store.events.clear();
-            }
+            let listed: Option<std::collections::HashSet<String>> =
+                full.then(|| changes.items.iter().filter_map(|item| item["id"].as_str().map(str::to_string)).collect());
             for item in changes.items {
                 if !full && !store.is_ours(&item, now) {
                     store.outside.push(item.clone());
@@ -363,6 +367,9 @@ impl CalendarClient {
                 store.keep(item);
             }
             store.token = Some(changes.token);
+            if let Some(listed) = listed {
+                store.keep_only(&listed, now);
+            }
             store.zone = changes.zone.or(store.zone);
             // Up to date only if no write began or ended while this ran.
             if store.generation == generation {
@@ -574,7 +581,11 @@ impl CalendarClient {
             // A null removes a property -- but Calendar refuses one an
             // instance doesn't have, and facts null every chunk they don't
             // use. Removing what isn't there is nothing, so drop those.
-            let current = self.get_event_resource(id)?;
+            // What's there is asked of Calendar itself: what's kept may lag
+            // it (a series edit resets its instances' properties, which
+            // the edit's answer doesn't carry), keeping a null for one gone
+            // or dropping one for one there.
+            let current = self.fresh_event_resource(id)?;
             let empty = Map::new();
             let current_private = current
                 .get("extendedProperties")

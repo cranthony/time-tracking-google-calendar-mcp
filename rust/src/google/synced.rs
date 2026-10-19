@@ -148,6 +148,18 @@ impl Store {
         self.events.insert(id, event);
     }
 
+    /// After a full listing (the first sync, or one Calendar asked for
+    /// with a 410): drop the events kept that it didn't list -- but not
+    /// those the server wrote lately, whose answers it may have before
+    /// the listing does. What it did list was kept as `keep` keeps.
+    pub fn keep_only(&mut self, listed: &HashSet<String>, now: Instant) {
+        let gone: Vec<String> =
+            self.events.iter().filter(|(id, event)| !listed.contains(*id) && !self.is_ours(event, now)).map(|(id, _)| id.clone()).collect();
+        for id in gone {
+            self.events.remove(&id);
+        }
+    }
+
     /// Drop the marks that have lapsed by `now`.
     pub fn lapse(&mut self, now: Instant) {
         self.written.retain(|_, mark| mark.holds(now));
