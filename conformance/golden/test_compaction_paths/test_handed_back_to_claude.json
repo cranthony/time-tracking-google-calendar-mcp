@@ -3840,54 +3840,6 @@
   },
   {
    "body": {
-    "dataFilters": [
-     {
-      "developerMetadataLookup": {
-       "metadataKey": "sheet-role",
-       "metadataValue": "people"
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "developerMetadataLookup": {
-       "metadataKey": "sheet-role",
-       "metadataValue": "people"
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "developerMetadataLookup": {
-       "metadataKey": "sheet-role",
-       "metadataValue": "person-facts"
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
-   "query": {}
-  },
-  {
-   "body": {
     "requests": [
      {
       "addSheet": {

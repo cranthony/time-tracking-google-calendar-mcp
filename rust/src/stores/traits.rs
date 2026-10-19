@@ -25,10 +25,8 @@ const COMMON: [&str; 2] = ["id", "engagement_type"];
 /// "fact:<id>" (TRAIT_FACT_PREFIX).
 pub const FACTS: [&str; 5] = ["action", "action_history", "location", "location_history", "general_notes"];
 pub const TRAIT_FACT_PREFIX: &str = "fact:";
-/// The judgment facts there were before traits had their own: what_matters
-/// became the "what_matters" trait fact, and person_notes was dropped.
-pub const WHAT_MATTERS: &str = "what_matters";
-const PERSON_NOTES: &str = "person_notes";
+/// The id of the seeded Thoughtful trait's fact.
+const WHAT_MATTERS: &str = "what_matters";
 const FACT_FIELDS: [&str; 4] = ["id", "name", "summary_prompt", "log_prompt"];
 const MAX_FACT_ID_LENGTH: usize = 30;
 pub const HISTORY_FACTS: [&str; 2] = ["action_history", "location_history"];
@@ -103,8 +101,8 @@ impl Trait {
     }
 }
 
-/// What a trait keeps about what matters to each person, as what_matters
-/// was before traits had their own facts.
+/// What the seeded Thoughtful trait keeps about what matters to each
+/// person.
 pub fn what_matters_fact() -> Map<String, Value> {
     json!({
         "id": WHAT_MATTERS,
@@ -822,56 +820,14 @@ pub fn with_new_part_ids(parts: &[Map<String, Value>]) -> Vec<Map<String, Value>
         .collect()
 }
 
-/// `t` as kept since parts had ids (see settled_parts), and since traits
-/// had their own facts (see settled_facts): a part judged from
-/// what_matters judges from the trait's "what_matters" fact, made for it.
+/// `t` as kept since parts had ids (see settled_parts).
 pub fn settled(mut t: Trait) -> Trait {
     if let Some(parts) = &t.parts {
         let (parts, weights) = settled_parts(parts);
-        let (parts, what_matters) = settled_facts(&parts);
         t.parts = Some(parts);
         t.scoring = with_weights(t.scoring.take(), weights);
-        if what_matters && t.fact(WHAT_MATTERS).is_none() {
-            t.facts.get_or_insert_with(Vec::new).push(what_matters_fact());
-        }
     }
     t
-}
-
-/// `parts` with their judgment facts as kept since traits had their own:
-/// person_notes dropped, and what_matters as "fact:what_matters" -- and
-/// whether any named what_matters.
-pub fn settled_facts(parts: &[Map<String, Value>]) -> (Vec<Map<String, Value>>, bool) {
-    let mut what_matters = false;
-    let parts = parts
-        .iter()
-        .map(|part| {
-            let Some(Value::Array(facts)) = part.get("facts") else { return part.clone() };
-            let named = |fact: &Value| match fact {
-                Value::Object(o) => o.get("fact").and_then(Value::as_str).map(str::to_string),
-                other => other.as_str().map(str::to_string),
-            };
-            if !facts.iter().any(|f| matches!(named(f).as_deref(), Some(WHAT_MATTERS | PERSON_NOTES))) {
-                return part.clone();
-            }
-            let settled: Vec<Value> = facts
-                .iter()
-                .filter(|f| named(f).as_deref() != Some(PERSON_NOTES))
-                .map(|f| {
-                    if named(f).as_deref() == Some(WHAT_MATTERS) {
-                        what_matters = true;
-                        json!(format!("{TRAIT_FACT_PREFIX}{WHAT_MATTERS}"))
-                    } else {
-                        f.clone()
-                    }
-                })
-                .collect();
-            let mut out = part.clone();
-            out.insert("facts".into(), Value::Array(settled));
-            out
-        })
-        .collect();
-    (parts, what_matters)
 }
 
 /// A person's or habit's own parts for each trait, as a list of objects,
@@ -898,7 +854,6 @@ pub fn settled_spec(spec: Map<String, Value>) -> Map<String, Value> {
             continue;
         };
         let (settled, weights) = settled_parts(&maps);
-        let (settled, _) = settled_facts(&settled);
         parts_out.insert(trait_id.clone(), Value::Array(settled.into_iter().map(Value::Object).collect()));
         let existing = part_scoring.get(trait_id).and_then(Value::as_object).cloned();
         if let Some(merged) = with_weights(existing, weights) {

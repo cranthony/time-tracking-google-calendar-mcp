@@ -1,10 +1,8 @@
 //! The module's tests, against the fake Google.
 
 use super::*;
-use crate::sheet::{PEOPLE, TRAITS};
 use crate::testing::app::test_app;
 use crate::write_lock::WRITE_LOCK;
-use serde_json::json;
 
 fn at(text: &str) -> Moment {
     chrono::DateTime::parse_from_rfc3339(text).unwrap()
@@ -12,38 +10,6 @@ fn at(text: &str) -> Moment {
 
 fn change(person: &str, trait_id: &str, fact: &str, summary: &str) -> SummaryChange {
     SummaryChange { person_id: person.into(), trait_id: trait_id.into(), fact_id: fact.into(), summary: summary.into() }
-}
-
-fn thoughtful() -> serde_json::Value {
-    json!({"id": "thoughtful", "name": "Thoughtful", "status": "active", "parts": [
-        {"id": "judgment", "kind": "judgment", "rubric": "Did it show I remembered?", "ratings": {"0": "No", "1": "Yes"},
-         "facts": ["action", "person_notes", "what_matters"]}
-    ]})
-}
-
-#[test]
-fn what_matters_moves_into_each_trait_that_judged_from_it() {
-    let t = test_app();
-    t.app.traits().unwrap();
-    // The People tab as it was, with what_matters.
-    let spreadsheet = t.spreadsheet();
-    {
-        let _held = WRITE_LOCK.hold();
-        RowSheet::ensure(&t.app.clients().unwrap().1, &spreadsheet, PEOPLE.0, PEOPLE.1, KEPT_WHAT_MATTERS_ROW, &["id"]).unwrap();
-    }
-    t.seed(TRAITS.1, &[thoughtful()]);
-    t.seed(PEOPLE.1, &[json!({"id": "sam", "what_matters": "- starts a new job"}), json!({"id": "kim"})]);
-    let _held = WRITE_LOCK.hold();
-    let store = t.app.person_facts().unwrap();
-    assert_eq!(
-        store.by_person().unwrap(),
-        vec![("sam".to_string(), vec![("thoughtful".to_string(), "what_matters".to_string(), "- starts a new job".to_string())])]
-    );
-    // The trait reads as judging from its fact, and person_notes is gone.
-    let traits = t.app.traits().unwrap().all().unwrap();
-    assert_eq!(traits[0].parts.as_ref().unwrap()[0]["facts"], json!(["action", "fact:what_matters"]));
-    assert_eq!(traits[0].fact_ids(), vec!["what_matters"]);
-    assert!(crate::stores::traits::trait_problems(&traits[0]).is_empty());
 }
 
 #[test]

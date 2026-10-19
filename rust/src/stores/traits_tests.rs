@@ -517,18 +517,3 @@ fn refuses_what_isnt_a_fact() {
     }
 }
 
-#[test]
-fn parts_judged_from_what_matters_and_person_notes_read_as_they_are_now() {
-    let old = given(json!({"id": "kind", "name": "Kind", "status": "active", "parts": [
-        with(judgment(), "facts", json!(["person_notes", "what_matters", "general_notes"])),
-        with(judgment(), "facts", json!(["action"])),
-    ]}));
-    let now = settled(old);
-    assert_eq!(now.parts.as_ref().unwrap()[0]["facts"], json!(["fact:what_matters", "general_notes"]));
-    assert_eq!(now.parts.as_ref().unwrap()[1]["facts"], json!(["action"]));
-    assert_eq!(now.fact_ids(), vec!["what_matters"]);
-    assert!(trait_problems(&now).is_empty(), "{:?}", trait_problems(&now));
-    // A trait that never judged from what_matters gets no fact.
-    let plain = settled(given(json!({"id": "p", "name": "P", "status": "active", "parts": [with(judgment(), "facts", json!(["person_notes"]))]})));
-    assert_eq!((plain.facts.clone(), plain.parts.as_ref().unwrap()[0]["facts"].clone()), (None, json!([])));
-}

@@ -10,9 +10,9 @@ use crate::event::{parse_iso, Moment};
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, RowSheet, RowType};
-use crate::sheet::{find_tab, FACT_LOGS, PEOPLE, PERSON_FACTS};
+use crate::sheet::{FACT_LOGS, PERSON_FACTS};
 use crate::stores::groups::set;
-use crate::stores::traits::{Trait, Traits, WHAT_MATTERS};
+use crate::stores::traits::Trait;
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 
@@ -50,18 +50,8 @@ pub struct FactLog {
     pub source: Option<String>,
 }
 
-/// A person's what_matters, as the People tab kept it before traits had
-/// their own facts: read once, to move it into them.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, RowItem)]
-#[row(name = "person")]
-struct KeptWhatMatters {
-    id: Option<String>,
-    what_matters: Option<String>,
-}
-
 pub const PERSON_FACT_ROW: RowType = <PersonFact as rows::RowItem>::ROW_TYPE;
 pub const FACT_LOG_ROW: RowType = <FactLog as rows::RowItem>::ROW_TYPE;
-const KEPT_WHAT_MATTERS_ROW: RowType = <KeptWhatMatters as rows::RowItem>::ROW_TYPE;
 
 /// A log as the fact tools return it: what an event changed in one of a
 /// person's trait facts, and when.
@@ -105,23 +95,10 @@ pub struct PersonFacts {
 }
 
 impl PersonFacts {
-    /// The two tabs, made the first time -- the Person Facts tab with each
-    /// person's what_matters, as the People tab kept it, as their summary
-    /// for each trait's "what_matters" fact.
-    pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str, traits: &Traits) -> anyhow::Result<PersonFacts> {
-        let seed = match find_tab(sheets, spreadsheet_id, PERSON_FACTS.0, PERSON_FACTS.1)? {
-            Some(_) => Vec::new(),
-            None => kept_what_matters(sheets, spreadsheet_id, &traits.all()?)?.iter().map(rows::RowItem::to_row).collect(),
-        };
-        let sheet = RowSheet::ensure_seeded(
-            sheets,
-            spreadsheet_id,
-            PERSON_FACTS.0,
-            PERSON_FACTS.1,
-            PERSON_FACT_ROW,
-            &["id", "person_id", "trait_id", "fact_id"],
-            &seed,
-        )?;
+    /// The two tabs, made the first time.
+    pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str) -> anyhow::Result<PersonFacts> {
+        let sheet =
+            RowSheet::ensure(sheets, spreadsheet_id, PERSON_FACTS.0, PERSON_FACTS.1, PERSON_FACT_ROW, &["id", "person_id", "trait_id", "fact_id"])?;
         let log_sheet = RowSheet::ensure(sheets, spreadsheet_id, FACT_LOGS.0, FACT_LOGS.1, FACT_LOG_ROW, &["id", "event_id", "person_id"])?;
         Ok(PersonFacts { sheet, log_sheet })
     }
@@ -325,34 +302,6 @@ pub fn summary_problems(changes: &[SummaryChange], traits: &[Trait]) -> Vec<Stri
         seen.push(id);
     }
     problems
-}
-
-/// Each person's what_matters, as the People tab kept it, as their
-/// summary of each of `traits`' "what_matters" facts.
-fn kept_what_matters(sheets: &SheetsClient, spreadsheet_id: &str, traits: &[Trait]) -> anyhow::Result<Vec<PersonFact>> {
-    let with_fact: Vec<&str> = traits.iter().filter(|t| t.fact(WHAT_MATTERS).is_some()).filter_map(|t| t.id.as_deref()).collect();
-    if with_fact.is_empty() || find_tab(sheets, spreadsheet_id, PEOPLE.0, PEOPLE.1)?.is_none() {
-        return Ok(Vec::new());
-    }
-    let people = RowSheet::ensure(sheets, spreadsheet_id, PEOPLE.0, PEOPLE.1, KEPT_WHAT_MATTERS_ROW, &["id"])?;
-    let mut rows = Vec::new();
-    for person in people.read_items::<KeptWhatMatters>()? {
-        let (Some(id), Some(text)) = (set(person.id.as_deref()), person.what_matters.as_deref().map(str::trim).filter(|t| !t.is_empty())) else {
-            continue;
-        };
-        for trait_id in &with_fact {
-            rows.push(PersonFact {
-                id: Some(summary_id(id, trait_id, WHAT_MATTERS)),
-                person_id: Some(id.to_string()),
-                trait_id: Some(trait_id.to_string()),
-                fact_id: Some(WHAT_MATTERS.to_string()),
-                summary: Some(text.to_string()),
-                updated_at: None,
-                source: Some("what_matters".into()),
-            });
-        }
-    }
-    Ok(rows)
 }
 
 #[cfg(test)]
