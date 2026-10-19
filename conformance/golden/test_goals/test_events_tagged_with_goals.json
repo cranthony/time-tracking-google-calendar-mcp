@@ -26,6 +26,7 @@
      "id": "co2yzn",
      "parent_id": null,
      "path": [],
+     "priority": null,
      "required": null,
      "started_at": "2026-10-07T15:30:00-04:00",
      "status": "active",
@@ -34,7 +35,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Learn Rust\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-12-01\",\n    \"deadline_offset_minutes\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Learn Rust\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-12-01\",\n    \"deadline_offset_minutes\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_goal"
   },
   {
@@ -327,6 +328,7 @@
         "title",
         "parent_id",
         "required",
+        "priority",
         "expected_minutes",
         "deadline",
         "deadline_offset_minutes",
@@ -387,6 +389,7 @@
        [
         "co2yzn",
         "Learn Rust",
+        "",
         "",
         "",
         "",
@@ -2183,6 +2186,7 @@
         "title",
         "parent_id",
         "required",
+        "priority",
         "expected_minutes",
         "deadline",
         "deadline_offset_minutes",
@@ -2196,6 +2200,7 @@
        [
         "co2yzn",
         "Learn Rust",
+        "",
         "",
         "",
         "",

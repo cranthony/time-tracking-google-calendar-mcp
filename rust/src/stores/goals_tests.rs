@@ -372,3 +372,20 @@ fn shares_read_from_a_shortened_event_are_cut_to_fit_and_deleted_goals_left_out(
 
     assert_eq!(settled, vec![share("a", Some(40), None), share("b", Some(20), None), share("c", None, Some(50)), share("d", None, Some(50))]);
 }
+
+#[test]
+fn a_goal_keeps_its_priority_until_cleared_and_it_cant_be_negative() {
+    let f = fixture();
+    let id = f.create(json!({"title": "Ship", "deadline": "2026-11-01", "priority": 1})).unwrap();
+    assert_eq!(f.get(&id)["priority"], json!(1));
+
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "priority": -1})), r"'Odd'\)'s priority must be 0 or more, not -1");
+    refused(f.change(&[], vec![edit(json!({"id": id, "priority": -2, "version": 1}))], vec![]), "priority must be 0 or more, not -2");
+
+    f.change(&[], vec![edit(json!({"id": id, "priority": 0, "version": 1}))], vec![]).unwrap();
+    assert_eq!(f.get(&id)["priority"], json!(0));
+    let mut cleared = edit(json!({"id": id, "version": 2}));
+    cleared.clear_fields = vec!["priority".into()];
+    f.change(&[], vec![cleared], vec![]).unwrap();
+    assert_eq!(f.get(&id)["priority"], Value::Null);
+}
