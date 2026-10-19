@@ -406,6 +406,12 @@ impl State {
                 event[key] = render_moment(parse_moment(&value, zone), zone, value.get("timeZone").and_then(Value::as_str));
             }
         }
+        // When it last changed, as Calendar gives it: a millisecond on for
+        // each etag made, as etags count up.
+        if let Some(n) = event["etag"].as_str().and_then(|e| e.trim_matches('"').parse::<i64>().ok()) {
+            let at = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap() + chrono::Duration::milliseconds(n);
+            event["updated"] = json!(at.to_rfc3339_opts(chrono::SecondsFormat::Millis, true));
+        }
         event
     }
 

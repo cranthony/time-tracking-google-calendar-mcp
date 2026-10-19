@@ -104,3 +104,18 @@ fn forgetting_starts_afresh_but_keeps_counting_writes() {
         assert_eq!(store.generation, 2);
     });
 }
+
+#[test]
+fn an_older_version_doesnt_replace_a_newer_one_kept() {
+    let mut store = Store::default();
+    store.keep(json!({"id": "walk", "etag": "\"2\"", "updated": "2026-10-19T01:29:50.614Z"}));
+
+    store.keep(json!({"id": "walk", "etag": "\"1\"", "updated": "2026-10-19T01:20:00.000Z"}));
+    assert_eq!(store.events["walk"]["etag"], json!("\"2\""));
+
+    store.keep(json!({"id": "walk", "etag": "\"3\"", "updated": "2026-10-19T01:30:23.276Z"}));
+    assert_eq!(store.events["walk"]["etag"], json!("\"3\""));
+    // One without `updated` can't be ordered: it's taken.
+    store.keep(json!({"id": "walk", "etag": "\"4\""}));
+    assert_eq!(store.events["walk"]["etag"], json!("\"4\""));
+}
