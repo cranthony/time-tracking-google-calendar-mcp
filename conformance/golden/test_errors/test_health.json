@@ -28,6 +28,7 @@
    "content": {
     "auth": "required",
     "memory": "<memory>",
+    "memory_interval_seconds": "<memory>",
     "memory_latest_mib": "<memory>",
     "memory_max_mib": "<memory>",
     "memory_min_mib": "<memory>",
@@ -84,7 +85,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\"tools\": [{\"tool\": \"get_location\", \"count\": 1, \"errors\": 1, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": false}]}, {\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}, {\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}]}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": [], \"auth\": \"required\", \"sheet_warnings\": []}",
+   "text": "{\"tools\": [{\"tool\": \"get_location\", \"count\": 1, \"errors\": 1, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": false}]}, {\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}, {\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}]}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": [], \"auth\": \"required\", \"sheet_warnings\": [], \"memory_interval_seconds\": \"<memory>\"}",
    "tool": "get_health"
   },
   {
@@ -94,6 +95,7 @@
    "content": {
     "auth": "required",
     "memory": "<memory>",
+    "memory_interval_seconds": "<memory>",
     "memory_latest_mib": "<memory>",
     "memory_max_mib": "<memory>",
     "memory_min_mib": "<memory>",
@@ -139,7 +141,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\"tools\": [{\"tool\": \"get_health\", \"count\": 1, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}, {\"tool\": \"get_location\", \"count\": 1, \"errors\": 1, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}, {\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": [], \"auth\": \"required\", \"sheet_warnings\": []}",
+   "text": "{\"tools\": [{\"tool\": \"get_health\", \"count\": 1, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}, {\"tool\": \"get_location\", \"count\": 1, \"errors\": 1, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}, {\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": null}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": [], \"auth\": \"required\", \"sheet_warnings\": [], \"memory_interval_seconds\": \"<memory>\"}",
    "tool": "get_health"
   },
   {
@@ -149,6 +151,7 @@
    "content": {
     "auth": "required",
     "memory": "<memory>",
+    "memory_interval_seconds": "<memory>",
     "memory_latest_mib": "<memory>",
     "memory_max_mib": "<memory>",
     "memory_min_mib": "<memory>",
@@ -185,7 +188,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\"tools\": [{\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}, {\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}]}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": [], \"auth\": \"required\", \"sheet_warnings\": []}",
+   "text": "{\"tools\": [{\"tool\": \"get_locations\", \"count\": 2, \"errors\": 0, \"work\": {\"median_ms\": \"int\", \"p95_ms\": \"int\", \"max_ms\": \"int\"}, \"total\": null, \"calls\": [{\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}, {\"at\": \"str\", \"work_ms\": \"int\", \"total_ms\": null, \"overhead_ms\": null, \"ok\": true}]}], \"memory\": \"<memory>\", \"memory_latest_mib\": \"<memory>\", \"memory_min_mib\": \"<memory>\", \"memory_max_mib\": \"<memory>\", \"restarts\": [], \"auth\": \"required\", \"sheet_warnings\": [], \"memory_interval_seconds\": \"<memory>\"}",
    "tool": "get_health"
   },
   {

@@ -31,7 +31,8 @@ pub struct LatencySummary {
 }
 
 /// The server's resident memory (RSS), in MiB, at its highest in one
-/// second (UTC) -- sampled after each tool call, and after each
+/// interval (`memory_interval_seconds`; UTC) -- sampled after each tool
+/// call, and after each
 /// background refresh of what the server keeps -- and, when they were
 /// measured, what made it up (`parts`), to stack: each Sheet tab kept
 /// ("Sheet: <title>"), the calendar kept ("Calendar"), and "Rest of
@@ -103,6 +104,9 @@ pub struct HealthReport {
     /// The last 100 hand edits found in the metadata spreadsheet, oldest
     /// first.
     pub sheet_warnings: Vec<SheetWarning>,
+    /// How long each memory sample's interval is, in seconds: each is the
+    /// highest in its interval.
+    pub memory_interval_seconds: i64,
 }
 
 /// The server's health metrics, to graph or look for patterns in: for
@@ -110,8 +114,9 @@ pub struct HealthReport {
 /// own work took and how long the whole request took (auth and transport
 /// included), and whether it succeeded -- with the median, 95th
 /// percentile and slowest of each; the server's memory, at its highest
-/// in each of the last 500 seconds anything happened in, with what made
-/// it up; and its last 100 restarts. Kept across
+/// in each of the last 500 intervals anything happened in
+/// (`memory_interval_seconds` long: a minute), with what made it up; and
+/// its last 100 restarts. Kept across
 /// restarts, in the Health tab of the calendar's metadata spreadsheet;
 /// the last few seconds' may not be written yet, but are given here.
 /// Also auth: "required", or "disabled" for a build that skips sign-in;
@@ -184,6 +189,7 @@ pub fn get_health(app: &App, tool_name: Option<String>, #[schema(default = "true
         "memory_max_mib": max,
         "restarts": app.health.restarts().into_iter().map(iso).collect::<Vec<_>>(),
         "auth": crate::auth_mode::name(),
+        "memory_interval_seconds": crate::health::MEMORY_INTERVAL_SECONDS,
         "sheet_warnings": app.health.sheet_warnings().iter().map(|w| json!({
             "at": iso(w.at_ms),
             "kind": w.kind,
