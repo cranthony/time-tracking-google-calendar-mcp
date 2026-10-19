@@ -11,6 +11,7 @@ pub mod locations;
 pub mod travel_times;
 pub mod notes;
 pub mod people;
+pub mod person_facts;
 pub mod recurrences;
 pub mod schedule;
 pub mod scoring;

@@ -9,7 +9,8 @@ import pytest
 async def test_people(session):
     people = await session.call("get_people")
     assert people[0]["id"] == "self"
-    alex = await session.call("create_person", person={"name": "Alex Example", "context": "met at salsa", "what_matters": "music"})
+    alex = await session.call("create_person", person={"name": "Alex Example", "context": "met at salsa"}, facts={"thoughtful": {"what_matters": "music"}})
+    assert alex["person"]["facts"] == {"thoughtful": {"what_matters": "music"}}
     alex_id = alex["created_id"]
     other = await session.call("create_person", person={"name": "Alex Example", "context": "from work"})
     await session.call_error("create_person", person={"name": "Alex Example", "context": "met at salsa"})
@@ -19,14 +20,16 @@ async def test_people(session):
     assert (await session.call("get_person", id_or_name=alex_id))["context"] == "met at salsa"
     assert (await session.call("get_person", id_or_name="self"))["id"] == "self"
     await session.call_error("get_person", id_or_name="Alix Exampel")
-    updated = await session.call("update_person", person={"id": alex_id, "name": "Alex E."}, clear_fields=["what_matters"])
-    assert updated["name"] == "Alex E." and updated["what_matters"] is None
+    updated = await session.call("update_person", person={"id": alex_id, "name": "Alex E."}, facts={"thoughtful": {"what_matters": ""}})
+    assert updated["name"] == "Alex E." and updated["facts"] == {}
+    await session.call_error("update_person", person={"id": alex_id}, facts={"thoughtful": {"no_such_fact": "x"}})
+    assert await session.call("get_fact_logs", person_id=alex_id) == []
     await session.call("update_person", person={"id": other["created_id"], "status": "archived"})
     assert "Alex E." in [p["name"] for p in await session.call("get_people")]
     await session.call("get_people", statuses=["active", "archived"])
     await session.call_error("update_person", person={"id": "self", "status": "archived"})
     await session.call_error("update_person", person={"id": "nobody", "name": "x"})
-    await session.call("update_person", person={"id": "self", "what_matters": "time well spent"})
+    await session.call("update_person", person={"id": "self"}, facts={"thoughtful": {"what_matters": "time well spent"}})
 
 
 async def test_person_traits(session):

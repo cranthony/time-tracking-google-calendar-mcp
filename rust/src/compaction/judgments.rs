@@ -14,7 +14,8 @@ use crate::stores::groups::{python_str, repr_or_none, str_or_none, truthy};
 use crate::stores::habits::{self, subject_id, Habit, Habits};
 use crate::stores::locations::Locations;
 use crate::stores::people::{People, Person};
-use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, Trait, TraitStatus, Traits};
+use crate::stores::person_facts::PersonFacts;
+use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, trait_fact_id, Trait, TraitStatus, Traits};
 use chrono::Duration;
 use serde_json::{json, Map, Value};
 
@@ -34,7 +35,8 @@ pub struct Subject {
     pub id: String,
     pub name: Option<Value>,
     pub context: Option<Value>,
-    pub what_matters: Option<Value>,
+    /// A habit's note: what it's judged as practice of.
+    pub note: Option<Value>,
     pub traits: Option<Value>,
 }
 
@@ -45,13 +47,13 @@ impl Subject {
             id: person.id.clone().unwrap_or_default(),
             name: text(&person.name),
             context: text(&person.context),
-            what_matters: text(&person.what_matters),
+            note: None,
             traits: person.traits.clone().map(Value::Object),
         }
     }
 
     fn bare(id: &str) -> Subject {
-        Subject { id: id.into(), name: Some(json!(id)), context: None, what_matters: None, traits: None }
+        Subject { id: id.into(), name: Some(json!(id)), context: None, note: None, traits: None }
     }
 }
 
@@ -141,12 +143,21 @@ pub struct Judgment {
     pub reasoning: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct JudgmentsDue {
     pub compaction_id: String,
     pub events: Vec<EventJudgmentsDue>,
     pub parts: Vec<JudgmentPart>,
     pub history: Vec<(String, PersonHistory)>,
+    /// Each person's summaries of the trait facts their parts name: (person
+    /// id, [("<trait id>/<fact id>", summary)]).
+    pub facts: Vec<(String, Vec<(String, String)>)>,
+    /// Each habit's note: (its subject id, note).
+    pub habit_notes: Vec<(String, String)>,
+}
+
+fn pairs_json(pairs: &[(String, String)]) -> Value {
+    Value::Object(pairs.iter().map(|(k, v)| (k.clone(), json!(v))).collect())
 }
 
 impl JudgmentsDue {
@@ -160,6 +171,8 @@ impl JudgmentsDue {
         out.insert("events".into(), Value::Array(self.events.iter().map(EventJudgmentsDue::to_json).collect()));
         out.insert("parts".into(), Value::Array(self.parts.iter().map(JudgmentPart::to_json).collect()));
         out.insert("history".into(), Value::Object(self.history.iter().map(|(k, h)| (k.clone(), h.to_json())).collect()));
+        out.insert("facts".into(), Value::Object(self.facts.iter().map(|(k, f)| (k.clone(), pairs_json(f))).collect()));
+        out.insert("habit_notes".into(), pairs_json(&self.habit_notes));
         out.insert("instructions".into(), json!(INSTRUCTIONS));
         Value::Object(out)
     }
@@ -185,6 +198,7 @@ impl HabitJudgmentsDue {
         out.insert("events".into(), Value::Array(self.due.events.iter().map(EventJudgmentsDue::to_json).collect()));
         out.insert("parts".into(), Value::Array(self.due.parts.iter().map(JudgmentPart::to_json).collect()));
         out.insert("history".into(), Value::Object(self.due.history.iter().map(|(k, h)| (k.clone(), h.to_json())).collect()));
+        out.insert("habit_notes".into(), pairs_json(&self.due.habit_notes));
         out.insert("instructions".into(), json!(BACKFILL_INSTRUCTIONS));
         Value::Object(out)
     }
@@ -262,6 +276,9 @@ pub struct Judging {
     pub locations: Locations,
     pub traits: Traits,
     pub habits: Option<Habits>,
+    /// Where people's trait fact summaries are kept, for the parts that
+    /// name them.
+    pub person_facts: Option<PersonFacts>,
 }
 
 struct Subjects {
@@ -292,6 +309,9 @@ impl Judging {
         if let Some(habits) = &self.habits {
             tabs.push(habits.whole_tab());
         }
+        if let Some(facts) = &self.person_facts {
+            tabs.extend(facts.whole_tabs());
+        }
         tabs
     }
 
@@ -308,7 +328,7 @@ impl Judging {
             }
         }
         if !people.iter().any(|(k, _)| k == SELF_ID) {
-            people.push((SELF_ID.into(), Subject { id: SELF_ID.into(), name: Some(json!("Me")), context: None, what_matters: None, traits: None }));
+            people.push((SELF_ID.into(), Subject { id: SELF_ID.into(), name: Some(json!("Me")), context: None, note: None, traits: None }));
         }
         let mut scopes: Vec<(String, Value)> = Vec::new();
         if let Some(store) = &self.habits {
@@ -328,7 +348,7 @@ impl Judging {
                         id: key.clone(),
                         name,
                         context: None,
-                        what_matters: habit.note.clone().map(Value::String),
+                        note: habit.note.clone().map(Value::String),
                         traits: habit.traits.clone().map(Value::Object),
                     },
                 );
@@ -536,18 +556,64 @@ impl Judging {
 
     pub fn due(&self, compaction_id: &str, requests: &[JudgmentRequest]) -> anyhow::Result<JudgmentsDue> {
         if requests.is_empty() {
-            return Ok(JudgmentsDue { compaction_id: compaction_id.into(), events: Vec::new(), parts: Vec::new(), history: Vec::new() });
+            return Ok(JudgmentsDue { compaction_id: compaction_id.into(), ..Default::default() });
         }
         let first = requests.iter().map(|r| r.start).min().unwrap();
         let (parts, history) = self.parts_and_history(first)?;
         let people: Vec<&String> = requests.iter().map(|r| &r.person_id).collect();
         let named: Vec<(String, String)> = requests.iter().map(|r| (r.person_id.clone(), format!("{}/{}", r.trait_id, r.part))).collect();
+        let parts: Vec<JudgmentPart> =
+            parts.into_iter().filter(|p| named.iter().any(|(person, key)| *key == p.key || format!("{key}@{person}") == p.key)).collect();
+        let (facts, habit_notes) = self.facts_of(requests, &parts)?;
         Ok(JudgmentsDue {
             compaction_id: compaction_id.into(),
             events: due_by_event(requests),
-            parts: parts.into_iter().filter(|p| named.iter().any(|(person, key)| *key == p.key || format!("{key}@{person}") == p.key)).collect(),
+            parts,
             history: history.into_iter().filter(|(person, _)| people.contains(&person)).collect(),
+            facts,
+            habit_notes,
         })
+    }
+
+    /// The summaries of the trait facts `requests`' parts name, by person
+    /// -- each fact once -- and the notes of the habits among them.
+    #[allow(clippy::type_complexity)]
+    fn facts_of(&self, requests: &[JudgmentRequest], parts: &[JudgmentPart]) -> anyhow::Result<(Vec<(String, Vec<(String, String)>)>, Vec<(String, String)>)> {
+        let subjects = self.subjects()?;
+        let kept = match &self.person_facts {
+            Some(store) => store.by_person()?,
+            None => Vec::new(),
+        };
+        let mut facts: Vec<(String, Vec<(String, String)>)> = Vec::new();
+        let mut notes: Vec<(String, String)> = Vec::new();
+        for request in requests {
+            let person = &request.person_id;
+            if let Some(note) = subjects.get(person).and_then(|s| s.note.as_ref()).and_then(Value::as_str) {
+                if !notes.iter().any(|(k, _)| k == person) {
+                    notes.push((person.clone(), note.to_string()));
+                }
+            }
+            let key = format!("{}/{}", request.trait_id, request.part);
+            let own = format!("{key}@{person}");
+            let Some(part) = parts.iter().find(|p| p.key == own).or_else(|| parts.iter().find(|p| p.key == key)) else { continue };
+            let theirs = kept.iter().find(|(p, _)| p == person).map(|(_, f)| f.as_slice()).unwrap_or_default();
+            for name in &part.facts {
+                let Some(fact) = trait_fact_id(name) else { continue };
+                let Some((_, _, summary)) = theirs.iter().find(|(t, f, _)| *t == request.trait_id && f == fact) else { continue };
+                let fact_key = format!("{}/{fact}", request.trait_id);
+                let slot = match facts.iter().position(|(p, _)| p == person) {
+                    Some(i) => i,
+                    None => {
+                        facts.push((person.clone(), Vec::new()));
+                        facts.len() - 1
+                    }
+                };
+                if !facts[slot].1.iter().any(|(k, _)| *k == fact_key) {
+                    facts[slot].1.push((fact_key, summary.clone()));
+                }
+            }
+        }
+        Ok((facts, notes))
     }
 
     fn parts_and_history(&self, before: Moment) -> anyhow::Result<(Vec<JudgmentPart>, Vec<(String, PersonHistory)>)> {

@@ -38,9 +38,13 @@ pub enum EventField {
 /// What compaction established about an event: where it was
 /// (location_ids, usually one place; several when it moved between
 /// them), who was there with the user (with_ids), who it was for
-/// (for_ids), a note on how it was for each person there (notes), and
-/// whether it was a commute, getting from one place to another (commute).
-/// Every field is optional.
+/// (for_ids), a note on how it was for each person there (notes),
+/// whether it was a commute, getting from one place to another (commute),
+/// and what it changed in people's trait facts (logs: {person id --
+/// "self", or one it was with or for: {"<trait id>/<fact id>": a log of
+/// the change, at most 500 characters}}, each beside the summary the
+/// change rewrote; see compact_notes' fact_summaries). Every field is
+/// optional.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct Facts {
     pub location_ids: Option<Vec<LocationShare>>,
@@ -48,6 +52,7 @@ pub struct Facts {
     pub for_ids: Option<Vec<PersonShare>>,
     pub notes: Option<IndexMap<String, String>>,
     pub commute: Option<bool>,
+    pub logs: Option<IndexMap<String, IndexMap<String, String>>>,
 }
 
 /// A calendar event, as every event tool takes and returns it.
@@ -242,6 +247,7 @@ impl From<&Facts> for EventFacts {
             for_ids: facts.for_ids.as_ref().map(|ids| json!(ids)),
             notes: facts.notes.as_ref().map(|notes| json!(notes)),
             commute: facts.commute.map(Value::Bool),
+            logs: facts.logs.as_ref().map(|logs| json!(logs)),
         }
     }
 }

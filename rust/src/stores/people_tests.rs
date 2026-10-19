@@ -104,11 +104,11 @@ fn updating_self_adds_their_row_once() {
     let f = fixture();
     f.create(json!({"name": "Sam"}));
 
-    f.update(json!({"id": SELF_ID, "what_matters": "music"}), &[]).unwrap();
+    f.update(json!({"id": SELF_ID, "context": "music"}), &[]).unwrap();
     f.update(json!({"id": SELF_ID, "name": "Chris"}), &[]).unwrap();
 
     let listed = f.listed(None);
-    assert_eq!((listed[0]["id"].clone(), listed[0]["name"].clone(), listed[0]["what_matters"].clone()), (json!(SELF_ID), json!("Chris"), json!("music")));
+    assert_eq!((listed[0]["id"].clone(), listed[0]["name"].clone(), listed[0]["context"].clone()), (json!(SELF_ID), json!("Chris"), json!("music")));
     assert_eq!(field(&listed, "name"), vec![json!("Chris"), json!("Sam")]);
 }
 
@@ -180,13 +180,13 @@ fn refuses_unknown_circles() {
 fn sets_given_fields_keeps_the_rest_and_clears() {
     let f = fixture();
     let family = f.circle(json!({"name": "Family"}));
-    let sam = f.create(json!({"name": "Sam", "context": "cousin", "what_matters": "tea"}));
+    let sam = f.create(json!({"name": "Sam", "context": "cousin", "foundations": []}));
 
     let listed = f.update(json!({"id": sam, "circles": [family]}), &["context"]).unwrap();
 
     assert_eq!(
-        (listed["name"].clone(), listed["context"].clone(), listed["circles"].clone(), listed["circle_names"].clone(), listed["what_matters"].clone()),
-        (json!("Sam"), Value::Null, json!([family]), json!(["Family"]), json!("tea"))
+        (listed["name"].clone(), listed["context"].clone(), listed["circles"].clone(), listed["circle_names"].clone(), listed["foundations"].clone()),
+        (json!("Sam"), Value::Null, json!([family]), json!(["Family"]), json!([]))
     );
 }
 

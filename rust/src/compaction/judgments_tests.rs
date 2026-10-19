@@ -94,6 +94,7 @@ impl Setup {
             locations: app.locations().unwrap(),
             traits: app.traits().unwrap(),
             habits: Some(app.habits().unwrap()),
+            person_facts: Some(app.person_facts().unwrap()),
         };
         t.seed(
             ACTIONS.1,

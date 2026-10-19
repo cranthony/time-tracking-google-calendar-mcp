@@ -321,7 +321,7 @@ fn prepare_gives_the_people_and_locations_to_settle_facts_from() {
         None,
         "11:30",
         Stores {
-            people: vec![json!({"id": "sam", "name": "Sam", "context": "salsa", "status": "active", "what_matters": "tea"})],
+            people: vec![json!({"id": "sam", "name": "Sam", "context": "salsa", "status": "active"})],
             locations: vec![json!({"id": "home", "name": "Home", "hint": "the apartment"})],
             ..Default::default()
         },
@@ -330,10 +330,11 @@ fn prepare_gives_the_people_and_locations_to_settle_facts_from() {
     let context = setup.prepare();
 
     let people: Vec<(Value, Value, Value, Value)> =
-        context.people.unwrap().iter().map(|p| (p["id"].clone(), p["name"].clone(), p["context"].clone(), p["what_matters"].clone())).collect();
+        context.people.unwrap().iter().map(|p| (p["id"].clone(), p["name"].clone(), p["context"].clone(), p["facts"].clone())).collect();
+    // Without traits, there are no trait facts to show.
     assert_eq!(
         people,
-        vec![(json!("self"), json!("Me"), Value::Null, Value::Null), (json!("sam"), json!("Sam"), json!("salsa"), json!("tea"))]
+        vec![(json!("self"), json!("Me"), Value::Null, Value::Null), (json!("sam"), json!("Sam"), json!("salsa"), Value::Null)]
     );
     let locations: Vec<(Value, Value, Value)> = context.locations.unwrap().iter().map(|l| (l["id"].clone(), l["name"].clone(), l["hint"].clone())).collect();
     assert_eq!(locations, vec![(json!("home"), json!("Home"), json!("the apartment"))]);

@@ -72,7 +72,7 @@ fn the_requests_each_tool_makes() {
         ("get_people", "get_people", json!({}), [0, 0, 0, 0]),
         ("get_person", "get_person", json!({"id_or_name": "sam"}), [0, 0, 0, 0]),
         ("create_person", "create_person", json!({"person": {"name": "Alex"}}), [0, 1, 0, 0]),
-        ("update_person", "update_person", json!({"person": {"id": f.sam, "what_matters": "tea"}}), [0, 1, 0, 0]),
+        ("update_person", "update_person", json!({"person": {"id": f.sam, "context": "tea"}}), [0, 1, 0, 0]),
         ("get_circles", "get_circles", json!({}), [0, 0, 0, 0]),
         ("get_circle", "get_circle", json!({"id_or_name": "family"}), [0, 0, 0, 0]),
         ("create_circle", "create_circle", json!({"circle": {"name": "Friends"}}), [0, 1, 0, 0]),

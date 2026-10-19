@@ -91,6 +91,7 @@
 //! numbers and ids.
 
 use super::additions::{check_additions, create_additions, resolve, Added, Additions, REF_PREFIX};
+use super::fact_changes::{self, FactKeeping, ProposedSummary};
 use super::guide::{APPROVAL_RULE, DECISION_GUIDE};
 use super::judgments::{HabitJudgmentsDue, Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult};
 use super::plan::{
@@ -99,7 +100,7 @@ use super::plan::{
 };
 use super::proposals::{
     change_json, claude_key, claude_key_number, decision_shape, edit_id, feedback_id, merge, new_proposal_id, revision_id, settle_refs,
-    split_feedback_id, AdditionChoice, Dict, Feedback, FeedbackReply, MergeOptions, Merged, NoteEdit, Proposal, ProposalContext,
+    split_feedback_id, AdditionChoice, AdditionSettled, Dict, Feedback, FeedbackReply, MergeOptions, Merged, NoteEdit, Proposal, ProposalContext,
     ProposalEvent, ProposalNote, ProposalResult, ProposalSummary, Recap, UserEdit,
 };
 use crate::determinism;
@@ -251,6 +252,7 @@ pub struct CompactionContext {
     pub goals: Option<Vec<Value>>,
     pub previous_note: Option<NotedTime>,
     pub proposal: Option<ProposalContext>,
+    pub trait_facts: Option<Vec<Value>>,
 }
 
 impl CompactionContext {
@@ -324,6 +326,7 @@ impl CompactionContext {
         out.insert("people".into(), json!(self.people));
         out.insert("locations".into(), json!(self.locations));
         out.insert("goals".into(), json!(self.goals));
+        out.insert("trait_facts".into(), json!(self.trait_facts));
         out.insert(
             "previous_note".into(),
             self.previous_note
@@ -413,6 +416,9 @@ pub struct NoteCompactor {
     pub goals: Option<Goals>,
     pub judging: Option<Judging>,
     pub cancellations: Option<Cancellations>,
+    /// What people's trait facts are kept with: without it, compaction
+    /// neither shows nor changes them.
+    pub facts: Option<FactKeeping>,
 }
 
 impl NoteCompactor {
@@ -535,12 +541,30 @@ impl NoteCompactor {
                     .collect()
             }),
             people: match &self.people {
-                Some(p) => Some(
-                    p.get_people(None)?
-                        .iter()
-                        .map(|p| json!({"id": p.id, "name": p.name, "context": p.context, "what_matters": p.what_matters}))
-                        .collect(),
-                ),
+                Some(p) => {
+                    let kept = match &self.facts {
+                        Some(f) => Some((f.traits.all()?, f.person_facts.by_person()?)),
+                        None => None,
+                    };
+                    let active: Vec<String> = p.get_people(None)?.into_iter().filter_map(|p| p.id).collect();
+                    Some(
+                        p.all()?
+                            .iter()
+                            .filter(|p| p.id.as_ref().is_some_and(|i| active.contains(i)))
+                            .map(|p| {
+                                let mut listed = json!({"id": p.id, "name": p.name, "context": p.context});
+                                if let Some((traits, summaries)) = &kept {
+                                    listed["facts"] = json!(fact_changes::person_facts(p, traits, summaries));
+                                }
+                                listed
+                            })
+                            .collect(),
+                    )
+                }
+                None => None,
+            },
+            trait_facts: match &self.facts {
+                Some(f) => Some(fact_changes::trait_facts(&f.traits.all()?)),
                 None => None,
             },
             locations: match &self.locations {
@@ -596,6 +620,10 @@ impl NoteCompactor {
             }
             if let Some(c) = &self.cancellations {
                 tabs.extend(c.whole_tabs());
+            }
+            if let Some(f) = &self.facts {
+                tabs.push(f.traits.whole_tab());
+                tabs.extend(f.person_facts.whole_tabs());
             }
         }
         self.notes.prefetch(&tabs)
@@ -692,6 +720,7 @@ impl NoteCompactor {
         annotate_notes: Vec<(String, String)>,
         recap: Option<Recap>,
         create_refs: Vec<Option<String>>,
+        fact_summaries: Vec<ProposedSummary>,
     ) -> anyhow::Result<CompactionResult> {
         self.prefetch_tabs(true)?;
         self.journal.garbage_collect()?;
@@ -751,6 +780,7 @@ impl NoteCompactor {
         }
         let settled_refs: Vec<String> = settled_additions.keys().cloned().collect();
         let decisions = self.checked_facts(decisions, &claude_additions, &settled_refs)?;
+        self.check_fact_changes(&decisions, &fact_summaries, &claude_additions, &settled_refs)?;
         let (decisions, key_seq) = keyed(&proposal, decisions, meta.as_ref())?;
         let refs = create_refs_of(&decisions, &create_refs)?;
         let claude_targets: Vec<(String, String)> =
@@ -831,6 +861,7 @@ impl NoteCompactor {
             claude_through: Some(walked.last().unwrap().day.now),
             claude_recap: recap.as_ref().map(Recap::to_json_dict),
             recap_revision: recap.as_ref().map(|_| revision_number),
+            claude_fact_summaries: ProposedSummary::all_to_json(&fact_summaries),
         };
         self.write_revision(&walked, &new_meta, &additions, current, &[])?;
         let newer: Vec<(String, String)> = edit_rows
@@ -1097,6 +1128,7 @@ impl NoteCompactor {
             user_edits: edits,
             feedback,
             recap: meta.claude_recap.as_ref().map(Recap::from_json_dict),
+            fact_summaries: ProposedSummary::all_from(meta.claude_fact_summaries.as_ref()).iter().map(ProposedSummary::to_json).collect(),
         }))
     }
 
@@ -1184,6 +1216,7 @@ impl NoteCompactor {
             recap_revision: meta.recap_revision,
             changed_since: None,
             replaced,
+            fact_summaries: self.proposed_summaries(&meta)?,
         };
         match walked {
             Replanned::Failed(problem) => {
@@ -2006,7 +2039,12 @@ impl NoteCompactor {
                 days[i].steps[s].status = "done".into();
                 statuses.push((days[i].steps[s].row, "done"));
             }
-            if let Some(failure) = failure.or_else(|| self.record_cancellations(&days[i], false).err()) {
+            let last = Some(&i) == pending.last();
+            let failure = failure
+                .or_else(|| self.record_cancellations(&days[i], false).err())
+                .or_else(|| self.record_fact_logs(&days[i], refs.as_ref().unwrap()).err())
+                .or_else(|| if last { self.record_summaries(&days[0], refs.as_ref().unwrap()).err() } else { None });
+            if let Some(failure) = failure {
                 self.journal.write_statuses(&statuses)?;
                 return Err(failure);
             }
@@ -2172,6 +2210,104 @@ impl NoteCompactor {
             Err(e) => return Err(e),
         };
         Ok(if due.is_empty() { None } else { Some(compaction_id) })
+    }
+
+    /// Claude's logs and summaries of people's trait facts checked against
+    /// each other (see fact_changes::problems): a CompactionError ("facts")
+    /// listing everything wrong.
+    fn check_fact_changes(&self, decisions: &[EventDecision], summaries: &[ProposedSummary], additions: &Additions, settled: &[String]) -> anyhow::Result<()> {
+        let logged = decisions.iter().any(|d| d.facts.as_ref().is_some_and(|f| !f.log_entries().is_empty()));
+        if !logged && summaries.is_empty() {
+            return Ok(());
+        }
+        let (Some(keeping), Some(people)) = (&self.facts, &self.people) else {
+            return Err(ce("this server keeps no trait facts: leave out fact_summaries and logs", "facts"));
+        };
+        let mut refs: Vec<String> = additions.people.iter().map(|p| p.ref_.clone()).collect();
+        refs.extend(settled.iter().cloned());
+        let problems = fact_changes::problems(decisions, summaries, &people.all()?, &refs, &keeping.traits.all()?);
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "facts"));
+        }
+        Ok(())
+    }
+
+    /// The summaries a revision proposes, each with the person's summary
+    /// as it is now (`previous`), for the user to compare.
+    fn proposed_summaries(&self, meta: &RevisionMeta) -> anyhow::Result<Vec<Value>> {
+        let proposed = ProposedSummary::all_from(meta.claude_fact_summaries.as_ref());
+        if proposed.is_empty() {
+            return Ok(Vec::new());
+        }
+        let kept = match &self.facts {
+            Some(f) => f.person_facts.by_person()?,
+            None => Vec::new(),
+        };
+        Ok(proposed
+            .iter()
+            .map(|s| {
+                let previous = kept
+                    .iter()
+                    .find(|(p, _)| *p == s.person_id)
+                    .and_then(|(_, facts)| facts.iter().find(|(t, f, _)| format!("{t}/{f}") == s.fact))
+                    .map(|(_, _, summary)| summary.clone());
+                let mut shown = s.to_json();
+                shown["previous"] = json!(previous);
+                shown
+            })
+            .collect())
+    }
+
+    /// The settled additions of `proposal`'s user edits, by ref.
+    fn settled_of(&self, proposal: &str) -> anyhow::Result<Dict<AdditionSettled>> {
+        let edits: Vec<UserEdit> = self.journal.user_edits(proposal)?.into_iter().map(|(_, e)| e).collect();
+        Ok(merge(proposal, &[], &edits, MergeOptions::default()).settled)
+    }
+
+    /// Index the logs of `day`'s events, as applied (refs made into ids).
+    fn record_fact_logs(&self, day: &JournalCompaction, refs: &[(String, String)]) -> anyhow::Result<()> {
+        let Some(keeping) = &self.facts else { return Ok(()) };
+        let rename = |id: &str| Some(refs.iter().rev().find(|(k, _)| k == id).map(|(_, v)| v.clone()).unwrap_or_else(|| id.to_string()));
+        for step in &day.steps {
+            if step.action == "cancel" {
+                continue;
+            }
+            let Some(after) = &step.after else { continue };
+            let facts = facts_from_dict(after.facts.as_ref());
+            let had = step.before.as_ref().map(|b| facts_from_dict(b.facts.as_ref())).unwrap_or_default();
+            if facts.log_entries().is_empty() && had.log_entries().is_empty() {
+                continue;
+            }
+            let event_id = match step.action.as_str() {
+                "create" => new_event_id(&day.id, step.step),
+                _ => step.event_id.clone().unwrap_or_default(),
+            };
+            let logs = fact_changes::renamed_logs(&facts, &rename);
+            keeping.person_facts.record_logs(&event_id, after.start, after.summary.as_deref(), &logs, &format!("compaction {}", day.batch_id()), self.clock())?;
+        }
+        Ok(())
+    }
+
+    /// Write the summaries `day`'s revision proposes (the first day's meta
+    /// holds them), people added by ref by their ids.
+    fn record_summaries(&self, day: &JournalCompaction, refs: &[(String, String)]) -> anyhow::Result<()> {
+        let Some(keeping) = &self.facts else { return Ok(()) };
+        let Some(meta) = &day.meta else { return Ok(()) };
+        let proposed = ProposedSummary::all_from(meta.claude_fact_summaries.as_ref());
+        if proposed.is_empty() {
+            return Ok(());
+        }
+        let settled = self.settled_of(&meta.proposal)?;
+        let rename = fact_changes::renamer(&settled, refs);
+        let traits = keeping.traits.all()?;
+        // A fact let go of since it was proposed is left out.
+        let changes: Vec<_> = proposed
+            .iter()
+            .filter_map(|s| s.change(&rename))
+            .filter(|c| traits.iter().any(|t| t.id.as_deref() == Some(c.trait_id.as_str()) && t.fact(&c.fact_id).is_some()))
+            .collect();
+        keeping.person_facts.set_summaries(&changes, &traits, &format!("compaction {}", day.batch_id()), self.clock())?;
+        Ok(())
     }
 
     fn checked_facts(&self, decisions: Vec<EventDecision>, additions: &Additions, settled: &[String]) -> anyhow::Result<Vec<EventDecision>> {

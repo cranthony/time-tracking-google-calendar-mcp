@@ -14,6 +14,7 @@ use crate::stores::goals::Goals;
 use crate::stores::habits::{action_scopes, Habits};
 use crate::stores::locations::Locations;
 use crate::stores::people::People;
+use crate::stores::person_facts::PersonFacts;
 use crate::stores::traits::Traits;
 use crate::stores::journal::CompactionJournal;
 use crate::stores::notes::NotedTimeSheet;
@@ -72,6 +73,7 @@ pub struct App {
     habits: OnceLock<Habits>,
     goals: OnceLock<Goals>,
     cancellations: OnceLock<Cancellations>,
+    person_facts: OnceLock<PersonFacts>,
     journal: OnceLock<CompactionJournal>,
     notes: OnceLock<NotedTimeSheet>,
     schedule: OnceLock<CompactionSchedule>,
@@ -160,6 +162,7 @@ impl App {
             habits: OnceLock::new(),
             goals: OnceLock::new(),
             cancellations: OnceLock::new(),
+            person_facts: OnceLock::new(),
             journal: OnceLock::new(),
             notes: OnceLock::new(),
             schedule: OnceLock::new(),
@@ -318,6 +321,14 @@ impl App {
             let (actions, people, traits, habits) = (self.actions()?, self.people()?, self.traits()?, self.habits()?);
             let (_, sheets, id) = self.spreadsheet()?;
             Cancellations::ensure(&sheets, &id, people, traits, actions, Some(habits))
+        })
+    }
+
+    pub fn person_facts(&self) -> anyhow::Result<PersonFacts> {
+        built(&self.person_facts, || {
+            let traits = self.traits()?;
+            let (_, sheets, id) = self.spreadsheet()?;
+            PersonFacts::ensure(&sheets, &id, &traits)
         })
     }
 

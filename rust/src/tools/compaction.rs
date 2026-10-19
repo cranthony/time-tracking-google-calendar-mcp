@@ -8,6 +8,7 @@ use crate::contract::{tool, wire_text, DateTimeText, Schema};
 use crate::app::App;
 use crate::compaction::additions::{Addition, Additions};
 use crate::compaction::compactor::{compaction_error, NoteCompactor};
+use crate::compaction::fact_changes::{self, FactKeeping};
 use crate::compaction::judgments::{self, Judging};
 use crate::compaction::plan::EventDecision;
 use crate::compaction::proposals;
@@ -318,12 +319,55 @@ pub struct ContextNote {
     pub candidates: Vec<String>,
 }
 
+/// Someone events can be with or for, and each of their trait facts
+/// (`facts`: those of the traits that apply to them) with their summary,
+/// if they have one.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ContextPerson {
     pub id: String,
     pub name: String,
     pub context: Option<String>,
-    pub what_matters: Option<String>,
+    pub facts: Option<Vec<ContextPersonFact>>,
+}
+
+/// One of a person's trait facts ("<trait id>/<fact id>", described in
+/// `trait_facts`), and their summary of it, if they have one.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct ContextPersonFact {
+    pub fact: String,
+    pub summary: Option<String>,
+}
+
+/// A trait fact, described once: what its summary of each person keeps
+/// (`summary_prompt`), and what's worth logging when it changes
+/// (`log_prompt`).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct ContextTraitFact {
+    pub fact: String,
+    pub trait_name: Option<String>,
+    pub name: Option<String>,
+    pub summary_prompt: Option<String>,
+    pub log_prompt: Option<String>,
+}
+
+/// A trait fact's summary of a person, rewritten whole: a
+/// `fact_summaries` entry of compact_notes.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+#[schema(deny_unknown)]
+pub struct FactSummary {
+    pub person_id: String,
+    pub fact: String,
+    pub summary: String,
+}
+
+/// A trait fact's summary a proposal rewrites, and the person's summary
+/// of it as it is now (`previous`), to compare.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct ProposedSummary {
+    pub person_id: String,
+    pub fact: String,
+    pub summary: String,
+    pub previous: Option<String>,
 }
 
 /// A note for Claude on a proposal: the user's, or the server's when it
@@ -396,6 +440,9 @@ pub struct ProposalContext {
     #[serde(default)]
     pub feedback: Vec<Feedback>,
     pub recap: Option<Recap>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub fact_summaries: Vec<FactSummary>,
 }
 
 /// Claude's account of a revision, for the user reviewing it in the
@@ -518,6 +565,7 @@ pub struct CompactionContext {
     pub goals: Option<Vec<ContextGoal>>,
     pub previous_note: Option<PreviousNote>,
     pub proposal: Option<ProposalContext>,
+    pub trait_facts: Option<Vec<ContextTraitFact>>,
     #[schema(default = "\"`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (\\u2713), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\\\"play guitar\\\", \\\"eat a meal\\\"); an event can have several, the first setting its color. Each is an id -- an even part of the remaining time, what the minutes and percents leave -- or {action_id, minutes?, percent?, remaining?} when the notes say how long it took (remaining: true for its part of the remaining time as well). For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, \\u25c6 marks an action an event already has and \\u25c7 one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations`, matched by their hints -- usually one; several when it moved between places), with_ids (people from `people` who were there; never \\\"self\\\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \\\"self\\\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot). The notes aren't judgments: you don't know the traits, so just record what happened. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, \\u25b8 marks facts an event has and \\u25b9 ones it's being given. Once proposed, \\u26a0 marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave), and remaining: true if it also takes the remaining time; with neither, it takes the remaining time (what the minutes and percents leave). An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \\\"new:\\\" (\\\"new:ukulele\\\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\"")]
     pub instructions: String,
 }
@@ -599,7 +647,6 @@ pub struct NewPerson {
     pub context: Option<String>,
     pub status: Option<NewPersonStatus>,
     pub circles: Option<Vec<String>>,
-    pub what_matters: Option<String>,
     pub traits: Option<Map<String, Value>>,
     pub r#ref: String,
 }
@@ -675,7 +722,13 @@ pub struct JudgmentsDue {
     pub events: Vec<EventJudgmentsDue>,
     pub parts: Vec<JudgmentPart>,
     pub history: IndexMap<String, PersonHistory>,
-    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part key>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part key>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part key>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part key>\\\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.\"")]
+    #[schema(optional)]
+    #[serde(default)]
+    pub facts: IndexMap<String, IndexMap<String, String>>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub habit_notes: IndexMap<String, String>,
+    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part key>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part key>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part key>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, `facts` (each person's summaries of the trait facts its parts name -- \\\"fact:<id>\\\" -- as they are now, after the event) and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in `habit_notes`. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part key>\\\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.\"")]
     pub instructions: String,
 }
 
@@ -783,6 +836,9 @@ pub struct Proposal {
     pub recap_revision: Option<i64>,
     pub changed_since: Option<Vec<String>>,
     pub replaced: Option<Vec<String>>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub fact_summaries: Vec<ProposedSummary>,
 }
 
 /// The user's say on an action, person or location Claude's decisions
@@ -866,7 +922,10 @@ pub struct HabitJudgmentsDue {
     pub events: Vec<EventJudgmentsDue>,
     pub parts: Vec<JudgmentPart>,
     pub history: IndexMap<String, PersonHistory>,
-    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\\\"<trait id>/<part key>\\\"); `parts` gives each part's rubric and ratings once (\\\"...@habit:<id>\\\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in what_matters, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \\\"<event id>/habit:<id>/<trait id>/<part key>\\\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.\"")]
+    #[schema(optional)]
+    #[serde(default)]
+    pub habit_notes: IndexMap<String, String>,
+    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\\\"<trait id>/<part key>\\\"); `parts` gives each part's rubric and ratings once (\\\"...@habit:<id>\\\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in `habit_notes`, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \\\"<event id>/habit:<id>/<trait id>/<part key>\\\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.\"")]
     pub instructions: String,
 }
 
@@ -909,8 +968,10 @@ fn compactor(app: &App) -> anyhow::Result<NoteCompactor> {
         locations: locations.clone(),
         traits: app.traits()?,
         habits: Some(app.habits()?),
+        person_facts: Some(app.person_facts()?),
     };
     let cancellations = app.cancellations()?;
+    let facts = FactKeeping { traits: app.traits()?, person_facts: app.person_facts()? };
     Ok(NoteCompactor {
         calendar,
         client,
@@ -922,6 +983,7 @@ fn compactor(app: &App) -> anyhow::Result<NoteCompactor> {
         goals: Some(app.goals()?),
         judging: Some(judging),
         cancellations: Some(cancellations),
+        facts: Some(facts),
     })
 }
 
@@ -1206,9 +1268,11 @@ pub struct DeletedNote {
 /// there, who it was for, and a note on each person there -- then call
 /// compact_notes with those decisions. Also every action an event can be
 /// given (`actions`, their groups left out), every person (`people`, the
-/// user as "self") and every location (`locations`), to settle the facts
-/// from, and the open goals with attribution hints (`goals`), the only
-/// ones to tag events with, by those hints. `proposal` is the open proposal, if there is one: revise or
+/// user as "self", each with their trait facts' summaries) and every
+/// location (`locations`), to settle the facts from; each trait fact,
+/// described once (`trait_facts`), to keep people's summaries by; and the
+/// open goals with attribution hints (`goals`), the only ones to tag
+/// events with, by those hints. `proposal` is the open proposal, if there is one: revise or
 /// extend it (see the instructions). judgments_pending names the last
 /// compaction if its judgments aren't all made: make them first
 /// (prepare_judgments, record_judgments). Read-only.
@@ -1282,11 +1346,20 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// the bedtime, and if the wake-up time does change, the plan warns; tell
 /// the user.
 ///
+/// fact_summaries rewrite people's trait facts (see prepare_compaction's
+/// `trait_facts`): each {person_id, fact: "<trait id>/<fact id>",
+/// summary} -- the whole summary, as it stands after the proposal's
+/// events -- only beside a log of what changed in the facts of the event
+/// (or events) whose notes showed it ({"logs": {person id: {fact: log}}}),
+/// and every log beside its summary. Change a fact only when the notes
+/// have something relevant to it: most events say nothing new about most
+/// facts.
+///
 /// Once the user confirms it and it's applied, make its judgments with
 /// prepare_judgments and record_judgments: the compaction isn't complete
 /// until they're all recorded.
 #[tool(writes)]
-pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpdate>>, creates: Option<Vec<CompactionCreate>>, cancels: Option<Vec<EventCancel>>, ignore_notes: Option<Vec<String>>, proposal_id: Option<String>, revision: Option<i64>, replies: Option<Vec<FeedbackReply>>, new_actions: Option<Vec<NewAction>>, new_people: Option<Vec<NewPerson>>, new_locations: Option<Vec<NewLocation>>, annotate_notes: Option<Vec<NoteAnnotation>>) -> Result<CompactionResult, ToolError> {
+pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpdate>>, creates: Option<Vec<CompactionCreate>>, cancels: Option<Vec<EventCancel>>, ignore_notes: Option<Vec<String>>, proposal_id: Option<String>, revision: Option<i64>, replies: Option<Vec<FeedbackReply>>, new_actions: Option<Vec<NewAction>>, new_people: Option<Vec<NewPerson>>, new_locations: Option<Vec<NewLocation>>, annotate_notes: Option<Vec<NoteAnnotation>>, fact_summaries: Option<Vec<FactSummary>>) -> Result<CompactionResult, ToolError> {
     let compactor = compactor(app)?;
     let (updates, creates, cancels) = (updates.unwrap_or_default(), creates.unwrap_or_default(), cancels.unwrap_or_default());
     let mut decisions: Vec<EventDecision> = Vec::new();
@@ -1306,7 +1379,13 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
         replies.unwrap_or_default().into_iter().map(|r| proposals::FeedbackReply { feedback_id: r.feedback_id, reply: r.reply }).collect();
     let annotate: Vec<(String, String)> = annotate_notes.unwrap_or_default().into_iter().map(|a| (a.note_id, a.event_id)).collect();
     let create_refs: Vec<Option<String>> = creates.iter().map(|c| c.r#ref.clone()).collect();
-    let result = compactor.dry_run(decisions, ignore_notes, additions, proposal_id, revision, replies, annotate, Some(stored_recap(&recap)), create_refs);
+    let summaries: Vec<fact_changes::ProposedSummary> = fact_summaries
+        .unwrap_or_default()
+        .into_iter()
+        .map(|s| fact_changes::ProposedSummary { person_id: s.person_id, fact: s.fact, summary: s.summary })
+        .collect();
+    let result =
+        compactor.dry_run(decisions, ignore_notes, additions, proposal_id, revision, replies, annotate, Some(stored_recap(&recap)), create_refs, summaries);
     shown("compact_notes", result.map(|r| r.to_json()))
 }
 
@@ -1466,7 +1545,8 @@ pub fn finish_proposal(app: &App, proposal_id: String) -> Result<ProposalResult,
 /// and the judgment parts of the traits that apply to them; then each of
 /// those parts once -- its rubric and the ratings to choose from -- and
 /// each person's history (what they did and where) over the days their
-/// parts look back. Only those not made yet -- or with redo, all of
+/// parts look back, their summaries of the trait facts those parts name
+/// (`facts`), and each habit's note (`habit_notes`). Only those not made yet -- or with redo, all of
 /// them, each event with the judgments already made (`current`), to
 /// redo one with more context. Read-only.
 #[tool]

@@ -71,7 +71,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -136,6 +136,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -755,7 +767,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -820,6 +832,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -1214,7 +1238,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1279,6 +1303,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -1757,7 +1793,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -1822,6 +1858,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -2422,7 +2470,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -2487,6 +2535,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -2824,7 +2884,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -2889,6 +2949,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -3339,7 +3411,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3404,6 +3476,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -3869,7 +3953,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -3934,6 +4018,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -4405,7 +4501,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -4470,6 +4566,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -4930,7 +5038,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -4995,6 +5103,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -5473,7 +5593,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -5538,6 +5658,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -6065,7 +6197,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -6130,6 +6262,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -6553,7 +6697,7 @@
     }
   },
   {
-    "description": "The traits: how the user wants to be with people (and with\nthemselves), in order -- by default the active ones (rated) and those\nturned off (kept, but not rated for now), not archived ones\n(retired). Each has an id (fixed when it's created, and what a\nperson's traits name), name, definition, parts and scoring. Each part\nis {\"id\": ..., \"kind\": ..., \"engagement_type\": \"with\", ...}: id is the\npart's own, made when it's added and never changed -- its judgments and\nweight are kept under it, so keep it on a part you send back, and leave\nit out of a new one; engagement_type \"with\" (the default) reads the\nevents the person was at with the user, \"for\" those the user did for\nthem while they weren't there. A trait's score (0-100) combines its\nparts' scores as its scoring says, leaving out any with nothing to rate\nit by: without scoring, their plain mean. Scoring is an aggregation,\nas are a person's and a circle's (see get_scoring_defaults for its\nfields): a trait's weights are by part id, {\"weights\": {\"<part id>\":\n2}} counting that part twice. The kinds:\n\"judgment\" -- each event judged by the assistant on its own, never by\nasking the user, for one person or a named group, against a \"rubric\"\n(the question: \"Was this activity or place new?\") on a scale of\n\"ratings\" ({\"0\": \"The activity and place were routine\", \"1\": \"There\nwas a twist on the activity or place\", \"2\": \"The activity or the\nplace were new\", \"3\": \"Both were new, or it was otherwise\nadventurous\"}), from the \"facts\" it names: \"action\" (what was done),\n\"action_history\" (what's been done with them before), \"location\",\n\"location_history\" (where they've been together before),\n\"general_notes\" (the event's notes), \"person_notes\" (the notes on\nthe person: the user's own for a \"for\" engagement, the other\nperson's for \"with\") and \"what_matters\" (what's important to the\nperson, as their what_matters says), each a name or {\"fact\": \"action_history\",\n\"lookback_days\": 90} (history facts look back 30 days by default),\nand scored over the person's events in its last \"window_days\" (30\nby default) as its \"scoring\" says: {\"weight_by\": \"event\" (each\njudgment counts once, the default) or \"duration\" (each by its event's\nlength), \"statistic\": \"mean\" (the default) or \"percentile\" (with\n\"percentile\": 0-100 -- the lowest rating with at least that share of\nthe judgments, or of their time, at or below it; 0 the lowest, 100 the\nhighest), \"limit\" and \"limit_by\": only the judgments of the \"best\"\n(highest rated), \"worst\" or most \"recent\" limit events, or -- weighted\nby duration -- limit hours, the last event cut short to fit};\n\"continuity\" (the last event ended within \"last_within_days\" of the\nday's end and the next starts within \"next_within_days\" after it,\nboth default 14: 100 for both, 50 for one, 0 for neither); \"count\"\n({\"kind\": \"count\", \"target\": 1, \"interval_days\": 21, \"zero_at_days\":\n42, \"noun\": \"visits\"}), \"duration\" (with \"target_min\") and\n\"follow_through\" (\"penalty\", \"recovery\", \"look_back_days\"), as the\nmeasures of the same kind -- follow_through counting the events the\nuser cancelled: said in compaction didn't happen, or deleted with\ndelete_event's counts_against_follow_through, never a plan merely\nchanged; \"spacing\" ({\"kind\": \"spacing\", \"action\": \"<meals>\",\n\"max_gap_hours\": 6, \"exceptions\": [{\"actions\": [\"<sleep>\"],\n\"reset_hours\": 1}]}): a clock that each event of its action resets to\nmax_gap_hours left, stopped during an exception's events and, after\none, set to its reset_hours left (if given) -- each day scored as\nthe share of its time outside exceptions that the clock hadn't run\nout. continuity, count, duration and follow_through can take an\n\"action\" (an action or action group id) to count only its events. A\nperson's traits can select which traits apply to them, give them\ntheir own parts for any, and say how they combine (see\ncreate_person). problems lists anything wrong with a trait edited by\nhand; a bad part isn't rated. Read-only.",
+    "description": "The traits: how the user wants to be with people (and with\nthemselves), in order -- by default the active ones (rated) and those\nturned off (kept, but not rated for now), not archived ones\n(retired). Each has an id (fixed when it's created, and what a\nperson's traits name), name, definition, parts and scoring. Each part\nis {\"id\": ..., \"kind\": ..., \"engagement_type\": \"with\", ...}: id is the\npart's own, made when it's added and never changed -- its judgments and\nweight are kept under it, so keep it on a part you send back, and leave\nit out of a new one; engagement_type \"with\" (the default) reads the\nevents the person was at with the user, \"for\" those the user did for\nthem while they weren't there. A trait's score (0-100) combines its\nparts' scores as its scoring says, leaving out any with nothing to rate\nit by: without scoring, their plain mean. Scoring is an aggregation,\nas are a person's and a circle's (see get_scoring_defaults for its\nfields): a trait's weights are by part id, {\"weights\": {\"<part id>\":\n2}} counting that part twice. The kinds:\n\"judgment\" -- each event judged by the assistant on its own, never by\nasking the user, for one person or a named group, against a \"rubric\"\n(the question: \"Was this activity or place new?\") on a scale of\n\"ratings\" ({\"0\": \"The activity and place were routine\", \"1\": \"There\nwas a twist on the activity or place\", \"2\": \"The activity or the\nplace were new\", \"3\": \"Both were new, or it was otherwise\nadventurous\"}), from the \"facts\" it names: \"action\" (what was done),\n\"action_history\" (what's been done with them before), \"location\",\n\"location_history\" (where they've been together before),\n\"general_notes\" (the event's notes) and any of the trait's own facts\nas \"fact:<fact id>\" (its summary of the person, as it is now), each a\nname or {\"fact\": \"action_history\", \"lookback_days\": 90} (history facts\nlook back 30 days by default),\nand scored over the person's events in its last \"window_days\" (30\nby default) as its \"scoring\" says: {\"weight_by\": \"event\" (each\njudgment counts once, the default) or \"duration\" (each by its event's\nlength), \"statistic\": \"mean\" (the default) or \"percentile\" (with\n\"percentile\": 0-100 -- the lowest rating with at least that share of\nthe judgments, or of their time, at or below it; 0 the lowest, 100 the\nhighest), \"limit\" and \"limit_by\": only the judgments of the \"best\"\n(highest rated), \"worst\" or most \"recent\" limit events, or -- weighted\nby duration -- limit hours, the last event cut short to fit};\n\"continuity\" (the last event ended within \"last_within_days\" of the\nday's end and the next starts within \"next_within_days\" after it,\nboth default 14: 100 for both, 50 for one, 0 for neither); \"count\"\n({\"kind\": \"count\", \"target\": 1, \"interval_days\": 21, \"zero_at_days\":\n42, \"noun\": \"visits\"}), \"duration\" (with \"target_min\") and\n\"follow_through\" (\"penalty\", \"recovery\", \"look_back_days\"), as the\nmeasures of the same kind -- follow_through counting the events the\nuser cancelled: said in compaction didn't happen, or deleted with\ndelete_event's counts_against_follow_through, never a plan merely\nchanged; \"spacing\" ({\"kind\": \"spacing\", \"action\": \"<meals>\",\n\"max_gap_hours\": 6, \"exceptions\": [{\"actions\": [\"<sleep>\"],\n\"reset_hours\": 1}]}): a clock that each event of its action resets to\nmax_gap_hours left, stopped during an exception's events and, after\none, set to its reset_hours left (if given) -- each day scored as\nthe share of its time outside exceptions that the clock hadn't run\nout. continuity, count, duration and follow_through can take an\n\"action\" (an action or action group id) to count only its events. A\ntrait's facts are what it keeps about each person it applies to, for\nits judgments: each {\"id\", \"name\", \"summary_prompt\", \"log_prompt\"?} --\nid made from the name when it's added, and never changed; the\nsummary_prompt says what its summary of a person keeps, and how\n(compaction rewrites a person's summary whole when an event's notes\nshow something new, logging what changed on the event, as the\nlog_prompt says). A person's summaries are in get_people's facts, and\nthe logs in get_fact_logs. A person's traits can select which traits\napply to them, give them their own parts for any, and say how they\ncombine (see create_person). problems lists anything wrong with a\ntrait edited by hand; a bad part isn't rated. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -6642,6 +6786,16 @@
                 "null"
               ]
             },
+            "facts": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "problems": {
               "items": {
                 "type": "string"
@@ -6665,7 +6819,7 @@
     }
   },
   {
-    "description": "Add a trait: a name (unique, at most 50 characters), a definition\n(what it means, in a sentence or two) and parts (at least one; see\nget_traits for each kind and its fields). Its status is active unless\ngiven (\"off\" to keep it unrated for now). Its id is made from its name\nand never changes, so renaming it later doesn't touch the measures\nnaming it. A trait with a part that isn't well formed is refused,\nsaying what's wrong. It applies to every person whose traits don't\nselect others. Returns the trait as created.",
+    "description": "Add a trait: a name (unique, at most 50 characters), a definition\n(what it means, in a sentence or two), parts (at least one; see\nget_traits for each kind and its fields) and optionally facts (see\nget_traits; leave out each new fact's id, and one is made from its\nname). Its status is active unless\ngiven (\"off\" to keep it unrated for now). Its id is made from its name\nand never changes, so renaming it later doesn't touch the measures\nnaming it. A trait with a part that isn't well formed is refused,\nsaying what's wrong. It applies to every person whose traits don't\nselect others. Returns the trait as created.",
     "inputSchema": {
       "properties": {
         "trait": {
@@ -6728,6 +6882,17 @@
               "description": "How its parts' scores combine into its own: an aggregation (see\nget_traits), its weights by part id. Without it, the plain mean.",
               "type": [
                 "object",
+                "null"
+              ]
+            },
+            "facts": {
+              "description": "What it keeps about each person it applies to, for its judgments\n(see get_traits): each {\"id\", \"name\", \"summary_prompt\",\n\"log_prompt\"?}.",
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": [
+                "array",
                 "null"
               ]
             },
@@ -6798,6 +6963,17 @@
             "null"
           ]
         },
+        "facts": {
+          "description": "What it keeps about each person it applies to, for its judgments\n(see get_traits): each {\"id\", \"name\", \"summary_prompt\",\n\"log_prompt\"?}.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "version": {
           "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
           "type": [
@@ -6810,7 +6986,7 @@
     }
   },
   {
-    "description": "Change a trait, by id: rename it, reword its definition, change its\nstatus or scoring, or give it new parts. Fields left out keep their\nvalue; parts, if given, replace them whole, so send every part to keep,\neach with its id (a part sent without one is new, and starts with no\njudgments); a part left out takes its weight with it. status is\nactive (rated), off (kept, but not rated for now) or archived (retired:\nnot rated, and get_traits leaves it out unless asked) -- archive a\ntrait rather than delete it, so its history stays readable. Checked as\nfor create_trait. Ratings already recorded aren't changed. Returns the\ntrait as updated.",
+    "description": "Change a trait, by id: rename it, reword its definition, change its\nstatus or scoring, or give it new parts. Fields left out keep their\nvalue; parts, if given, replace them whole, so send every part to keep,\neach with its id (a part sent without one is new, and starts with no\njudgments); a part left out takes its weight with it. facts, if given,\nreplace them whole too, each with its id (one sent without is new);\na fact left out keeps people's summaries of it, unused, and can't be\nleft out while a part names it. status is\nactive (rated), off (kept, but not rated for now) or archived (retired:\nnot rated, and get_traits leaves it out unless asked) -- archive a\ntrait rather than delete it, so its history stays readable. Checked as\nfor create_trait. Ratings already recorded aren't changed. Returns the\ntrait as updated.",
     "inputSchema": {
       "properties": {
         "trait": {
@@ -6820,7 +6996,8 @@
           "items": {
             "enum": [
               "definition",
-              "scoring"
+              "scoring",
+              "facts"
             ],
             "type": "string"
           },
@@ -6889,6 +7066,17 @@
                 "null"
               ]
             },
+            "facts": {
+              "description": "What it keeps about each person it applies to, for its judgments\n(see get_traits): each {\"id\", \"name\", \"summary_prompt\",\n\"log_prompt\"?}.",
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "version": {
               "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
@@ -6953,6 +7141,17 @@
           "description": "How its parts' scores combine into its own: an aggregation (see\nget_traits), its weights by part id. Without it, the plain mean.",
           "type": [
             "object",
+            "null"
+          ]
+        },
+        "facts": {
+          "description": "What it keeps about each person it applies to, for its judgments\n(see get_traits): each {\"id\", \"name\", \"summary_prompt\",\n\"log_prompt\"?}.",
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": [
+            "array",
             "null"
           ]
         },
@@ -8900,7 +9099,7 @@
     }
   },
   {
-    "description": "The people the user spends time with: by default the active ones,\nnot archived (out of touch) or deleted ones. The user themself is\nalways first, with the id \"self\". Each has an id, name, context (what\ntells them apart from others of the same name, e.g. \"met at salsa\"),\nstatus, circles (the ids of the circles they're in) with their\ncircle_names, what_matters (what's important to them) and traits:\nwhich traits apply to them, and their own parts for any (see\ncreate_person; without it, every active trait applies as get_traits\nhas it). Each also has cancelled_events: the events the user cancelled\nthat count against their follow-through, newest first -- when each was\nplanned, its actions, whether they were to be there (\"with\") or it was\nfor them (\"for\"), the follow-through parts it counted against, and\nwhat cancelled it. Each also has foundations: the habits (each as\n\"habit:<id>\") and people (by id) their relationship is built on, on\nthe user's habit graph -- a person with foundations, even none ([]),\nis on it; without, they aren't. Read-only.",
+    "description": "The people the user spends time with: by default the active ones,\nnot archived (out of touch) or deleted ones. The user themself is\nalways first, with the id \"self\". Each has an id, name, context (what\ntells them apart from others of the same name, e.g. \"met at salsa\"),\nstatus, circles (the ids of the circles they're in) with their\ncircle_names, traits (which traits apply to them, and their own parts\nfor any; see create_person; without it, every active trait applies as\nget_traits has it) and facts: their summary of each trait fact (see\nget_traits), as {trait id: {fact id: summary}}, those they have\none of. Each also has cancelled_events: the events the user cancelled\nthat count against their follow-through, newest first -- when each was\nplanned, its actions, whether they were to be there (\"with\") or it was\nfor them (\"for\"), the follow-through parts it counted against, and\nwhat cancelled it. Each also has foundations: the habits (each as\n\"habit:<id>\") and people (by id) their relationship is built on, on\nthe user's habit graph -- a person with foundations, even none ([]),\nis on it; without, they aren't. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -9006,7 +9205,7 @@
           "type": "object"
         },
         "ListedPerson": {
-          "description": "A person as the people tools return them: plus their circles'\nnames, and the events the user cancelled that count against their\nfollow-through.",
+          "description": "A person as the people tools return them: plus their circles'\nnames, their trait facts' summaries ({trait id: {fact id: summary}}),\nand the events the user cancelled that count against their\nfollow-through.",
           "properties": {
             "id": {
               "type": [
@@ -9050,12 +9249,6 @@
                 "null"
               ]
             },
-            "what_matters": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
             "traits": {
               "additionalProperties": true,
               "type": [
@@ -9078,6 +9271,18 @@
               },
               "type": [
                 "array",
+                "null"
+              ]
+            },
+            "facts": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             },
@@ -9162,12 +9367,6 @@
             "null"
           ]
         },
-        "what_matters": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "traits": {
           "additionalProperties": true,
           "type": [
@@ -9190,6 +9389,18 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "facts": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": [
+            "object",
             "null"
           ]
         },
@@ -9284,11 +9495,23 @@
     }
   },
   {
-    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles), what_matters (what's important to them) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]},\n\"part_scoring\": {trait id: scoring}, \"scoring\": scoring}, all\noptional -- the traits that apply to them (by default every active\none); parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}; how a trait's parts combine\nfor them, in place of the trait's scoring (weights by part id: their\nown parts' ids, if they have them); and how their traits combine into\ntheir score, in place of the scoring defaults' traits (weights by\ntrait id) -- each an aggregation (see get_scoring_defaults); and\nfoundations (see\nget_people: habits as \"habit:<id>\", people by id; none of them\ndeleted, and never making a cycle). Active unless given a status. id\nis assigned. Returns the person and their id as created_id.",
+    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]},\n\"part_scoring\": {trait id: scoring}, \"scoring\": scoring}, all\noptional -- the traits that apply to them (by default every active\none); parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}; how a trait's parts combine\nfor them, in place of the trait's scoring (weights by part id: their\nown parts' ids, if they have them); and how their traits combine into\ntheir score, in place of the scoring defaults' traits (weights by\ntrait id) -- each an aggregation (see get_scoring_defaults); and\nfoundations (see\nget_people: habits as \"habit:<id>\", people by id; none of them\ndeleted, and never making a cycle). Active unless given a status. id\nis assigned. facts sets their trait facts' summaries (see get_people).\nReturns the person and their id as created_id.",
     "inputSchema": {
       "properties": {
         "person": {
           "$ref": "#/$defs/Person"
+        },
+        "facts": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": [
+            "object",
+            "null"
+          ]
         }
       },
       "required": [
@@ -9338,12 +9561,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "what_matters": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -9462,7 +9679,7 @@
           "type": "object"
         },
         "ListedPerson": {
-          "description": "A person as the people tools return them: plus their circles'\nnames, and the events the user cancelled that count against their\nfollow-through.",
+          "description": "A person as the people tools return them: plus their circles'\nnames, their trait facts' summaries ({trait id: {fact id: summary}}),\nand the events the user cancelled that count against their\nfollow-through.",
           "properties": {
             "id": {
               "type": [
@@ -9506,12 +9723,6 @@
                 "null"
               ]
             },
-            "what_matters": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
             "traits": {
               "additionalProperties": true,
               "type": [
@@ -9537,6 +9748,18 @@
                 "null"
               ]
             },
+            "facts": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
+                "null"
+              ]
+            },
             "cancelled_events": {
               "items": {
                 "$ref": "#/$defs/CancelledEvent"
@@ -9559,7 +9782,7 @@
     }
   },
   {
-    "description": "Update a person by id (\"self\" for the user): their name, context,\nstatus (active; archived, out of touch; or deleted, shouldn't have\nexisted -- self is always active), circles (replaced whole, so send\nevery circle to keep), what_matters, traits (replaced whole; see\ncreate_person) or foundations (replaced whole; clear it to take them\noff the habit graph). Omitted properties keep their value; list one\nin clear_fields to blank it instead. A person deleted leaves every\nhabit's and person's foundations. Returns the person as updated.",
+    "description": "Update a person by id (\"self\" for the user): their name, context,\nstatus (active; archived, out of touch; or deleted, shouldn't have\nexisted -- self is always active), circles (replaced whole, so send\nevery circle to keep), traits (replaced whole; see create_person) or\nfoundations (replaced whole; clear it to take them off the habit\ngraph). Omitted properties keep their value; list one in clear_fields\nto blank it instead. facts sets their summaries of the trait facts it\nnames ({trait id: {fact id: summary}}, each the whole summary; \"\" to\nclear one), as the user's own -- with no log -- and keeps the rest. A\nperson deleted leaves every habit's and person's foundations. Returns\nthe person as updated.",
     "inputSchema": {
       "properties": {
         "person": {
@@ -9570,7 +9793,6 @@
             "enum": [
               "context",
               "circles",
-              "what_matters",
               "traits",
               "foundations"
             ],
@@ -9578,6 +9800,18 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "facts": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": [
+            "object",
             "null"
           ]
         }
@@ -9629,12 +9863,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "what_matters": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -9712,12 +9940,6 @@
             "null"
           ]
         },
-        "what_matters": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "traits": {
           "additionalProperties": true,
           "type": [
@@ -9740,6 +9962,18 @@
           },
           "type": [
             "array",
+            "null"
+          ]
+        },
+        "facts": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": [
+            "object",
             "null"
           ]
         },
@@ -9831,6 +10065,101 @@
           "type": "object"
         }
       }
+    }
+  },
+  {
+    "description": "The logs of what compaction changed in a person's trait facts (by id,\n\"self\" for the user) -- of one trait (trait_id) and fact (fact_id), if\ngiven -- newest first: each the event that showed it (its id, summary\nand start), the trait and fact, the log, and when it was logged.\nRead-only.",
+    "inputSchema": {
+      "properties": {
+        "person_id": {
+          "type": "string"
+        },
+        "trait_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fact_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "person_id"
+      ],
+      "type": "object",
+      "title": "get_fact_logsArguments"
+    },
+    "name": "get_fact_logs",
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "$ref": "#/$defs/LoggedChange"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "$defs": {
+        "LoggedChange": {
+          "description": "A log as the fact tools return it: what an event changed in one of a\nperson's trait facts, and when.",
+          "properties": {
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_start": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fact_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "log": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "logged_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "get_fact_logsOutput"
     }
   },
   {
@@ -15090,7 +15419,7 @@
     }
   },
   {
-    "description": "Step 1 of compacting notes into the calendar: proposing what\nhappened since the last compaction, for the user to confirm. Returns\nevery day from the last compaction up to now (at most a week), notes\nor not -- each uncompacted note with an id and the planned events\nnearest it (`remaining_note_count` says how many are left for another\nround) -- those days' planned events, a `timeline` showing the two\nside by side, day by day, and instructions. Compare the notes to the\nplan, decide which events the notes show happened differently, and\nthe facts of each past event -- its actions, where it was, who was\nthere, who it was for, and a note on each person there -- then call\ncompact_notes with those decisions. Also every action an event can be\ngiven (`actions`, their groups left out), every person (`people`, the\nuser as \"self\") and every location (`locations`), to settle the facts\nfrom, and the open goals with attribution hints (`goals`), the only\nones to tag events with, by those hints. `proposal` is the open proposal, if there is one: revise or\nextend it (see the instructions). judgments_pending names the last\ncompaction if its judgments aren't all made: make them first\n(prepare_judgments, record_judgments). Read-only.",
+    "description": "Step 1 of compacting notes into the calendar: proposing what\nhappened since the last compaction, for the user to confirm. Returns\nevery day from the last compaction up to now (at most a week), notes\nor not -- each uncompacted note with an id and the planned events\nnearest it (`remaining_note_count` says how many are left for another\nround) -- those days' planned events, a `timeline` showing the two\nside by side, day by day, and instructions. Compare the notes to the\nplan, decide which events the notes show happened differently, and\nthe facts of each past event -- its actions, where it was, who was\nthere, who it was for, and a note on each person there -- then call\ncompact_notes with those decisions. Also every action an event can be\ngiven (`actions`, their groups left out), every person (`people`, the\nuser as \"self\", each with their trait facts' summaries) and every\nlocation (`locations`), to settle the facts from; each trait fact,\ndescribed once (`trait_facts`), to keep people's summaries by; and the\nopen goals with attribution hints (`goals`), the only ones to tag\nevents with, by those hints. `proposal` is the open proposal, if there is one: revise or\nextend it (see the instructions). judgments_pending names the last\ncompaction if its judgments aren't all made: make them first\n(prepare_judgments, record_judgments). Read-only.",
     "inputSchema": {
       "properties": {},
       "type": "object",
@@ -15221,6 +15550,15 @@
             {
               "type": "null"
             }
+          ]
+        },
+        "trait_facts": {
+          "items": {
+            "$ref": "#/$defs/ContextTraitFact"
+          },
+          "type": [
+            "array",
+            "null"
           ]
         },
         "instructions": {
@@ -15515,6 +15853,7 @@
           "type": "object"
         },
         "ContextPerson": {
+          "description": "Someone events can be with or for, and each of their trait facts\n(`facts`: those of the traits that apply to them) with their summary,\nif they have one.",
           "properties": {
             "id": {
               "type": "string"
@@ -15528,9 +15867,12 @@
                 "null"
               ]
             },
-            "what_matters": {
+            "facts": {
+              "items": {
+                "$ref": "#/$defs/ContextPersonFact"
+              },
               "type": [
-                "string",
+                "array",
                 "null"
               ]
             }
@@ -15541,8 +15883,83 @@
           ],
           "type": "object"
         },
+        "ContextPersonFact": {
+          "description": "One of a person's trait facts (\"<trait id>/<fact id>\", described in\n`trait_facts`), and their summary of it, if they have one.",
+          "properties": {
+            "fact": {
+              "type": "string"
+            },
+            "summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "fact"
+          ],
+          "type": "object"
+        },
+        "ContextTraitFact": {
+          "description": "A trait fact, described once: what its summary of each person keeps\n(`summary_prompt`), and what's worth logging when it changes\n(`log_prompt`).",
+          "properties": {
+            "fact": {
+              "type": "string"
+            },
+            "trait_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "summary_prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "log_prompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "fact"
+          ],
+          "type": "object"
+        },
+        "FactSummary": {
+          "additionalProperties": false,
+          "description": "A trait fact's summary of a person, rewritten whole: a\n`fact_summaries` entry of compact_notes.",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "fact": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "person_id",
+            "fact",
+            "summary"
+          ],
+          "type": "object"
+        },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -15607,6 +16024,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -15878,6 +16307,12 @@
                   "type": "null"
                 }
               ]
+            },
+            "fact_summaries": {
+              "items": {
+                "$ref": "#/$defs/FactSummary"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -16186,7 +16621,7 @@
     }
   },
   {
-    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` -- open goals with attribution hints -- when it clearly\nmatches a goal's hints; the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes that don't set an event edge are added\nto the event they fall within, except those in `ignore_notes` -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`) and the notes\n(`note_ids`) it's about, so the user can go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given), and answer every open feedback item in\n`replies`. The user's own edits -- of events, and of what notes are\nfor -- are laid over your decisions by the server; never send them.\n\nNOTHING IS MOVED TO MAKE ROOM: every event you update or create must\nend after it starts and must not overlap any other event -- past or\nstill to come, the others you change included -- so move, shorten or\ncancel whatever's in the way in the same call. A call that breaks this\nchanges nothing, and the error lists every problem and the day as it\nwould leave it, to fix them all at once.\n\nAn update that moves a future event reschedules it. Moving the\nend-of-day sleep event moves where the day ends: an earlier bedtime\nneeds whatever runs past it shortened or cancelled too, a later one\nleaves the evening free. Its end is the wake-up time: a later one has\nto move, shorten or cancel the morning events it now runs over, even\nthose after now, in the same call. Otherwise compaction never adjusts\nwhat's past the last night -- so move only its start to change only\nthe bedtime, and if the wake-up time does change, the plan warns; tell\nthe user.\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
+    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` -- open goals with attribution hints -- when it clearly\nmatches a goal's hints; the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes that don't set an event edge are added\nto the event they fall within, except those in `ignore_notes` -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`) and the notes\n(`note_ids`) it's about, so the user can go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given), and answer every open feedback item in\n`replies`. The user's own edits -- of events, and of what notes are\nfor -- are laid over your decisions by the server; never send them.\n\nNOTHING IS MOVED TO MAKE ROOM: every event you update or create must\nend after it starts and must not overlap any other event -- past or\nstill to come, the others you change included -- so move, shorten or\ncancel whatever's in the way in the same call. A call that breaks this\nchanges nothing, and the error lists every problem and the day as it\nwould leave it, to fix them all at once.\n\nAn update that moves a future event reschedules it. Moving the\nend-of-day sleep event moves where the day ends: an earlier bedtime\nneeds whatever runs past it shortened or cancelled too, a later one\nleaves the evening free. Its end is the wake-up time: a later one has\nto move, shorten or cancel the morning events it now runs over, even\nthose after now, in the same call. Otherwise compaction never adjusts\nwhat's past the last night -- so move only its start to change only\nthe bedtime, and if the wake-up time does change, the plan warns; tell\nthe user.\n\nfact_summaries rewrite people's trait facts (see prepare_compaction's\n`trait_facts`): each {person_id, fact: \"<trait id>/<fact id>\",\nsummary} -- the whole summary, as it stands after the proposal's\nevents -- only beside a log of what changed in the facts of the event\n(or events) whose notes showed it ({\"logs\": {person id: {fact: log}}}),\nand every log beside its summary. Change a fact only when the notes\nhave something relevant to it: most events say nothing new about most\nfacts.\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
     "inputSchema": {
       "properties": {
         "recap": {
@@ -16279,6 +16714,15 @@
         "annotate_notes": {
           "items": {
             "$ref": "#/$defs/NoteAnnotation"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "fact_summaries": {
+          "items": {
+            "$ref": "#/$defs/FactSummary"
           },
           "type": [
             "array",
@@ -16521,8 +16965,29 @@
           ],
           "type": "object"
         },
+        "FactSummary": {
+          "additionalProperties": false,
+          "description": "A trait fact's summary of a person, rewritten whole: a\n`fact_summaries` entry of compact_notes.",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "fact": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "person_id",
+            "fact",
+            "summary"
+          ],
+          "type": "object"
+        },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -16587,6 +17052,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -16811,12 +17288,6 @@
               },
               "type": [
                 "array",
-                "null"
-              ]
-            },
-            "what_matters": {
-              "type": [
-                "string",
                 "null"
               ]
             },
@@ -17346,8 +17817,23 @@
               },
               "type": "object"
             },
+            "facts": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "object"
+            },
+            "habit_notes": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
             "instructions": {
-              "default": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
+              "default": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, `facts` (each person's summaries of the trait facts its parts name -- \"fact:<id>\" -- as they are now, after the event) and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in `habit_notes`. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
               "type": "string"
             }
           },
@@ -17762,6 +18248,12 @@
             "array",
             "null"
           ]
+        },
+        "fact_summaries": {
+          "items": {
+            "$ref": "#/$defs/ProposedSummary"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -17976,7 +18468,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -18041,6 +18533,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -18425,6 +18929,32 @@
           "required": [
             "id",
             "timestamp"
+          ],
+          "type": "object"
+        },
+        "ProposedSummary": {
+          "description": "A trait fact's summary a proposal rewrites, and the person's summary\nof it as it is now (`previous`), to compare.",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "fact": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "previous": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "person_id",
+            "fact",
+            "summary"
           ],
           "type": "object"
         },
@@ -18905,7 +19435,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -18970,6 +19500,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -19761,6 +20303,12 @@
             "array",
             "null"
           ]
+        },
+        "fact_summaries": {
+          "items": {
+            "$ref": "#/$defs/ProposedSummary"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -19975,7 +20523,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -20040,6 +20588,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -20424,6 +20984,32 @@
           "required": [
             "id",
             "timestamp"
+          ],
+          "type": "object"
+        },
+        "ProposedSummary": {
+          "description": "A trait fact's summary a proposal rewrites, and the person's summary\nof it as it is now (`previous`), to compare.",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "fact": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "previous": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "person_id",
+            "fact",
+            "summary"
           ],
           "type": "object"
         },
@@ -21192,7 +21778,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -21257,6 +21843,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -21590,6 +22188,12 @@
                 "array",
                 "null"
               ]
+            },
+            "fact_summaries": {
+              "items": {
+                "$ref": "#/$defs/ProposedSummary"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -21811,6 +22415,32 @@
           "required": [
             "id",
             "timestamp"
+          ],
+          "type": "object"
+        },
+        "ProposedSummary": {
+          "description": "A trait fact's summary a proposal rewrites, and the person's summary\nof it as it is now (`previous`), to compare.",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "fact": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "previous": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "person_id",
+            "fact",
+            "summary"
           ],
           "type": "object"
         },
@@ -22358,7 +22988,7 @@
           "type": "object"
         },
         "Facts": {
-          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes), and\nwhether it was a commute, getting from one place to another (commute).\nEvery field is optional.",
+          "description": "What compaction established about an event: where it was\n(location_ids, usually one place; several when it moved between\nthem), who was there with the user (with_ids), who it was for\n(for_ids), a note on how it was for each person there (notes),\nwhether it was a commute, getting from one place to another (commute),\nand what it changed in people's trait facts (logs: {person id --\n\"self\", or one it was with or for: {\"<trait id>/<fact id>\": a log of\nthe change, at most 500 characters}}, each beside the summary the\nchange rewrote; see compact_notes' fact_summaries). Every field is\noptional.",
           "properties": {
             "location_ids": {
               "items": {
@@ -22423,6 +23053,18 @@
             "commute": {
               "type": [
                 "boolean",
+                "null"
+              ]
+            },
+            "logs": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": [
+                "object",
                 "null"
               ]
             }
@@ -22756,6 +23398,12 @@
                 "array",
                 "null"
               ]
+            },
+            "fact_summaries": {
+              "items": {
+                "$ref": "#/$defs/ProposedSummary"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -22977,6 +23625,32 @@
           "required": [
             "id",
             "timestamp"
+          ],
+          "type": "object"
+        },
+        "ProposedSummary": {
+          "description": "A trait fact's summary a proposal rewrites, and the person's summary\nof it as it is now (`previous`), to compare.",
+          "properties": {
+            "person_id": {
+              "type": "string"
+            },
+            "fact": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "previous": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "person_id",
+            "fact",
+            "summary"
           ],
           "type": "object"
         },
@@ -23278,7 +23952,7 @@
     }
   },
   {
-    "description": "The judgments a compaction (by default the last one applied) calls\nfor, to make with record_judgments: each event with facts, with each\nperson it was about (the user, \"self\", and everyone there, for a\ntrait's \"with\" parts; everyone it was done for, for its \"for\" parts)\nand the judgment parts of the traits that apply to them; then each of\nthose parts once -- its rubric and the ratings to choose from -- and\neach person's history (what they did and where) over the days their\nparts look back. Only those not made yet -- or with redo, all of\nthem, each event with the judgments already made (`current`), to\nredo one with more context. Read-only.",
+    "description": "The judgments a compaction (by default the last one applied) calls\nfor, to make with record_judgments: each event with facts, with each\nperson it was about (the user, \"self\", and everyone there, for a\ntrait's \"with\" parts; everyone it was done for, for its \"for\" parts)\nand the judgment parts of the traits that apply to them; then each of\nthose parts once -- its rubric and the ratings to choose from -- and\neach person's history (what they did and where) over the days their\nparts look back, their summaries of the trait facts those parts name\n(`facts`), and each habit's note (`habit_notes`). Only those not made yet -- or with redo, all of\nthem, each event with the judgments already made (`current`), to\nredo one with more context. Read-only.",
     "inputSchema": {
       "properties": {
         "compaction_id": {
@@ -23319,8 +23993,23 @@
           },
           "type": "object"
         },
+        "facts": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "type": "object"
+        },
+        "habit_notes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
         "instructions": {
-          "default": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
+          "default": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, `facts` (each person's summaries of the trait facts its parts name -- \"fact:<id>\" -- as they are now, after the event) and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in `habit_notes`. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
           "type": "string"
         }
       },
@@ -23521,8 +24210,14 @@
           },
           "type": "object"
         },
+        "habit_notes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
         "instructions": {
-          "default": "JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\"<trait id>/<part key>\"); `parts` gives each part's rubric and ratings once (\"...@habit:<id>\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in what_matters, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \"<event id>/habit:<id>/<trait id>/<part key>\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.",
+          "default": "JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\"<trait id>/<part key>\"); `parts` gives each part's rubric and ratings once (\"...@habit:<id>\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in `habit_notes`, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \"<event id>/habit:<id>/<trait id>/<part key>\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.",
           "type": "string"
         }
       },
@@ -24164,8 +24859,23 @@
               },
               "type": "object"
             },
+            "facts": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "object"
+            },
+            "habit_notes": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
             "instructions": {
-              "default": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, the people's what_matters and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in what_matters. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
+              "default": "JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\"<trait id>/<part key>\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \"<trait id>/<part key>@<person id>\" if there's one (that person's own), or else \"<trait id>/<part key>\": answer its rubric -- a \"with\" part for someone who was there, a \"for\" part for someone it was done for while they weren't -- from what the timeline, `facts` (each person's summaries of the trait facts its parts name -- \"fact:<id>\" -- as they are now, after the event) and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\"habit:<id>\") is judged like a person there, for how the event went as practice of that habit, its note in `habit_notes`. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \"<event id>/<person id>/<trait id>/<part key>\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.",
               "type": "string"
             }
           },
