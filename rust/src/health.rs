@@ -5,9 +5,9 @@
 //! other's series).
 //!
 //! Memory is sampled after each tool call and each background refresh of
-//! what the server keeps, and kept per second: of the samples in one
-//! second, the one with the highest total, with what each part of what's
-//! kept took then (`MemoryParts`).
+//! what the server keeps, and kept per interval (MEMORY_INTERVAL_SECONDS):
+//! of the samples in one interval, the one with the highest total, with
+//! what each part of what's kept took then (`MemoryParts`).
 
 use crate::google::sheets::SheetsClient;
 use crate::contract::RowItem;
@@ -23,7 +23,12 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Condvar, Mutex};
 
 pub const KEEP: usize = 100;
-/// How many seconds' memory samples are kept.
+/// How long each memory interval is, in seconds: of the samples in one,
+/// the one with the highest total is kept. get_health reports it
+/// (`memory_interval_seconds`), and the app goes by that, so it can be
+/// changed here alone.
+pub const MEMORY_INTERVAL_SECONDS: i64 = 60;
+/// How many intervals' memory samples are kept.
 pub const MEMORY_KEEP: usize = 500;
 pub const FLUSH_SECONDS: u64 = 30;
 pub const SERVER: &str = "server";
@@ -402,11 +407,12 @@ impl HealthRecorder {
         Self::record_memory(&mut self.lock(), at, rss, parts);
     }
 
-    /// Keep a memory sample: in place of one earlier in the same second
+    /// Keep a memory sample: in place of one earlier in the same interval
     /// with a lower total, or not at all if that one's is as high.
     fn record_memory(series: &mut Series, at_ms: i64, rss_kib: i64, parts: MemoryParts) {
         if let Some(last) = series.memory.back().copied() {
-            if last.at_ms.div_euclid(1000) == at_ms.div_euclid(1000) {
+            let interval = |at: i64| at.div_euclid(MEMORY_INTERVAL_SECONDS * 1000);
+            if interval(last.at_ms) == interval(at_ms) {
                 if rss_kib <= last.rss_kib {
                     return;
                 }

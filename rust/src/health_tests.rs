@@ -86,10 +86,13 @@ fn keeps_each_tools_last_hundred_and_the_memory_across_them() {
 
     assert_eq!(calls_of(&recorder, "get_notes").len(), 60);
     assert_eq!(calls_of(&recorder, "note").len(), 60);
-    // Across tools, not per tool: a sample after each call, whichever (each
-    // in a second of its own, on the tests' clock).
-    assert_eq!(recorder.memory().len(), KEEP + 20);
-    assert_eq!(recorder.memory().last().unwrap().at_ms, calls_of(&recorder, "get_notes").last().unwrap().at_ms);
+    // Across tools, not per tool: a sample after each call, whichever, one
+    // kept per interval (the first, its memory being no lower than later).
+    let ats: Vec<i64> = calls_of(&recorder, "get_notes").into_iter().chain(calls_of(&recorder, "note")).map(|c| c.at_ms).collect();
+    let mut intervals: Vec<i64> = ats.iter().map(|at| at.div_euclid(MEMORY_INTERVAL_SECONDS * 1000)).collect();
+    intervals.sort();
+    intervals.dedup();
+    assert_eq!(recorder.memory().len(), intervals.len());
     assert_eq!(calls_of(&recorder, "note").last().unwrap().work_ms, KEEP as i64 + 18);
 
     recorder.record_call("note", 1, None, true);
@@ -278,7 +281,9 @@ fn get_health_reports_each_tools_calls_the_memory_and_restarts() {
     assert_eq!((note["work"]["median_ms"].clone(), note["work"]["max_ms"].clone(), note["total"]["p95_ms"].clone()), (json!(104), json!(109), json!(159)));
     assert_eq!(note["calls"][0]["overhead_ms"], 50);
     assert!(note["calls"][0]["at"].as_str().unwrap().ends_with('Z'));
-    assert_eq!(report["memory"].as_array().unwrap().len(), 10);
+    // Ten calls 1.234 s apart, in one interval: one sample.
+    assert_eq!(report["memory"].as_array().unwrap().len(), 1);
+    assert_eq!(report["memory_interval_seconds"], json!(MEMORY_INTERVAL_SECONDS));
     assert_eq!(report["memory_latest_mib"], json!(round1(300_000.0 / 1024.0)));
     assert_eq!(report["restarts"].as_array().unwrap().len(), 1);
     assert_eq!(report["auth"], json!(crate::auth_mode::name()));
@@ -366,23 +371,31 @@ fn sampled(samples: &[(i64, i64)], parts: MemoryParts) -> HealthRecorder {
 }
 
 #[test]
-fn memory_is_kept_per_second_at_its_highest_in_each() {
-    let recorder = sampled(&[(10_100, 500), (10_400, 700), (10_900, 600), (11_000, 400), (12_500, 450)], vec![("Calendar".into(), 30)]);
+fn memory_is_kept_per_interval_at_its_highest_in_each() {
+    // Times within the 10th, 11th and 12th intervals.
+    let at = |interval: i64, ms: i64| interval * MEMORY_INTERVAL_SECONDS * 1000 + ms;
+    let recorder = sampled(&[(at(10, 100), 500), (at(10, 400), 700), (at(10, 900), 600), (at(11, 0), 400), (at(12, 500), 450)], vec![("Calendar".into(), 30)]);
 
     let kept: Vec<(i64, i64)> = recorder.memory().iter().map(|m| (m.at_ms, m.rss_kib)).collect();
 
-    assert_eq!(kept, vec![(10_400, 700), (11_000, 400), (12_500, 450)]);
-    assert_eq!(recorder.memory_parts().keys().copied().collect::<Vec<_>>(), vec![10_400, 11_000, 12_500]);
+    assert_eq!(kept, vec![(at(10, 400), 700), (at(11, 0), 400), (at(12, 500), 450)]);
+    assert_eq!(recorder.memory_parts().keys().copied().collect::<Vec<_>>(), vec![at(10, 400), at(11, 0), at(12, 500)]);
 }
 
 #[test]
-fn the_last_five_hundred_seconds_are_kept() {
-    let samples: Vec<(i64, i64)> = (0..(MEMORY_KEEP as i64 + 7)).map(|i| (i * 1000, 100 + i)).collect();
+fn the_interval_is_a_minute() {
+    assert_eq!(MEMORY_INTERVAL_SECONDS, 60);
+}
+
+#[test]
+fn the_last_five_hundred_intervals_are_kept() {
+    let interval = MEMORY_INTERVAL_SECONDS * 1000;
+    let samples: Vec<(i64, i64)> = (0..(MEMORY_KEEP as i64 + 7)).map(|i| (i * interval, 100 + i)).collect();
 
     let recorder = sampled(&samples, vec![("Sheet: Actions".into(), 2)]);
 
     assert_eq!(recorder.memory().len(), MEMORY_KEEP);
-    assert_eq!(recorder.memory()[0].at_ms, 7000);
+    assert_eq!(recorder.memory()[0].at_ms, 7 * interval);
     assert_eq!(recorder.memory_parts().len(), MEMORY_KEEP);
 }
 

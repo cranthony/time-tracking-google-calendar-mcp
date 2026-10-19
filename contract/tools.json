@@ -24396,7 +24396,7 @@
     }
   },
   {
-    "description": "The server's health metrics, to graph or look for patterns in: for\neach tool, its last 100 calls -- when each ended, how long the tool's\nown work took and how long the whole request took (auth and transport\nincluded), and whether it succeeded -- with the median, 95th\npercentile and slowest of each; the server's memory, at its highest\nin each of the last 500 seconds anything happened in, with what made\nit up; and its last 100 restarts. Kept across\nrestarts, in the Health tab of the calendar's metadata spreadsheet;\nthe last few seconds' may not be written yet, but are given here.\nAlso auth: \"required\", or \"disabled\" for a build that skips sign-in;\nand sheet_warnings: what the server found changed by hand in the\nmetadata spreadsheet (which is its alone), each time, and whether it\nput back its own copy.\n\n`tool_name`: just that tool's calls. `samples`: false for just the\nsummaries, without each call and memory sample. Read-only.",
+    "description": "The server's health metrics, to graph or look for patterns in: for\neach tool, its last 100 calls -- when each ended, how long the tool's\nown work took and how long the whole request took (auth and transport\nincluded), and whether it succeeded -- with the median, 95th\npercentile and slowest of each; the server's memory, at its highest\nin each of the last 500 intervals anything happened in\n(`memory_interval_seconds` long: a minute), with what made it up; and\nits last 100 restarts. Kept across\nrestarts, in the Health tab of the calendar's metadata spreadsheet;\nthe last few seconds' may not be written yet, but are given here.\nAlso auth: \"required\", or \"disabled\" for a build that skips sign-in;\nand sheet_warnings: what the server found changed by hand in the\nmetadata spreadsheet (which is its alone), each time, and whether it\nput back its own copy.\n\n`tool_name`: just that tool's calls. `samples`: false for just the\nsummaries, without each call and memory sample. Read-only.",
     "inputSchema": {
       "properties": {
         "tool_name": {
@@ -24465,13 +24465,18 @@
             "$ref": "#/$defs/SheetWarning"
           },
           "type": "array"
+        },
+        "memory_interval_seconds": {
+          "description": "How long each memory sample's interval is, in seconds: each is the\nhighest in its interval.",
+          "type": "integer"
         }
       },
       "required": [
         "tools",
         "restarts",
         "auth",
-        "sheet_warnings"
+        "sheet_warnings",
+        "memory_interval_seconds"
       ],
       "type": "object",
       "$defs": {
@@ -24544,7 +24549,7 @@
           "type": "object"
         },
         "MemorySample": {
-          "description": "The server's resident memory (RSS), in MiB, at its highest in one\nsecond (UTC) -- sampled after each tool call, and after each\nbackground refresh of what the server keeps -- and, when they were\nmeasured, what made it up (`parts`), to stack: each Sheet tab kept\n(\"Sheet: <title>\"), the calendar kept (\"Calendar\"), and \"Rest of\nserver\". The parts kept are estimates of what's held; the rest is the\ntotal less them.",
+          "description": "The server's resident memory (RSS), in MiB, at its highest in one\ninterval (`memory_interval_seconds`; UTC) -- sampled after each tool\ncall, and after each\nbackground refresh of what the server keeps -- and, when they were\nmeasured, what made it up (`parts`), to stack: each Sheet tab kept\n(\"Sheet: <title>\"), the calendar kept (\"Calendar\"), and \"Rest of\nserver\". The parts kept are estimates of what's held; the rest is the\ntotal less them.",
           "properties": {
             "at": {
               "type": "string"
