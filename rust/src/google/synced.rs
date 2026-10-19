@@ -8,8 +8,15 @@
 //! A write marks the copy stale, so the next read syncs first; a sync
 //! clears that only if no write began or ended while it ran (each moves
 //! `generation` on as it begins and again as it ends), so what it read
-//! can't be older than a write. Syncs of one calendar run one at a time. What a sync brings that the server didn't write itself -- edited
-//! elsewhere -- is kept for the app to warn of (`take_outside`).
+//! can't be older than a write. Syncs of one calendar run one at a time.
+//!
+//! What a sync brings that the server didn't write itself -- edited
+//! elsewhere -- is kept for the app to warn of (`take_outside`). A write
+//! marks its event (and series) as the server's own until a sync brings
+//! back the etag Calendar answered it with: Calendar's feed can lag a
+//! write, so a sync just after it may not have it yet. A mark that's never
+//! matched -- a delete, the instances a series edit reaches, an answer
+//! lost -- lapses `MARK_LAPSES` after its write ends, silently.
 //!
 //! Kept per Calendar root (a fake's address, in tests) and calendar.
 
@@ -17,6 +24,31 @@ use super::expand::instance_base;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
+use std::time::{Duration, Instant};
+
+/// How long a write's mark lasts after the write ends, if no sync brings
+/// back its etag first.
+pub const MARK_LAPSES: Duration = Duration::from_secs(5 * 60);
+
+/// A mark on an event (or, for `Store::written_all`, every event): its
+/// changes are the server's own while a write to it is under way, or
+/// until `until`.
+#[derive(Default)]
+pub struct Mark {
+    /// Writes under way.
+    writing: usize,
+    /// When it lapses, once no write is under way.
+    until: Option<Instant>,
+    /// The etags Calendar answered writes to this very event with: a sync
+    /// bringing one back ends the mark.
+    etags: HashSet<String>,
+}
+
+impl Mark {
+    fn holds(&self, now: Instant) -> bool {
+        self.writing > 0 || self.until.is_some_and(|until| now < until)
+    }
+}
 
 #[derive(Default)]
 pub struct Store {
@@ -28,11 +60,11 @@ pub struct Store {
     pub stale: bool,
     /// Goes up as each write begins, and again as it ends.
     pub generation: u64,
-    /// The events written since the last sync (and the series they're
-    /// in), whose changes are the server's own.
-    pub written: HashSet<String>,
+    /// The events written lately (and the series they're in), by id: their
+    /// changes are the server's own while each mark holds.
+    pub written: HashMap<String, Mark>,
     /// Something was written that may change any event (a label).
-    pub written_all: bool,
+    pub written_all: Option<Mark>,
     /// Events a sync brought that the server didn't write, newest last.
     pub outside: Vec<Value>,
     /// The calendar's time zone, as the last sync gave it.
@@ -46,24 +78,85 @@ impl Store {
         self.generation += 1;
         match id {
             Some(id) => {
-                for one in [Some(id), series_of(id)].into_iter().flatten() {
-                    self.written.insert(one.to_string());
-                    self.written.insert(instance_base(one).to_string());
+                for key in keys(id) {
+                    self.written.entry(key).or_default().writing += 1;
                 }
             }
-            None => self.written_all = true,
+            None => self.written_all.get_or_insert_with(Mark::default).writing += 1,
         }
     }
 
-    /// Whether `item`, brought by a sync, is the server's own change.
-    pub fn is_ours(&self, item: &Value) -> bool {
-        if self.written_all {
+    /// Note that write's end, `now`: Calendar answered it with `etag`
+    /// (`None` for no answer, or none with one).
+    pub fn wrote(&mut self, id: Option<&str>, etag: Option<&str>, now: Instant) {
+        self.generation += 1;
+        let until = Some(now + MARK_LAPSES);
+        let end = |mark: &mut Mark| {
+            mark.writing = mark.writing.saturating_sub(1);
+            mark.until = until;
+        };
+        match id {
+            Some(id) => {
+                for key in keys(id) {
+                    if let Some(mark) = self.written.get_mut(&key) {
+                        end(mark);
+                        if key == id {
+                            mark.etags.extend(etag.map(str::to_string));
+                        }
+                    }
+                }
+            }
+            None => {
+                if let Some(mark) = self.written_all.as_mut() {
+                    end(mark);
+                }
+            }
+        }
+    }
+
+    /// Whether `item`, brought by a sync `now`, is the server's own change.
+    pub fn is_ours(&self, item: &Value, now: Instant) -> bool {
+        if self.written_all.as_ref().is_some_and(|mark| mark.holds(now)) {
             return true;
         }
         let id = item["id"].as_str().unwrap_or_default();
         let series = item["recurringEventId"].as_str().unwrap_or_default();
-        [id, instance_base(id), series, instance_base(series)].iter().any(|i| !i.is_empty() && self.written.contains(*i))
+        [id, instance_base(id), series, instance_base(series)]
+            .iter()
+            .any(|i| !i.is_empty() && self.written.get(*i).is_some_and(|mark| mark.holds(now)))
     }
+
+    /// Note `item`, brought by a sync: if it's the etag a write was answered
+    /// with, that write is back, and its event's mark ends (unless another
+    /// write to it is under way).
+    pub fn brought(&mut self, item: &Value) {
+        let (Some(id), Some(etag)) = (item["id"].as_str(), item["etag"].as_str()) else { return };
+        if self.written.get(id).is_some_and(|mark| mark.writing == 0 && mark.etags.contains(etag)) {
+            self.written.remove(id);
+        }
+    }
+
+    /// Drop the marks that have lapsed by `now`.
+    pub fn lapse(&mut self, now: Instant) {
+        self.written.retain(|_, mark| mark.holds(now));
+        if self.written_all.as_ref().is_some_and(|mark| !mark.holds(now)) {
+            self.written_all = None;
+        }
+    }
+}
+
+/// The ids a write to event `id` marks: it, its series (for an instance),
+/// and each one's base, which a split series' parts share.
+fn keys(id: &str) -> Vec<String> {
+    let mut keys = Vec::new();
+    for one in [Some(id), series_of(id)].into_iter().flatten() {
+        for key in [one, instance_base(one)] {
+            if !keys.iter().any(|k| k == key) {
+                keys.push(key.to_string());
+            }
+        }
+    }
+    keys
 }
 
 /// The series an instance's id names ("<series>_<start>"), if it's one.

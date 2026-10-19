@@ -401,3 +401,25 @@ fn an_event_changed_outside_the_server_is_taken_in_and_warned_of() {
     s.t.app.sync_calendar();
     assert_eq!(s.t.app.health.sheet_warnings().len(), 1);
 }
+
+#[test]
+fn the_servers_own_write_isnt_warned_of_when_calendars_feed_lags_it() {
+    let s = Server::new();
+    s.seed(&[crate::testing::event_at("08:00-09:00").id("walked").summary("Walk").build()]);
+    s.ok("list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}));
+    let calendar = s.t.calendar_id.clone();
+    s.t.fake.with(|state| state.hold_feed(&calendar, true));
+    s.ok("update_event", json!({"updates": [{"event": {"id": "walked", "summary": "Long walk"}}]}));
+
+    // A sync before the feed has the write: it can't bring it back.
+    s.t.app.sync_calendar();
+    s.t.fake.with(|state| state.hold_feed(&calendar, false));
+    s.t.app.sync_calendar();
+
+    assert_eq!(s.ok("get_event", json!({"id": "walked"}))["summary"], json!("Long walk"));
+    assert!(s.t.app.health.sheet_warnings().is_empty());
+    // Once back, the mark has ended: a change by hand is warned of.
+    s.t.fake.with(|state| state.edit_event_by_hand(&calendar, "walked", json!({"summary": "Stroll"})));
+    s.t.app.sync_calendar();
+    assert_eq!(s.t.app.health.sheet_warnings().len(), 1);
+}
