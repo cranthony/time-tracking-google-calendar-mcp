@@ -759,6 +759,25 @@ fn what_changed_elsewhere_is_kept_to_warn_of_and_the_servers_own_changes_are_not
 }
 
 #[test]
+fn what_a_full_listing_had_isnt_warned_of_when_the_feed_brings_it_again() {
+    let f = fixture();
+    f.day();
+    // Changed before the server took its copy, but past where the sync
+    // token the listing ends with starts: Calendar's feed brings it again.
+    f.fake.with(|s| s.hold_feed(&f.calendar_id, true));
+    f.fake.with(|s| s.edit_event_by_hand(&f.calendar_id, "ev2", json!({"summary": "Moved before"})));
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    f.fake.with(|s| s.hold_feed(&f.calendar_id, false));
+    f.fake.with(|s| s.edit_event_by_hand(&f.calendar_id, "ev3", json!({"summary": "Moved after"})));
+
+    f.client.sync().unwrap();
+
+    let outside = f.client.take_outside();
+    assert_eq!(outside.iter().map(|e| e["id"].as_str().unwrap()).collect::<Vec<_>>(), vec!["ev3"]);
+    assert_eq!(f.client.get_event("ev2").unwrap().summary.as_deref(), Some("Moved before"));
+}
+
+#[test]
 fn an_instance_is_got_from_its_kept_series_and_one_not_kept_from_calendar() {
     let f = fixture();
     let mut series = event(Some("series1"), "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00").insert_body().unwrap();

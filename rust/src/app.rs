@@ -463,7 +463,8 @@ impl App {
         if changed.is_empty() {
             return;
         }
-        tracing::warn!("{} event(s) were changed outside the server", changed.len());
+        let which: Vec<String> = changed.iter().map(|e| format!("{} (updated {})", e["id"].as_str().unwrap_or(""), e["updated"].as_str().unwrap_or("?"))).collect();
+        tracing::warn!("{} event(s) were changed outside the server: {}", changed.len(), which.join(", "));
         self.health.record_sheet_warnings(vec![SheetWarning::of_calendar(&changed, crate::health::now_ms())]);
     }
 
