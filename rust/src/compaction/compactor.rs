@@ -2707,13 +2707,39 @@ impl NoteCompactor {
         let updated: Vec<String> = pending.iter().filter(|s| steps[**s].action != "create").map(|s| target(&steps[*s])).collect();
         self.client.client().prefetch_events(&updated)?;
         let related = |a: &str, b: &str| a == b || a.starts_with(&format!("{b}_")) || b.starts_with(&format!("{a}_"));
+        let changed_since = |step: &JournalStep, event_id: &str| {
+            ce(
+                format!(
+                    "event {event_id} was changed in the calendar since this compaction was planned, so its change wasn't made, and wasn't overwritten (the changes before it were made): abandon this compaction (abandon_compaction), which keeps what was made, and propose again on the calendar as it is now{}",
+                    step.before.as_ref().and_then(|b| b.summary.as_deref()).map(|s| format!(" ({})", py::repr(s))).unwrap_or_default()
+                ),
+                "stale",
+            )
+        };
         let mut batches: Vec<Vec<(usize, BatchRequest)>> = Vec::new();
+        // A step changed since stops the steps from it on; those before it
+        // are still made.
+        let mut blocked: Option<anyhow::Error> = None;
         for s in pending {
             let step = &steps[s];
             let request = if step.action == "create" {
                 self.client.create_event_request(&resolve(&step.after.as_ref().unwrap().to_event(Some(&target(step))), refs))?
             } else {
-                self.client.update_event_request(&resolve(&patch_for(step), refs))?
+                // Onto the version the plan was checked against (just
+                // replanned on what's kept): one changed since -- what's
+                // kept lagging Calendar's feed -- is refused, not overwritten.
+                // A field it changes that's now neither as planned from nor
+                // as planned is a change made since, which it mustn't undo.
+                let mut patch = resolve(&patch_for(step), refs);
+                if let Some(id) = patch.id.clone() {
+                    let now = self.client.get_event(&id)?;
+                    if step.action != "cancel" && !as_planned(step, &EventState::from_event(&now)) {
+                        blocked = Some(changed_since(step, &id));
+                        break;
+                    }
+                    patch.etag = now.etag;
+                }
+                self.client.update_event_request(&patch)?
             };
             match batches.last_mut() {
                 Some(batch) if batch.len() < BATCH_SIZE && !batch.iter().any(|(o, _)| related(&target(&steps[*o]), &target(step))) => batch.push((s, request)),
@@ -2750,6 +2776,7 @@ impl NoteCompactor {
                 match answer {
                     Ok(_) => done.push(*s),
                     Err(e) if steps[*s].action == "create" && google_status(&e) == Some(409) => done.push(*s),
+                    Err(e) if google_status(&e) == Some(412) => failure = failure.or(Some(changed_since(&steps[*s], &target(&steps[*s])))),
                     Err(e) => failure = failure.or(Some(e)),
                 }
             }
@@ -2757,7 +2784,7 @@ impl NoteCompactor {
                 return Ok((done, failure));
             }
         }
-        Ok((done, None))
+        Ok((done, blocked))
     }
 }
 
@@ -3365,6 +3392,18 @@ pub fn hinted_goals(all: &[goals::Goal]) -> Vec<Value> {
             Some(json!({"id": g.id, "title": g.title, "path": goals::path(g, all), "attribution_hints": hints}))
         })
         .collect()
+}
+
+/// Whether each field `step` changes is, `now`, as it was planned from or
+/// as planned: not changed since by anything else.
+fn as_planned(step: &JournalStep, now: &EventState) -> bool {
+    let before = step.before.clone().unwrap_or_default();
+    let after = step.after.clone().unwrap_or_default();
+    let patch = patch_for(step);
+    macro_rules! held {
+        ($($field:ident),*) => { true $(&& (patch.$field.is_none() || now.$field == before.$field || now.$field == after.$field))* };
+    }
+    held!(summary, start, end, description, location, priority, event_label_id, action_ids, goals) && (patch.facts.is_none() || now.facts == before.facts || now.facts == after.facts)
 }
 
 fn patch_for(step: &JournalStep) -> Event {

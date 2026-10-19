@@ -366,3 +366,28 @@ fn a_habits_judgments_are_recorded_on_the_event_under_its_id() {
 
     assert_eq!(s.judgments(TONIGHT)["habit:hik"], json!({"adventurous": {"judgment": {"rating": 1, "scale": 3, "reasoning": "A new trail"}}}));
 }
+
+#[test]
+fn keeps_a_judgment_made_since_though_whats_kept_lags_it() {
+    let s = Setup::standard(&[tonight()]);
+    let requests = s.requests(&[TONIGHT], true);
+    s.judgments(TONIGHT);
+    let calendar = s.t.calendar_id.clone();
+    s.t.fake.with(|state| state.hold_feed(&calendar, true));
+    // Recorded since -- by another copy of the server, say -- where the
+    // feed hasn't brought it.
+    let mom = json!({"mom": {"thoughtful": {"judgment": {"rating": 1, "scale": 1, "reasoning": "Called."}}}});
+    let private: Map<String, Value> = crate::event::write_chunks("judgments", Some(&mom.to_string()))
+        .unwrap()
+        .into_iter()
+        .map(|(k, v)| (k, v.map(Value::String).unwrap_or(Value::Null)))
+        .filter(|(_, v)| !v.is_null())
+        .collect();
+    s.t.fake.with(|state| state.edit_event_by_hand(&calendar, TONIGHT, json!({"extendedProperties": {"private": private}})));
+
+    s.record(&requests, &[("e0001/self/adventurous/judgment", 2, "A new trail.")]).unwrap();
+
+    let now = s.judging.client.client().fresh_event(TONIGHT).unwrap().judgments.unwrap_or_default();
+    assert_eq!(now.get("mom"), mom.get("mom"), "{now:?}");
+    assert!(now.contains_key("self"), "{now:?}");
+}

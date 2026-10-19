@@ -765,3 +765,52 @@ fn split_of_a_google_split_series_holds_while_calendars_feed_lags() {
     // Its copy from then on goes on, not cancelled as an undone split's is.
     assert_eq!(client.fresh_event(&split_series_id(GOOGLE_SPLIT, &at(26, 9))).unwrap().status.as_deref(), Some("confirmed"));
 }
+
+#[test]
+fn an_updates_label_comes_from_actions_changed_where_whats_kept_lags() {
+    let f = fixture(&[weekly(MONDAYS)]);
+    f.t.seed(
+        crate::sheet::ACTIONS.1,
+        &[json!({"id": "work", "name": "Work", "status": "active", "label_id": "l-work"}), json!({"id": "play", "name": "Play", "status": "active", "label_id": "l-play"})],
+    );
+    f.event("series1");
+    let calendar = f.t.calendar_id.clone();
+    f.t.fake.with(|state| state.hold_feed(&calendar, true));
+    let key = format!("{}action_ids", crate::event::PREFIX);
+    f.t.fake.with(|state| state.edit_event_by_hand(&calendar, "series1", json!({"extendedProperties": {"private": {key: "play"}}})));
+
+    // Its priority alone: its label comes from its actions, read first.
+    f.held(|r| r.update(&Event { id: Some("series1".into()), priority: Some(2), ..Default::default() }, None, None)).unwrap();
+
+    let now = f.t.app.calendar_client().unwrap().fresh_event("series1").unwrap();
+    assert_eq!((now.action_ids, now.priority), (Some(crate::testing::shares(&["play"])), Some(2)));
+    assert_eq!(now.event_label_id.as_deref(), Some("l-play"));
+}
+
+#[test]
+fn ending_a_series_keeps_rules_changed_where_whats_kept_lags() {
+    let f = fixture(&[weekly(MONDAYS)]);
+    f.event("series1");
+    let calendar = f.t.calendar_id.clone();
+    f.t.fake.with(|state| state.hold_feed(&calendar, true));
+    f.t.fake.with(|state| state.edit_event_by_hand(&calendar, "series1", json!({"recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE"]})));
+
+    f.held(|r| r.delete("series1", Some(&instance("series1", 19)))).unwrap();
+
+    let now = f.t.app.calendar_client().unwrap().fresh_event("series1").unwrap();
+    assert_eq!(now.recurrence, Some(strings(&["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261019T125959Z"])));
+}
+
+#[test]
+fn a_split_copies_rules_changed_where_whats_kept_lags() {
+    let f = fixture(&[weekly(MONDAYS)]);
+    f.event("series1");
+    let calendar = f.t.calendar_id.clone();
+    f.t.fake.with(|state| state.hold_feed(&calendar, true));
+    f.t.fake.with(|state| state.edit_event_by_hand(&calendar, "series1", json!({"recurrence": ["RRULE:FREQ=WEEKLY;BYDAY=MO,WE"], "summary": "Sync"})));
+
+    let (earlier, later) = f.held(|r| r.split(&instance("series1", 19))).unwrap();
+
+    assert_eq!(earlier.unwrap().recurrence, Some(strings(&["RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261019T125959Z"])));
+    assert_eq!((later.recurrence, later.summary.as_deref()), (Some(strings(&["RRULE:FREQ=WEEKLY;BYDAY=MO,WE"])), Some("Sync")));
+}

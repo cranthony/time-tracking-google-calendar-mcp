@@ -1529,6 +1529,13 @@
    "body": null,
    "if_match": null,
    "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775/instances",
    "query": {
     "maxResults": [
@@ -1613,7 +1620,7 @@
      "RRULE:FREQ=DAILY;UNTIL=20261009T125959Z"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000004\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}
@@ -1657,6 +1664,13 @@
      "3"
     ]
    }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
   }
  ],
  "state": {

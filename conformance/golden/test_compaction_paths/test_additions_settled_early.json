@@ -7583,7 +7583,7 @@
      }
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000020\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
    "query": {
@@ -7602,7 +7602,7 @@
      }
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000024\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
    "query": {}

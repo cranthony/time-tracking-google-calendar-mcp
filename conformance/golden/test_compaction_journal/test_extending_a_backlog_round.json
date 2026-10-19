@@ -5359,7 +5359,7 @@
      "dateTime": "2026-09-27T07:40:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000016\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/d820ae0f22570a19812dcb76c2",
    "query": {}

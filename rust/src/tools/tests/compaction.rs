@@ -387,3 +387,24 @@ fn judgments_are_prepared_and_recorded_for_an_applied_compaction() {
 
     server.refused("record_judgments", json!({"compaction_id": compaction_id, "judgments": [{"request_id": "e1/x/y/z", "rating": 1, "reasoning": "r"}]}), "isn't one of");
 }
+
+#[test]
+fn confirming_doesnt_overwrite_a_change_whats_kept_lags() {
+    let (server, p, _, _) = proposed();
+    server.ok("amend_proposal", json!({"proposal_id": p, "revision": 1, "updates": [{"event": {"id": "e1", "description": "Inbox zero"}}]}));
+    let calendar = server.t.calendar_id.clone();
+    server.t.fake.with(|state| state.hold_feed(&calendar, true));
+    // Changed in Google Calendar, where the feed hasn't brought it.
+    server.t.fake.with(|state| state.edit_event_by_hand(&calendar, "e1", json!({"description": "Written by hand"})));
+
+    let confirmed = server.call("confirm_proposal", json!({"proposal_id": p, "revision": 2}));
+
+    let now = server.t.app.calendar_client().unwrap().fresh_event("e1").unwrap();
+    assert_eq!(now.description.as_deref(), Some("Written by hand"), "confirming gave {confirmed:?}");
+    let error = confirmed.expect_err("refused");
+    assert!(error.contains("changed"), "{error}");
+    // Confirmed again -- the change now kept -- it's refused again.
+    let again = server.call("confirm_proposal", json!({"proposal_id": p, "revision": 2})).expect_err("refused again");
+    assert!(again.contains("abandon_compaction"), "{again}");
+    assert_eq!(server.t.app.calendar_client().unwrap().fresh_event("e1").unwrap().description.as_deref(), Some("Written by hand"));
+}
