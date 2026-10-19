@@ -291,22 +291,29 @@ pub fn expand(
             }
         }
     }
-    let span = |e: &Value| -> Option<(DateTime<Utc>, DateTime<Utc>)> {
-        let start = parse_moment(e.get("start")?, zone)?.key(zone);
-        let end = e.get("end").and_then(|v| parse_moment(v, zone)).map_or(start, |w| w.key(zone));
-        Some((start, end))
-    };
     let mut listed: Vec<(DateTime<Utc>, Value)> = found
         .into_iter()
         .filter(|e| show_deleted || e["status"] != "cancelled")
         .filter_map(|e| {
-            let (start, end) = span(&e)?;
+            let (start, end) = span(&e, zone)?;
             let outside = time_min.is_some_and(|m| end <= m && !(start == end && start == m)) || time_max.is_some_and(|m| start >= m);
             (!outside).then_some((start, e))
         })
         .collect();
     listed.sort_by(|(a_start, a), (b_start, b)| (a_start, a["id"].as_str().unwrap_or("")).cmp(&(b_start, b["id"].as_str().unwrap_or(""))));
     listed.into_iter().map(|(_, e)| e).collect()
+}
+
+/// An event's start and end, in `zone`; its end is its start if it has none.
+fn span(e: &Value, zone: Tz) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
+    let start = parse_moment(e.get("start")?, zone)?.key(zone);
+    let end = e.get("end").and_then(|v| parse_moment(v, zone)).map_or(start, |w| w.key(zone));
+    Some((start, end))
+}
+
+/// Sort `events` as `expand` lists them: by start, then id.
+pub fn sort_by_start(zone: Tz, events: &mut [Value]) {
+    events.sort_by_cached_key(|e| (span(e, zone).map(|(start, _)| start), e["id"].as_str().unwrap_or("").to_string()));
 }
 
 #[cfg(test)]

@@ -391,3 +391,47 @@ fn deletes_a_note_and_prints_what_it_was_or_reports_a_refusal() {
     assert!(out.contains("Deleted:") && out.contains("oops"), "{out}");
     failed(&t, &["delete_note", "2026-01-01T09:00:00+00:00#2"], "exit", "no longer holds the note");
 }
+
+// -- index_people -----------------------------------------------------------------------
+
+fn add_raw(t: &TestApp, id: &str, private: Value, recurrence: Option<Value>) {
+    let mut body = focus(id, "2024-06-01T09:00:00+00:00", "2024-06-01T10:00:00+00:00").insert_body().unwrap();
+    body.insert("id".into(), json!(id));
+    body.insert("extendedProperties".into(), json!({"private": private}));
+    if let Some(recurrence) = recurrence {
+        body.insert("recurrence".into(), recurrence);
+        body.insert("start".into(), json!({"dateTime": "2024-06-01T09:00:00+00:00", "timeZone": "UTC"}));
+    }
+    t.fake.add_event(&t.calendar_id, Value::Object(body));
+}
+
+#[test]
+fn index_people_indexes_each_event_under_the_people_its_facts_name() {
+    let t = test_app();
+    let facts = |people: &str| json!({"cascading-time-tracker-facts": format!("{{\"with\":[{people}]}}")});
+    add_raw(&t, "unindexed", facts("\"sam\""), None);
+    let mut stale = facts("\"sam\"");
+    stale["cascading-time-tracker-person-kim"] = json!("1");
+    add_raw(&t, "stale", stale, None);
+    let mut done = facts("\"sam\"");
+    done["cascading-time-tracker-person-sam"] = json!("1");
+    add_raw(&t, "done", done, None);
+    add_raw(&t, "walks", facts("\"sam\""), Some(json!(["RRULE:FREQ=DAILY;COUNT=2"])));
+
+    let dry = ok(&t, &["index_people", "--dry-run"]);
+
+    assert!(dry.contains("unindexed\tFocus block\t+1 -0") && dry.contains("stale\tFocus block\t+1 -1"), "{dry}");
+    assert!(dry.contains("Would index 2 event(s); 1 already were; 0 failed.") && dry.contains("as series (a patch would reset their instances): walks"), "{dry}");
+    assert_eq!(writes(&t), 0);
+
+    let run = ok(&t, &["index_people"]);
+
+    assert!(run.contains("Indexed 2 event(s); 1 already were; 0 failed."), "{run}");
+    let private = |id: &str| t.fake.event(&t.calendar_id, id).unwrap()["extendedProperties"]["private"].clone();
+    assert_eq!(private("unindexed")["cascading-time-tracker-person-sam"], "1");
+    assert_eq!(private("stale")["cascading-time-tracker-person-sam"], "1");
+    assert!(private("stale").get("cascading-time-tracker-person-kim").is_none());
+    assert!(private("walks").get("cascading-time-tracker-person-sam").is_none());
+    assert!(ok(&t, &["index_people"]).contains("Indexed 0 event(s); 3 already were"));
+    failed(&t, &["index_people", "--now"], "usage", "unrecognized arguments: --now");
+}

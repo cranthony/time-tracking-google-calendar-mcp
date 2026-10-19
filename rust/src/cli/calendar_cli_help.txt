@@ -1,10 +1,10 @@
 usage: calendar_cli [-h]
-                       {list,get,update_properties,update,create,delete,list_raw_labels,create_raw_label,update_raw_label,delete_raw_label,list_actions,create_action,update_action,note,get_notes,edit_note,delete_note} ...
+                       {list,get,update_properties,update,create,delete,list_raw_labels,create_raw_label,update_raw_label,delete_raw_label,list_actions,create_action,update_action,note,get_notes,edit_note,delete_note,index_people} ...
 
 Google Calendar API command-line utilities.
 
 positional arguments:
-  {list,get,update_properties,update,create,delete,list_raw_labels,create_raw_label,update_raw_label,delete_raw_label,list_actions,create_action,update_action,note,get_notes,edit_note,delete_note}
+  {list,get,update_properties,update,create,delete,list_raw_labels,create_raw_label,update_raw_label,delete_raw_label,list_actions,create_action,update_action,note,get_notes,edit_note,delete_note,index_people}
     list                List events in a window around now.
     get                 Get a single event by id.
     update_properties   Set one or more properties on an existing event.
@@ -27,6 +27,7 @@ positional arguments:
                         by timestamp.
     edit_note           Change an uncompacted note's time and/or description.
     delete_note         Delete an uncompacted note.
+    index_people        Index every event under the people its facts name.
 
 options:
   -h, --help            show this help message and exit

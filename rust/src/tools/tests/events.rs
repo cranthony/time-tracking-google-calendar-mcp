@@ -617,3 +617,32 @@ fn an_events_goals_are_cut_to_fit_it_once_shortened_and_deleted_goals_left_out()
     // Kept as written until the event's goals are next set.
     assert_eq!(server.event("abc123").goals.unwrap().len(), 2);
 }
+
+fn listed_with(server: &Server, person: &str) -> Vec<Value> {
+    let range = json!({"min_time": "2020-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00", "person_id": person});
+    server.ok("list_events", range).as_array().unwrap().iter().map(|e| e["id"].clone()).collect()
+}
+
+#[test]
+fn lists_just_the_events_a_persons_named_in() {
+    let server = two();
+    with_people_and_places(&server);
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"facts": {"with_ids": ["sam"]}})), update("def456", json!({"facts": {"location_ids": ["home"]}}))]}));
+
+    assert_eq!(listed_with(&server, "sam"), vec![json!("abc123")]);
+    assert_eq!(listed_with(&server, "Sam"), vec![json!("abc123")]);
+    server.refused("list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00", "person_id": "kim"}), "kim");
+}
+
+#[test]
+fn a_person_no_longer_named_is_no_longer_listed_with() {
+    let server = two();
+    with_people_and_places(&server);
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"facts": {"with_ids": ["sam"], "location_ids": ["home"]}}))]}));
+
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"facts": {"location_ids": ["home"]}}))]}));
+
+    assert!(listed_with(&server, "sam").is_empty());
+    let private = server.t.fake.event(&server.t.calendar_id, "abc123").unwrap()["extendedProperties"]["private"].clone();
+    assert!(private.get("cascading-time-tracker-person-sam").is_none(), "{private}");
+}

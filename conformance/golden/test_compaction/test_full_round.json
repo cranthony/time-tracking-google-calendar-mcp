@@ -10479,7 +10479,8 @@
     "extendedProperties": {
      "private": {
       "cascading-time-tracker-action_ids": "3dnjav",
-      "cascading-time-tracker-facts": "{\"locations\":[\"syc56c\"],\"with\":[\"co2yzn\"]}"
+      "cascading-time-tracker-facts": "{\"locations\":[\"syc56c\"],\"with\":[\"co2yzn\"]}",
+      "cascading-time-tracker-person-co2yzn": "1"
      }
     }
    },
@@ -10500,7 +10501,8 @@
     },
     "extendedProperties": {
      "private": {
-      "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"]}"
+      "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"]}",
+      "cascading-time-tracker-person-co2yzn": "1"
      }
     },
     "summary": "Dinner with Robin"
@@ -11305,7 +11307,8 @@
        "private": {
         "cascading-time-tracker-action_ids": "3dnjav",
         "cascading-time-tracker-facts": "{\"locations\":[\"syc56c\"],\"with\":[\"co2yzn\"]}",
-        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}}},\"co2yzn\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}}}}"
+        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}}},\"co2yzn\":{\"thoughtful\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"creative\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"adventurous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}},\"generous\":{\"judgment\":{\"rating\":1,\"scale\":3,\"reasoning\":\"fine\"}}}}",
+        "cascading-time-tracker-person-co2yzn": "1"
        }
       },
       "iCalUID": "c5aefcb1a0e717b26c9d3d4839@google.com",
@@ -11423,7 +11426,8 @@
       "extendedProperties": {
        "private": {
         "cascading-time-tracker-facts": "{\"with\":[\"co2yzn\"]}",
-        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"creative\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"adventurous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"generous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}}},\"co2yzn\":{\"thoughtful\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"creative\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"adventurous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"generous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}}}}"
+        "cascading-time-tracker-judgments": "{\"self\":{\"thoughtful\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"creative\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"adventurous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"generous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}}},\"co2yzn\":{\"thoughtful\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"creative\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"adventurous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}},\"generous\":{\"judgment\":{\"rating\":2,\"scale\":3,\"reasoning\":\"good\"}}}}",
+        "cascading-time-tracker-person-co2yzn": "1"
        }
       },
       "iCalUID": "f43e48437258cfca35d17613c4@google.com",

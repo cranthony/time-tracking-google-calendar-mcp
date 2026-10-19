@@ -18,9 +18,17 @@
 //! matched -- a delete, the instances a series edit reaches, an answer
 //! lost -- lapses `MARK_LAPSES` after its write ends, silently.
 //!
+//! Only the last `KEPT_DAYS` are kept, so what's kept stays about a year's
+//! size however long the calendar's history: an event (or exception) that
+//! ended, and was to have happened, before `Store::from` is dropped as a
+//! sync or write brings it. Series masters are kept whatever their dates,
+//! to expand. CalendarClient asks Calendar itself for anything earlier.
+//!
 //! Kept per Calendar root (a fake's address, in tests) and calendar.
 
-use super::expand::instance_base;
+use super::expand::{instance_base, is_master, parse_moment};
+use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
@@ -29,6 +37,44 @@ use std::time::{Duration, Instant};
 /// How long a write's mark lasts after the write ends, if no sync brings
 /// back its etag first.
 pub const MARK_LAPSES: Duration = Duration::from_secs(5 * 60);
+
+/// How many days back events are kept: about the 13 months the app reads.
+pub const KEPT_DAYS: i64 = 400;
+
+/// Where what's kept starts, as of `now`.
+pub fn kept_from(now: DateTime<Utc>) -> DateTime<Utc> {
+    now - chrono::Duration::days(KEPT_DAYS)
+}
+
+/// Where what's kept starts now. A unit test that hasn't set the clock
+/// (determinism::TEST_NOW) keeps everything, so its dates don't fall out
+/// of what's kept as time passes.
+pub fn kept_from_now() -> DateTime<Utc> {
+    #[cfg(test)]
+    if crate::determinism::TEST_NOW.with(std::cell::Cell::get).is_none() {
+        return DateTime::parse_from_rfc3339("1900-01-01T00:00:00Z").unwrap().with_timezone(&Utc);
+    }
+    kept_from(crate::determinism::now().with_timezone(&Utc))
+}
+
+/// The earliest and latest `event` touches, in `zone`: its start and end,
+/// and for an exception, when it was to have been. `None` for one with
+/// no times it can read.
+pub fn reach(event: &Value, zone: Tz) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
+    let times: Vec<DateTime<Utc>> = ["start", "end", "originalStartTime"]
+        .iter()
+        .filter_map(|key| event.get(*key).and_then(|v| parse_moment(v, zone)).map(|w| w.key(zone)))
+        .collect();
+    Some((*times.iter().min()?, *times.iter().max()?))
+}
+
+/// Whether `event` is too old to keep, with what's kept starting at
+/// `from`: not a series' master, and over by then -- with a day to spare,
+/// as an all-day event's times are read in `zone`, which may not be the
+/// one the listing that needs it is in.
+pub fn too_old(event: &Value, from: DateTime<Utc>, zone: Tz) -> bool {
+    !is_master(event) && reach(event, zone).is_some_and(|(_, latest)| latest < from - chrono::Duration::days(1))
+}
 
 /// A mark on an event (or, for `Store::written_all`, every event): its
 /// changes are the server's own while a write to it is under way, or
@@ -69,6 +115,9 @@ pub struct Store {
     pub outside: Vec<Value>,
     /// The calendar's time zone, as the last sync gave it.
     pub zone: Option<chrono_tz::Tz>,
+    /// Where what's kept starts: every event that ends at or after it is
+    /// here; `None` before the first sync.
+    pub from: Option<DateTime<Utc>>,
 }
 
 impl Store {
@@ -126,6 +175,25 @@ impl Store {
             .any(|i| !i.is_empty() && self.written.get(*i).is_some_and(|mark| mark.holds(now)))
     }
 
+    /// Whether `item`, brought by a sync, differs from what's kept of it only
+    /// in which people it's indexed under (see event::person_key) -- as
+    /// `calendar_cli index_people` changes it: no edit to warn of.
+    pub fn only_reindexed(&self, item: &Value) -> bool {
+        let Some(kept) = item["id"].as_str().and_then(|id| self.events.get(id)) else { return false };
+        let bare = |event: &Value| {
+            let mut event = event.clone();
+            if let Some(fields) = event.as_object_mut() {
+                fields.remove("etag");
+                fields.remove("updated");
+            }
+            if let Some(private) = event.pointer_mut("/extendedProperties/private").and_then(Value::as_object_mut) {
+                private.retain(|key, _| !crate::event::is_person_key(key));
+            }
+            event
+        };
+        bare(kept) == bare(item)
+    }
+
     /// Note `item`, brought by a sync: if it's the etag a write was answered
     /// with, that write is back, and its event's mark ends (unless another
     /// write to it is under way).
@@ -140,8 +208,13 @@ impl Store {
     /// unless what's kept of it is newer (by `updated`, which Calendar
     /// moves on with each change): Calendar's feed can lag a write the
     /// server already has the answer to, and mustn't take it back.
+    /// One too old to keep (see `too_old`) is dropped instead.
     pub fn keep(&mut self, event: Value) {
         let Some(id) = event["id"].as_str().map(str::to_string) else { return };
+        if self.from.is_some_and(|from| too_old(&event, from, self.zone.unwrap_or(chrono_tz::UTC))) {
+            self.events.remove(&id);
+            return;
+        }
         if self.events.get(&id).is_some_and(|kept| newer(kept, &event)) {
             return;
         }
@@ -158,6 +231,15 @@ impl Store {
         for id in gone {
             self.events.remove(&id);
         }
+    }
+
+    /// Start what's kept at `from` (never earlier than it started), dropping
+    /// what's now too old.
+    pub fn start_at(&mut self, from: DateTime<Utc>) {
+        let from = self.from.map_or(from, |kept| kept.max(from));
+        self.from = Some(from);
+        let zone = self.zone.unwrap_or(chrono_tz::UTC);
+        self.events.retain(|_, event| !too_old(event, from, zone));
     }
 
     /// Drop the marks that have lapsed by `now`.

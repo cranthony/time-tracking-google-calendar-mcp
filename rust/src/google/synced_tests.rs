@@ -136,3 +136,63 @@ fn a_full_listing_drops_what_it_doesnt_list_but_what_the_server_just_wrote() {
     store.keep_only(&["walk".to_string()].into(), now + MARK_LAPSES);
     assert_eq!(store.events.keys().collect::<Vec<_>>(), ["walk"]);
 }
+
+fn at(text: &str) -> chrono::DateTime<chrono::Utc> {
+    chrono::DateTime::parse_from_rfc3339(text).unwrap().with_timezone(&chrono::Utc)
+}
+
+fn timed(id: &str, start: &str, end: &str) -> Value {
+    json!({"id": id, "start": {"dateTime": start}, "end": {"dateTime": end}, "updated": "2026-01-01T00:00:00Z"})
+}
+
+fn having(mut event: Value, key: &str, value: Value) -> Value {
+    event[key] = value;
+    event
+}
+
+#[test]
+fn keeps_only_what_ends_after_where_its_kept_from_and_every_series() {
+    let mut store = Store::default();
+    store.start_at(at("2026-01-10T00:00:00Z"));
+
+    store.keep(timed("old", "2026-01-01T09:00:00Z", "2026-01-01T10:00:00Z"));
+    store.keep(timed("across", "2026-01-08T09:00:00Z", "2026-01-10T10:00:00Z"));
+    store.keep(timed("new", "2026-01-11T09:00:00Z", "2026-01-11T10:00:00Z"));
+    store.keep(having(timed("series", "2025-01-01T09:00:00Z", "2025-01-01T10:00:00Z"), "recurrence", json!(["RRULE:FREQ=DAILY"])));
+    // Moved back from when it was to have been: its series would show it there.
+    store.keep(having(timed("moved", "2025-12-01T09:00:00Z", "2025-12-01T10:00:00Z"), "originalStartTime", json!({"dateTime": "2026-01-12T09:00:00Z"})));
+
+    let kept: Vec<&str> = store.events.keys().map(String::as_str).collect();
+    assert_eq!(kept, vec!["across", "moved", "new", "series"]);
+}
+
+#[test]
+fn starting_later_drops_what_falls_out_and_never_starts_earlier() {
+    let mut store = Store::default();
+    store.start_at(at("2026-01-01T00:00:00Z"));
+    store.keep(timed("first", "2026-01-02T09:00:00Z", "2026-01-02T10:00:00Z"));
+    store.keep(timed("second", "2026-02-02T09:00:00Z", "2026-02-02T10:00:00Z"));
+
+    store.start_at(at("2026-02-01T00:00:00Z"));
+    store.start_at(at("2026-01-01T00:00:00Z"));
+
+    assert_eq!(store.from, Some(at("2026-02-01T00:00:00Z")));
+    assert_eq!(store.events.keys().collect::<Vec<_>>(), vec!["second"]);
+}
+
+#[test]
+fn a_change_to_just_who_its_indexed_under_is_no_edit() {
+    let mut store = Store::default();
+    let kept = json!({"id": "walk", "etag": "\"1\"", "summary": "Walk", "extendedProperties": {"private": {"cascading-time-tracker-facts": "{}"}}});
+    store.keep(kept.clone());
+
+    let mut reindexed = kept.clone();
+    reindexed["etag"] = json!("\"2\"");
+    reindexed["extendedProperties"]["private"]["cascading-time-tracker-person-sam"] = json!("1");
+    let mut edited = reindexed.clone();
+    edited["summary"] = json!("Run");
+
+    assert!(store.only_reindexed(&reindexed));
+    assert!(!store.only_reindexed(&edited));
+    assert!(!store.only_reindexed(&json!({"id": "other"})));
+}
