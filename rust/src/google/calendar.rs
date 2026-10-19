@@ -355,7 +355,7 @@ impl CalendarClient {
     /// Bring what's kept up to date with Calendar's incremental sync -- or a
     /// full listing, the first time or once Calendar says the sync token
     /// is too old (410). Keeps what changed that the server didn't write
-    /// itself (`take_outside`).
+    /// itself, since the last full listing (`take_outside`).
     pub fn sync(&self) -> anyhow::Result<()> {
         let lock = synced::sync_lock(&self.root(), &self.calendar_id);
         let _syncing = lock.lock().unwrap_or_else(|e| e.into_inner());
@@ -375,8 +375,11 @@ impl CalendarClient {
             store.start_at(from);
             let listed: Option<std::collections::HashSet<String>> =
                 full.then(|| changes.items.iter().filter_map(|item| item["id"].as_str().map(str::to_string)).collect());
+            if full {
+                store.listed(&changes.items);
+            }
             for item in changes.items {
-                if !full && !store.is_ours(&item, now) {
+                if !full && store.changed_since_listed(&item) && !store.is_ours(&item, now) {
                     store.outside.push(item.clone());
                 }
                 store.brought(&item);
