@@ -175,25 +175,6 @@ impl Store {
             .any(|i| !i.is_empty() && self.written.get(*i).is_some_and(|mark| mark.holds(now)))
     }
 
-    /// Whether `item`, brought by a sync, differs from what's kept of it only
-    /// in which people it's indexed under (see event::person_key) -- as
-    /// `calendar_cli index_people` changes it: no edit to warn of.
-    pub fn only_reindexed(&self, item: &Value) -> bool {
-        let Some(kept) = item["id"].as_str().and_then(|id| self.events.get(id)) else { return false };
-        let bare = |event: &Value| {
-            let mut event = event.clone();
-            if let Some(fields) = event.as_object_mut() {
-                fields.remove("etag");
-                fields.remove("updated");
-            }
-            if let Some(private) = event.pointer_mut("/extendedProperties/private").and_then(Value::as_object_mut) {
-                private.retain(|key, _| !crate::event::is_person_key(key));
-            }
-            event
-        };
-        bare(kept) == bare(item)
-    }
-
     /// Note `item`, brought by a sync: if it's the etag a write was answered
     /// with, that write is back, and its event's mark ends (unless another
     /// write to it is under way).

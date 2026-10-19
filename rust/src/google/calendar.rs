@@ -376,7 +376,7 @@ impl CalendarClient {
             let listed: Option<std::collections::HashSet<String>> =
                 full.then(|| changes.items.iter().filter_map(|item| item["id"].as_str().map(str::to_string)).collect());
             for item in changes.items {
-                if !full && !store.is_ours(&item, now) && !store.only_reindexed(&item) {
+                if !full && !store.is_ours(&item, now) {
                     store.outside.push(item.clone());
                 }
                 store.brought(&item);
