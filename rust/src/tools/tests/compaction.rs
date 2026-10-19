@@ -230,6 +230,7 @@ fn amend_proposal_changes_history_only_once_the_user_approves() {
             ignore_notes: vec![],
             additions: Default::default(),
             note_targets: vec![],
+            revisits: Vec::new(),
         };
         journal.start_batch(&[day], None, &[]).unwrap();
         let mut prev = journal.load("prev").unwrap();

@@ -123,7 +123,7 @@ use crate::stores::journal::{
 use crate::stores::locations::{listed, Locations};
 use crate::stores::notes::{NotedTime, NotedTimeSheet, SheetNote};
 use crate::stores::people::People;
-use crate::timeline::{join_days, render, split_days, Timeline};
+use crate::timeline::{build_timeline, join_labelled, render, split_days, Timeline, REVISITED_LABEL};
 use chrono::Duration;
 use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
@@ -225,6 +225,8 @@ pub struct ContextEvent {
     pub priority: Option<i64>,
     pub facts: Option<Facts>,
     pub history_until: Option<Moment>,
+    /// Settled by an earlier compaction, and offered again for a late note.
+    pub revisited: bool,
 }
 
 pub struct ContextDay {
@@ -292,6 +294,9 @@ impl CompactionContext {
                         m.insert("priority".into(), json!(e.priority));
                         m.insert("facts".into(), e.facts.as_ref().map(Facts::to_public).unwrap_or(Value::Null));
                         m.insert("history_until".into(), when(&e.history_until));
+                        if e.revisited {
+                            m.insert("revisited".into(), json!(true));
+                        }
                         Value::Object(m)
                     })
                     .collect(),
@@ -387,6 +392,9 @@ pub struct Day {
     pub history_until: Option<Moment>,
     pub closing: Option<Event>,
     pub nights: Vec<String>,
+    /// The settled events late notes revisit (see `revisit`), first in
+    /// `events`.
+    pub revisits: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -466,7 +474,7 @@ impl NoteCompactor {
         };
         let mut notes: Vec<ContextNote> = Vec::new();
         let mut events: Vec<ContextEvent> = Vec::new();
-        let mut timelines: Vec<(Moment, Timeline)> = Vec::new();
+        let mut timelines: Vec<(Moment, &str, Timeline)> = Vec::new();
         {
             let befores = befores(&day);
             let candidates: Vec<(String, Vec<String>)> = day
@@ -499,10 +507,13 @@ impl NoteCompactor {
                     priority: e.effective_priority(),
                     facts: e.facts.clone(),
                     history_until: day.history_until.filter(|h| e.start() < *h).map(|h| e.end().min(h)),
+                    revisited: day.revisits.contains(&id),
                 });
             }
             let shown = shown(&day, &candidates);
-            timelines.extend(split_days(
+            timelines.extend(day_timelines(
+                &day,
+                &[],
                 &planned_timeline(
                     &plan_notes(&day),
                     &shown,
@@ -512,7 +523,6 @@ impl NoteCompactor {
                     latest_compacted(&day).as_ref(),
                     day.last_compaction,
                 ),
-                &day_starts(&day, &[]),
             ));
         }
         let previous_note = day.latest_compacted.clone();
@@ -525,7 +535,7 @@ impl NoteCompactor {
             open_compaction: open_id,
             compaction_window_start: Some(day.compaction_window_start),
             days: context_days(&day),
-            timeline: Some(join_days(timelines)),
+            timeline: Some(join_labelled(timelines)),
             actions: tree.as_ref().map(|t| {
                 t.actions
                     .iter()
@@ -972,6 +982,7 @@ impl NoteCompactor {
                 ignore_notes: w.ignore_notes.clone(),
                 additions: if i == 0 { additions.to_json_dict() } else { Map::new() },
                 note_targets: w.note_targets.clone(),
+                revisits: w.day.revisits.clone(),
             })
             .collect();
         self.journal.start_batch(&days, Some(meta), edits)?;
@@ -2085,7 +2096,7 @@ impl NoteCompactor {
             // The steps made are marked done together, once they're made
             // (or one fails): a step made but not marked, if this stops in
             // between, is made again on resuming, which changes nothing.
-            let (done, failure) = self.apply_steps(&id, &days[i].steps, refs.as_ref().unwrap())?;
+            let (done, failure) = self.apply_steps(&id, &days[i].steps, refs.as_ref().unwrap(), &days[i].revisits)?;
             let mut statuses: Vec<(i64, &str)> = Vec::new();
             for &s in &done {
                 days[i].steps[s].status = "done".into();
@@ -2458,9 +2469,13 @@ impl NoteCompactor {
     /// day) up to `now`, and how many uncompacted notes are left after it.
     fn walk(&self, now: Moment, night: Option<&dyn Fn(&str) -> Option<EventDecision>>, max_days: i64) -> anyhow::Result<(Option<Day>, usize)> {
         let (sheet_notes, latest) = self.notes.read_with_latest_compacted()?;
-        let notes: Vec<SheetNote> = sheet_notes.iter().filter(|n| n.note.timestamp <= now).cloned().collect();
-        let times: Vec<(String, Moment)> = notes.iter().map(|n| (n.id(), n.note.timestamp)).collect();
         let last_stamped = self.journal.last_stamped_now()?;
+        // A note written for a time an earlier compaction already settled
+        // (see `revisit`) doesn't move the span: only the others do.
+        let is_late = |n: &SheetNote| last_stamped.is_some_and(|l| n.note.timestamp < l);
+        let late: Vec<SheetNote> = sheet_notes.iter().filter(|n| n.note.timestamp <= now && is_late(n)).cloned().collect();
+        let notes: Vec<SheetNote> = sheet_notes.iter().filter(|n| n.note.timestamp <= now && !is_late(n)).cloned().collect();
+        let times: Vec<(String, Moment)> = notes.iter().map(|n| (n.id(), n.note.timestamp)).collect();
         let anchor = last_stamped.or(if notes.is_empty() { Some(now) } else { None });
         if anchor.is_some_and(|a| a >= now) {
             return Ok((None, sheet_notes.len()));
@@ -2472,8 +2487,43 @@ impl NoteCompactor {
         };
         let mut day = cut(&day_for, night, &times)?;
         day.history_until = last_stamped;
+        self.revisit(&mut day, late)?;
         let remaining = sheet_notes.len() - day.notes.len();
         Ok((Some(day), remaining))
+    }
+
+    /// Late notes -- written for a time before the last compaction, which
+    /// settled it -- go with the span's notes, and each event one falls
+    /// within (as `annotate` places a note) is *revisited*: offered with
+    /// the span's events, settled whole (see compaction::plan's
+    /// `revisits`), so the notes can change what happened at it -- its
+    /// actions, facts and goals -- but not when. A late note that falls
+    /// within no event is just stamped, as any note with nowhere to go.
+    fn revisit(&self, day: &mut Day, late: Vec<SheetNote>) -> anyhow::Result<()> {
+        if late.is_empty() {
+            return Ok(());
+        }
+        let mut revisited: Vec<Event> = Vec::new();
+        for note in &late {
+            let t = note.note.timestamp;
+            let around: Vec<Event> = self
+                .span_events(t - Duration::seconds(1), t + Duration::seconds(1))?
+                .into_iter()
+                .filter(|e| !e.is_cancelled() && e.id.as_deref().is_some_and(|i| !i.is_empty()))
+                .collect();
+            let within = around.iter().find(|e| e.start() <= t && t < e.end()).or_else(|| around.iter().find(|e| e.start() < t && t <= e.end()));
+            let Some(event) = within else { continue };
+            let offered = day.events.iter().chain(&revisited).any(|e| e.id == event.id);
+            if !offered {
+                revisited.push(event.clone());
+            }
+        }
+        revisited.sort_by_key(|e| e.start());
+        day.revisits = revisited.iter().filter_map(|e| e.id.clone()).collect();
+        day.events.splice(0..0, revisited);
+        day.notes.extend(late);
+        day.notes.sort_by_key(|n| (n.note.timestamp, n.row));
+        Ok(())
     }
 
     /// The span from the day the oldest of `notes` falls in -- or, with
@@ -2594,6 +2644,7 @@ impl NoteCompactor {
             last_compaction: last_stamped,
             history_until: None,
             nights: night_ids,
+            revisits: Vec::new(),
         })
     }
 
@@ -2723,6 +2774,7 @@ impl NoteCompactor {
                 note_targets: Some(note_targets),
                 closing_id: closing_id.as_deref(),
                 nights: Some(&day.nights),
+                revisits: Some(&day.revisits),
             },
         )
         .map_err(anyhow::Error::from)?;
@@ -2838,7 +2890,13 @@ impl NoteCompactor {
     }
 
     fn check_before_window(&self, day: &Day, plan: &CompactionPlan) -> anyhow::Result<()> {
-        let placed: Vec<&CompactionChange> = plan.changes.iter().filter(|c| c.action != "cancel" && c.after.is_some()).collect();
+        // A revisited event keeps its times (see compaction::plan), so it
+        // can't come to run over anything.
+        let placed: Vec<&CompactionChange> = plan
+            .changes
+            .iter()
+            .filter(|c| c.action != "cancel" && c.after.is_some() && !c.event_id.as_ref().is_some_and(|e| day.revisits.contains(e)))
+            .collect();
         let Some(reach) = placed.iter().map(|c| c.after.as_ref().unwrap().start()).min() else { return Ok(()) };
         if reach >= day.compaction_window_start {
             return Ok(());
@@ -2886,7 +2944,13 @@ impl NoteCompactor {
     /// Returns the steps made, by index, and the first failure, after which
     /// no later batch is sent. A create Calendar already has (a 409) was
     /// made.
-    fn apply_steps(&self, compaction_id: &str, steps: &[JournalStep], refs: &[(String, String)]) -> anyhow::Result<(Vec<usize>, Option<anyhow::Error>)> {
+    fn apply_steps(
+        &self,
+        compaction_id: &str,
+        steps: &[JournalStep],
+        refs: &[(String, String)],
+        revisits: &[String],
+    ) -> anyhow::Result<(Vec<usize>, Option<anyhow::Error>)> {
         let target = |step: &JournalStep| match step.action.as_str() {
             "create" => new_event_id(compaction_id, step.step),
             _ => step.event_id.clone().unwrap_or_default(),
@@ -2919,6 +2983,11 @@ impl NoteCompactor {
                 // A field it changes that's now neither as planned from nor
                 // as planned is a change made since, which it mustn't undo.
                 let mut patch = resolve(&patch_for(step), refs);
+                // A revisited event was judged on what's changing: its
+                // judgments go, to be made again (see `judged_events`).
+                if step.action == "update" && step.event_id.as_ref().is_some_and(|e| revisits.contains(e)) {
+                    patch.judgments = Some(Map::new());
+                }
                 if let Some(id) = patch.id.clone() {
                     let now = self.client.get_event(&id)?;
                     if step.action != "cancel" && !as_planned(step, &EventState::from_event(&now)) {
@@ -3360,6 +3429,7 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 decided_by: decided_by.get(&id).cloned(),
                 history_until: day.history_until.filter(|h| event.start() < *h).map(|h| event.end().min(h)),
                 is_end_of_day_sleep: event.is_end_of_day_sleep == Some(true),
+                revisited: day.revisits.contains(&id),
             };
             match out.iter_mut().find(|(k, _)| *k == id) {
                 Some(slot) => slot.1 = shown,
@@ -3413,7 +3483,37 @@ fn day_starts(day: &Day, decisions: &[EventDecision]) -> Vec<Moment> {
 }
 
 fn joined(walked: &[Walked]) -> Timeline {
-    join_days(walked.iter().flat_map(|w| split_days(w.plan.timeline.as_ref().unwrap(), &day_starts(&w.day, &w.decisions))).collect())
+    join_labelled(walked.iter().flat_map(|w| day_timelines(&w.day, &w.decisions, w.plan.timeline.as_ref().unwrap())).collect())
+}
+
+/// `timeline`, of `day`, cut into its days, each with its heading's label
+/// -- after the days it revisits for late notes (see `NoteCompactor::
+/// revisit`), each headed by its date, "revisited", ahead of the rest.
+fn day_timelines(day: &Day, decisions: &[EventDecision], timeline: &Timeline) -> Vec<(Moment, &'static str, Timeline)> {
+    let late: Vec<String> = day.notes.iter().filter(|n| n.note.timestamp < day.compaction_window_start).map(SheetNote::id).collect();
+    let span = |timeline: &Timeline| split_days(timeline, &day_starts(day, decisions)).into_iter().map(|(start, t)| (start, "", t));
+    if late.is_empty() {
+        return span(timeline).collect();
+    }
+    let revisited = |id: &Option<String>| id.as_ref().is_some_and(|i| day.revisits.contains(i));
+    let (notes, rest_notes): (Vec<_>, Vec<_>) = timeline.notes.iter().cloned().partition(|n| late.contains(&n.id));
+    let (events, rest_events): (Vec<_>, Vec<_>) = timeline.events.iter().cloned().partition(|e| revisited(&e.event_id));
+    let earlier = build_timeline(notes, events, None, timeline.decided, None);
+    let tz = display_offset(day);
+    let mut starts: Vec<Moment> = Vec::new();
+    let moments = earlier.notes.iter().filter_map(|n| n.time).chain(earlier.events.iter().filter_map(|e| e.start.or(e.planned_start)));
+    let mut moments: Vec<Moment> = moments.collect();
+    moments.sort();
+    for moment in moments {
+        if starts.last().is_none_or(|s| s.with_timezone(&tz).date_naive() != moment.with_timezone(&tz).date_naive()) {
+            starts.push(moment);
+        }
+    }
+    let rest = build_timeline(rest_notes, rest_events, timeline.now, timeline.decided, timeline.last_compaction);
+    if starts.is_empty() {
+        return span(&rest).collect();
+    }
+    split_days(&earlier, &starts).into_iter().map(|(start, t)| (start, REVISITED_LABEL, t)).chain(span(&rest)).collect()
 }
 
 /// `_befores`: the first note of each day a span takes on, with the event

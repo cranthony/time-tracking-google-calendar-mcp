@@ -291,6 +291,12 @@ pub struct ContextEvent {
     pub priority: Option<i64>,
     pub facts: Option<PublicFacts>,
     pub history_until: Option<DateTimeText>,
+    /// Settled by an earlier compaction, and offered again for a late note
+    /// written for a time it covers: its actions, facts, goals, summary
+    /// and notes can change, but not its times.
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub revisited: bool,
 }
 
 /// An open goal (inactive or active). One with attribution hints is one
@@ -828,6 +834,11 @@ pub struct ProposalEvent {
     #[schema(optional)]
     #[serde(default)]
     pub follow_through: Vec<String>,
+    /// Settled by an earlier compaction, and revisited for a late note:
+    /// only what happened at it changes, not when.
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub revisited: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
