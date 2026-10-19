@@ -12,7 +12,8 @@ fn sam() -> Vec<Value> {
 fn heard() -> Value {
     json!({
         "id": "heard", "name": "Heard", "status": "active", "definition": "Listen.",
-        "parts": [{"kind": "judgment", "rubric": "Were they heard?", "ratings": {"0": "no", "1": "yes"}, "facts": ["person_notes"]}],
+        "parts": [{"kind": "judgment", "rubric": "Were they heard?", "ratings": {"0": "no", "1": "yes"}, "facts": ["general_notes", "fact:worries"]}],
+        "facts": [{"id": "worries", "name": "Worries", "summary_prompt": "What weighs on them."}],
     })
 }
 
@@ -71,7 +72,7 @@ fn each_part_is_given_once_however_many_judgments_name_it() {
     let part = &parts[0];
     assert_eq!(
         (part.key.as_str(), part.trait_name.as_str(), part.engagement.as_str(), part.rubric.clone(), part.ratings.clone(), part.facts.clone()),
-        ("heard/judgment", "Heard", "with", json!("Were they heard?"), json!({"0": "no", "1": "yes"}), strings(&["person_notes"]))
+        ("heard/judgment", "Heard", "with", json!("Were they heard?"), json!({"0": "no", "1": "yes"}), strings(&["general_notes", "fact:worries"]))
     );
 }
 
@@ -99,7 +100,7 @@ fn nothing_about_judging_is_sent_before_the_plan_is_approved() {
 
 #[test]
 fn a_persons_own_parts_are_given_under_a_key_of_their_own() {
-    let own = json!([{"kind": "judgment", "rubric": "Did Sam feel heard?", "ratings": {"0": "no", "1": "yes"}, "facts": ["person_notes"]}]);
+    let own = json!([{"kind": "judgment", "rubric": "Did Sam feel heard?", "ratings": {"0": "no", "1": "yes"}, "facts": ["general_notes"]}]);
     let setup = judged(vec![json!({"id": "sam", "name": "Sam", "status": "active", "traits": {"parts": {"heard": own}}})], vec![heard()]);
     let id = setup.dry_run(with_sam(json!({"with": ["sam"]}))).compaction_id.unwrap();
 

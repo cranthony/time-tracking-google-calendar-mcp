@@ -163,6 +163,28 @@ fn each_person_comes_with_the_events_the_user_cancelled_that_count_against_them(
 }
 
 #[test]
+fn a_persons_trait_fact_summaries_are_listed_and_set_by_hand() {
+    let server = Server::new();
+
+    let sam = server.ok("create_person", json!({"person": {"name": "Sam"}, "facts": {"thoughtful": {"what_matters": "- tea"}}}));
+    assert_eq!(sam["person"]["facts"], json!({"thoughtful": {"what_matters": "- tea"}}));
+    let id = sam["created_id"].clone();
+    let version = sam["person"]["version"].clone();
+
+    let updated = server.ok("update_person", json!({"person": {"id": id, "version": version}, "facts": {"thoughtful": {"what_matters": "- tea
+- jazz"}}}));
+    assert_eq!(updated["facts"]["thoughtful"]["what_matters"], json!("- tea
+- jazz"));
+    assert_eq!(server.ok("get_person", json!({"id_or_name": "Sam"}))["facts"], json!({"thoughtful": {"what_matters": "- tea
+- jazz"}}));
+    // By hand, a summary changes with no log.
+    assert_eq!(server.ok("get_fact_logs", json!({"person_id": id})), json!([]));
+    server.refused("update_person", json!({"person": {"id": id, "version": updated["version"]}, "facts": {"thoughtful": {"hobbies": "golf"}}}), "isn't one of thoughtful's facts");
+    let cleared = server.ok("update_person", json!({"person": {"id": id, "version": updated["version"]}, "facts": {"thoughtful": {"what_matters": ""}}}));
+    assert_eq!(cleared["facts"], json!({}));
+}
+
+#[test]
 fn location_tools_run_the_store() {
     let server = Server::new();
 
@@ -321,9 +343,9 @@ fn delete_recurrence_returns_what_is_left_of_the_series() {
 
 // -- the write lock --------------------------------------------------------------------------------
 
-const READ_ONLY_TOOLS: [&str; 32] = [
+const READ_ONLY_TOOLS: [&str; 33] = [
     "list_events", "get_event", "get_recurrence", "get_compaction_status", "get_proposal", "get_notes", "get_traits", "get_actions",
-    "get_action", "get_action_groups", "get_action_group", "get_priority_colors", "get_people", "get_person", "get_circles",
+    "get_action", "get_action_groups", "get_action_group", "get_priority_colors", "get_people", "get_person", "get_fact_logs", "get_circles",
     "get_circle", "get_locations", "get_location", "get_location_groups", "get_location_group", "get_travel_times", "estimate_travel_time", "get_habits", "get_habit", "get_goals", "get_goal", "get_compaction_schedule_hints", "get_scoring_defaults", "prepare_judgments",
     "prepare_habit_judgments", "get_health", "google_setup_link",
 ];

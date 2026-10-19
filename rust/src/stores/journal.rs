@@ -106,6 +106,8 @@ pub struct RevisionMeta {
     pub claude_through: Option<Moment>,
     pub claude_recap: Option<Value>,
     pub recap_revision: Option<i64>,
+    /// The trait fact summaries Claude rewrote: [{person_id, fact, summary}].
+    pub claude_fact_summaries: Option<Value>,
 }
 
 impl RevisionMeta {
@@ -157,6 +159,9 @@ impl RevisionMeta {
         if let Some(revision) = self.recap_revision {
             out.insert("recap_revision".into(), json!(revision));
         }
+        if let Some(summaries) = &self.claude_fact_summaries {
+            out.insert("claude_fact_summaries".into(), summaries.clone());
+        }
         out
     }
 
@@ -187,6 +192,7 @@ impl RevisionMeta {
             },
             claude_recap: detail.get("claude_recap").filter(|v| !v.is_null()).cloned(),
             recap_revision: detail.get("recap_revision").and_then(Value::as_i64),
+            claude_fact_summaries: detail.get("claude_fact_summaries").filter(|v| !v.is_null()).cloned(),
         })
     }
 }

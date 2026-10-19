@@ -7,6 +7,9 @@ use crate::contract::{tool, Schema};
 use crate::stores::habits::subject_id;
 pub use crate::stores::habits::{CreatedHabit, Habit, ListedHabit};
 pub use crate::stores::people::{Circle, CreatedCircle, CreatedPerson, DeletedCircle, ListedCircle, ListedPerson, Person, Status};
+pub use crate::stores::person_facts::LoggedChange;
+use crate::stores::person_facts::SummaryChange;
+use indexmap::IndexMap;
 pub use crate::stores::scoring::ScoringDefaults;
 pub use crate::stores::traits::{ListedTrait, Trait, TraitStatus};
 use serde::{Deserialize, Serialize};
@@ -24,14 +27,68 @@ fn habits_with_cancellations(app: &App, mut habits: Vec<ListedHabit>) -> anyhow:
 }
 
 /// Each person with the events the user cancelled that count against
-/// their follow-through.
+/// their follow-through, and their trait facts' summaries (of the facts
+/// the traits still have).
 fn people_with_cancellations(app: &App, mut people: Vec<ListedPerson>) -> anyhow::Result<Vec<ListedPerson>> {
     let by_person = app.cancellations()?.by_person()?;
+    let summaries = app.person_facts()?.by_person()?;
+    let traits = app.traits()?.all()?;
     for person in people.iter_mut() {
         let id = person.id.clone().unwrap_or_else(|| "None".into());
         person.cancelled_events = Some(by_person.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or_default());
+        let mut facts: IndexMap<String, IndexMap<String, String>> = IndexMap::new();
+        for (trait_id, fact, summary) in summaries.iter().find(|(k, _)| *k == id).map(|(_, v)| v.as_slice()).unwrap_or_default() {
+            if traits.iter().any(|t| t.id.as_deref() == Some(trait_id.as_str()) && t.fact(fact).is_some()) {
+                facts.entry(trait_id.clone()).or_default().insert(fact.clone(), summary.clone());
+            }
+        }
+        person.facts = Some(facts);
     }
     Ok(people)
+}
+
+/// Set `person_id`'s summaries in `facts` ({trait id: {fact id:
+/// summary}}; an empty one clears it), as the user's own.
+fn set_summaries(app: &App, person_id: &str, facts: &IndexMap<String, IndexMap<String, String>>) -> anyhow::Result<()> {
+    let changes: Vec<SummaryChange> = facts
+        .iter()
+        .flat_map(|(trait_id, by_fact)| {
+            by_fact.iter().map(move |(fact, summary)| SummaryChange {
+                person_id: person_id.to_string(),
+                trait_id: trait_id.clone(),
+                fact_id: fact.clone(),
+                summary: summary.clone(),
+            })
+        })
+        .collect();
+    if changes.is_empty() {
+        return Ok(());
+    }
+    app.person_facts()?.set_summaries(&changes, &app.traits()?.all()?, "user", crate::determinism::now())?;
+    Ok(())
+}
+
+/// What's wrong with summaries to set ({trait id: {fact id: summary}}),
+/// before anything's written.
+fn check_summaries(app: &App, facts: Option<&IndexMap<String, IndexMap<String, String>>>) -> Result<(), ToolError> {
+    let Some(facts) = facts else { return Ok(()) };
+    let changes: Vec<SummaryChange> = facts
+        .iter()
+        .flat_map(|(trait_id, by_fact)| {
+            by_fact.iter().map(move |(fact, summary)| SummaryChange {
+                person_id: "the person".into(),
+                trait_id: trait_id.clone(),
+                fact_id: fact.clone(),
+                summary: summary.clone(),
+            })
+        })
+        .collect();
+    let problems = crate::stores::person_facts::summary_problems(&changes, &app.traits()?.all()?);
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        Err(refused(anyhow::anyhow!("{}", problems.join("; "))))
+    }
 }
 
 /// A person's traits' parts, for checking their actions.
@@ -46,6 +103,8 @@ pub enum TraitField {
     Definition,
     #[serde(rename = "scoring")]
     Scoring,
+    #[serde(rename = "facts")]
+    Facts,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -54,8 +113,6 @@ pub enum PersonField {
     Context,
     #[serde(rename = "circles")]
     Circles,
-    #[serde(rename = "what_matters")]
-    WhatMatters,
     #[serde(rename = "traits")]
     Traits,
     #[serde(rename = "foundations")]
@@ -118,11 +175,10 @@ pub enum HabitField {
 /// adventurous"}), from the "facts" it names: "action" (what was done),
 /// "action_history" (what's been done with them before), "location",
 /// "location_history" (where they've been together before),
-/// "general_notes" (the event's notes), "person_notes" (the notes on
-/// the person: the user's own for a "for" engagement, the other
-/// person's for "with") and "what_matters" (what's important to the
-/// person, as their what_matters says), each a name or {"fact": "action_history",
-/// "lookback_days": 90} (history facts look back 30 days by default),
+/// "general_notes" (the event's notes) and any of the trait's own facts
+/// as "fact:<fact id>" (its summary of the person, as it is now), each a
+/// name or {"fact": "action_history", "lookback_days": 90} (history facts
+/// look back 30 days by default),
 /// and scored over the person's events in its last "window_days" (30
 /// by default) as its "scoring" says: {"weight_by": "event" (each
 /// judgment counts once, the default) or "duration" (each by its event's
@@ -149,10 +205,17 @@ pub enum HabitField {
 /// the share of its time outside exceptions that the clock hadn't run
 /// out. continuity, count, duration and follow_through can take an
 /// "action" (an action or action group id) to count only its events. A
-/// person's traits can select which traits apply to them, give them
-/// their own parts for any, and say how they combine (see
-/// create_person). problems lists anything wrong with a trait edited by
-/// hand; a bad part isn't rated. Read-only.
+/// trait's facts are what it keeps about each person it applies to, for
+/// its judgments: each {"id", "name", "summary_prompt", "log_prompt"?} --
+/// id made from the name when it's added, and never changed; the
+/// summary_prompt says what its summary of a person keeps, and how
+/// (compaction rewrites a person's summary whole when an event's notes
+/// show something new, logging what changed on the event, as the
+/// log_prompt says). A person's summaries are in get_people's facts, and
+/// the logs in get_fact_logs. A person's traits can select which traits
+/// apply to them, give them their own parts for any, and say how they
+/// combine (see create_person). problems lists anything wrong with a
+/// trait edited by hand; a bad part isn't rated. Read-only.
 #[tool]
 pub fn get_traits(app: &App, statuses: Option<Vec<TraitStatus>>) -> Result<Vec<ListedTrait>, ToolError> {
     let statuses = statuses.map(|s| texts(&s));
@@ -160,8 +223,10 @@ pub fn get_traits(app: &App, statuses: Option<Vec<TraitStatus>>) -> Result<Vec<L
 }
 
 /// Add a trait: a name (unique, at most 50 characters), a definition
-/// (what it means, in a sentence or two) and parts (at least one; see
-/// get_traits for each kind and its fields). Its status is active unless
+/// (what it means, in a sentence or two), parts (at least one; see
+/// get_traits for each kind and its fields) and optionally facts (see
+/// get_traits; leave out each new fact's id, and one is made from its
+/// name). Its status is active unless
 /// given ("off" to keep it unrated for now). Its id is made from its name
 /// and never changes, so renaming it later doesn't touch the measures
 /// naming it. A trait with a part that isn't well formed is refused,
@@ -177,7 +242,10 @@ pub fn create_trait(app: &App, r#trait: Trait) -> Result<Trait, ToolError> {
 /// status or scoring, or give it new parts. Fields left out keep their
 /// value; parts, if given, replace them whole, so send every part to keep,
 /// each with its id (a part sent without one is new, and starts with no
-/// judgments); a part left out takes its weight with it. status is
+/// judgments); a part left out takes its weight with it. facts, if given,
+/// replace them whole too, each with its id (one sent without is new);
+/// a fact left out keeps people's summaries of it, unused, and can't be
+/// left out while a part names it. status is
 /// active (rated), off (kept, but not rated for now) or archived (retired:
 /// not rated, and get_traits leaves it out unless asked) -- archive a
 /// trait rather than delete it, so its history stays readable. Checked as
@@ -194,10 +262,11 @@ pub fn update_trait(app: &App, r#trait: Trait, clear_fields: Option<Vec<TraitFie
 /// always first, with the id "self". Each has an id, name, context (what
 /// tells them apart from others of the same name, e.g. "met at salsa"),
 /// status, circles (the ids of the circles they're in) with their
-/// circle_names, what_matters (what's important to them) and traits:
-/// which traits apply to them, and their own parts for any (see
-/// create_person; without it, every active trait applies as get_traits
-/// has it). Each also has cancelled_events: the events the user cancelled
+/// circle_names, traits (which traits apply to them, and their own parts
+/// for any; see create_person; without it, every active trait applies as
+/// get_traits has it) and facts: their summary of each trait fact (see
+/// get_traits), as {trait id: {fact id: summary}}, those they have
+/// one of. Each also has cancelled_events: the events the user cancelled
 /// that count against their follow-through, newest first -- when each was
 /// planned, its actions, whether they were to be there ("with") or it was
 /// for them ("for"), the follow-through parts it counted against, and
@@ -227,7 +296,7 @@ pub fn get_person(app: &App, id_or_name: String) -> Result<ListedPerson, ToolErr
 /// Add a person: a name, and optionally a context (what tells them
 /// apart, e.g. "met at salsa" -- a name and context together must be
 /// unique, so give one when the name's taken), circles (circle ids, see
-/// get_circles), what_matters (what's important to them) and traits:
+/// get_circles) and traits:
 /// {"select": "all" or [trait ids], "parts": {trait id: [parts]},
 /// "part_scoring": {trait id: scoring}, "scoring": scoring}, all
 /// optional -- the traits that apply to them (by default every active
@@ -242,32 +311,64 @@ pub fn get_person(app: &App, id_or_name: String) -> Result<ListedPerson, ToolErr
 /// foundations (see
 /// get_people: habits as "habit:<id>", people by id; none of them
 /// deleted, and never making a cycle). Active unless given a status. id
-/// is assigned. Returns the person and their id as created_id.
+/// is assigned. facts sets their trait facts' summaries (see get_people).
+/// Returns the person and their id as created_id.
 #[tool(writes)]
-pub fn create_person(app: &App, person: Person) -> Result<CreatedPerson, ToolError> {
+pub fn create_person(app: &App, person: Person, facts: Option<IndexMap<String, IndexMap<String, String>>>) -> Result<CreatedPerson, ToolError> {
     prefetch_stores(app)?;
     check_part_actions(app, parts_of(&person.traits))?;
-    app.people()?.create_person(&person).map_err(refused)
+    check_summaries(app, facts.as_ref())?;
+    let mut created = app.people()?.create_person(&person).map_err(refused)?;
+    if let Some(facts) = &facts {
+        set_summaries(app, &created.created_id, facts)?;
+        created.person = people_with_cancellations(app, vec![created.person])?.remove(0);
+    }
+    Ok(created)
 }
 
 /// Update a person by id ("self" for the user): their name, context,
 /// status (active; archived, out of touch; or deleted, shouldn't have
 /// existed -- self is always active), circles (replaced whole, so send
-/// every circle to keep), what_matters, traits (replaced whole; see
-/// create_person) or foundations (replaced whole; clear it to take them
-/// off the habit graph). Omitted properties keep their value; list one
-/// in clear_fields to blank it instead. A person deleted leaves every
-/// habit's and person's foundations. Returns the person as updated.
+/// every circle to keep), traits (replaced whole; see create_person) or
+/// foundations (replaced whole; clear it to take them off the habit
+/// graph). Omitted properties keep their value; list one in clear_fields
+/// to blank it instead. facts sets their summaries of the trait facts it
+/// names ({trait id: {fact id: summary}}, each the whole summary; "" to
+/// clear one), as the user's own -- with no log -- and keeps the rest. A
+/// person deleted leaves every habit's and person's foundations. Returns
+/// the person as updated.
 #[tool(writes)]
-pub fn update_person(app: &App, person: Person, clear_fields: Option<Vec<PersonField>>) -> Result<ListedPerson, ToolError> {
+pub fn update_person(
+    app: &App,
+    person: Person,
+    clear_fields: Option<Vec<PersonField>>,
+    facts: Option<IndexMap<String, IndexMap<String, String>>>,
+) -> Result<ListedPerson, ToolError> {
     prefetch_stores(app)?;
     check_part_actions(app, parts_of(&person.traits))?;
+    check_summaries(app, facts.as_ref())?;
     let clear = texts(&clear_fields.unwrap_or_default());
     let updated = app.people()?.update_person(&person, &clear).map_err(refused)?;
     if updated.status == Some(Status::Deleted) {
         app.habits()?.drop_foundation(updated.id.as_deref().unwrap_or("None"))?;
     }
+    if let Some(facts) = &facts {
+        set_summaries(app, updated.id.as_deref().unwrap_or("None"), facts)?;
+        return Ok(people_with_cancellations(app, vec![updated])?.remove(0));
+    }
     Ok(updated)
+}
+
+/// The logs of what compaction changed in a person's trait facts (by id,
+/// "self" for the user) -- of one trait (trait_id) and fact (fact_id), if
+/// given -- newest first: each the event that showed it (its id, summary
+/// and start), the trait and fact, the log, and when it was logged.
+/// Read-only.
+#[tool]
+pub fn get_fact_logs(app: &App, person_id: String, trait_id: Option<String>, fact_id: Option<String>) -> Result<Vec<LoggedChange>, ToolError> {
+    let store = app.person_facts()?;
+    store.prefetch(&store.whole_tabs())?;
+    store.logs(&person_id, trait_id.as_deref(), fact_id.as_deref()).map_err(refused)
 }
 
 /// Every circle: a group people belong to ("Close friends",

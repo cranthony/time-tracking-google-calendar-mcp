@@ -453,6 +453,9 @@ pub struct Proposal {
     pub recap_revision: Option<i64>,
     pub changed_since: Option<Vec<String>>,
     pub replaced: Option<Vec<String>>,
+    /// The trait fact summaries it rewrites, each {person_id, fact,
+    /// summary, previous}.
+    pub fact_summaries: Vec<Value>,
 }
 
 impl Proposal {
@@ -484,6 +487,7 @@ impl Proposal {
         out.insert("recap_revision".into(), json!(self.recap_revision));
         out.insert("changed_since".into(), json!(self.changed_since));
         out.insert("replaced".into(), json!(self.replaced));
+        out.insert("fact_summaries".into(), json!(self.fact_summaries));
         Value::Object(out)
     }
 }
@@ -543,6 +547,7 @@ pub struct ProposalContext {
     pub user_edits: Vec<UserEdit>,
     pub feedback: Vec<Feedback>,
     pub recap: Option<Recap>,
+    pub fact_summaries: Vec<Value>,
 }
 
 impl ProposalContext {
@@ -564,6 +569,7 @@ impl ProposalContext {
         out.insert("user_edits".into(), Value::Array(self.user_edits.iter().map(UserEdit::to_json).collect()));
         out.insert("feedback".into(), Value::Array(self.feedback.iter().map(Feedback::to_json).collect()));
         out.insert("recap".into(), self.recap.as_ref().map(Recap::to_json).unwrap_or(Value::Null));
+        out.insert("fact_summaries".into(), json!(self.fact_summaries));
         Value::Object(out)
     }
 }
@@ -960,7 +966,14 @@ pub fn settle_refs(decision: &EventDecision, settled: &Dict<AdditionSettled>) ->
             }
             other => other.clone(),
         };
-        out.facts = Some(Facts { location_ids: named_value(&facts.location_ids), with_ids: named_value(&facts.with_ids), for_ids: named_value(&facts.for_ids), notes, commute: facts.commute.clone() });
+        out.facts = Some(Facts {
+            location_ids: named_value(&facts.location_ids),
+            with_ids: named_value(&facts.with_ids),
+            for_ids: named_value(&facts.for_ids),
+            notes,
+            commute: facts.commute.clone(),
+            logs: facts.renamed_logs(&id_of),
+        });
     }
     out
 }

@@ -3,6 +3,7 @@
 
 pub mod additions;
 pub mod compactor;
+pub mod fact_changes;
 pub mod guide;
 pub mod judgments;
 pub mod plan;

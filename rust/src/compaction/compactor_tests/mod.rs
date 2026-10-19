@@ -24,6 +24,7 @@ mod proposal_notes;
 mod proposals;
 mod recap;
 mod several_days;
+mod trait_facts;
 
 pub fn time_at(time: &str) -> Moment {
     crate::testing::time_at(time)
@@ -70,6 +71,7 @@ pub struct DryRun {
     pub annotate_notes: Vec<(String, String)>,
     pub recap: Option<Recap>,
     pub create_refs: Vec<Option<String>>,
+    pub fact_summaries: Vec<ProposedSummary>,
 }
 
 /// What `amend` takes: the user's edits.
@@ -118,6 +120,7 @@ impl Setup {
                     locations: locations.clone(),
                     traits: trait_store,
                     habits: Some(app.habits().unwrap()),
+                    person_facts: Some(app.person_facts().unwrap()),
                 };
                 (Some(judging), Some(app.cancellations().unwrap()))
             }
@@ -132,6 +135,7 @@ impl Setup {
             people: Some(people),
             locations: Some(locations),
             goals: Some(goals),
+            facts: judging.as_ref().map(|j| FactKeeping { traits: j.traits.clone(), person_facts: app.person_facts().unwrap() }),
             judging,
             cancellations,
         };
@@ -218,6 +222,7 @@ impl Setup {
                 options.annotate_notes,
                 options.recap,
                 options.create_refs,
+                options.fact_summaries,
             )
         })
     }

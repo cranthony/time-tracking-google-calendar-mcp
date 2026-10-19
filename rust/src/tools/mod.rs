@@ -108,6 +108,7 @@ pub fn registry() -> &'static [crate::contract::ToolDef] {
             people::get_person_tool(),
             people::create_person_tool(),
             people::update_person_tool(),
+            people::get_fact_logs_tool(),
             people::get_circles_tool(),
             people::get_circle_tool(),
             people::create_circle_tool(),

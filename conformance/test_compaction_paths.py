@@ -323,7 +323,7 @@ async def test_habit_backfill(session, plan):
     eat = (await session.call("create_action", action={"name": "eat a meal", "status": "active"}))["created_id"]
     await session.call("create_trait", trait={
         "name": "Mindful", "definition": "Present at meals.",
-        "parts": [{"kind": "judgment", "rubric": "How present was it?", "ratings": {"0": "distracted", "1": "partly", "2": "present"}, "facts": ["action", {"fact": "action_history", "lookback_days": 7}, "person_notes", "what_matters"]}],
+        "parts": [{"kind": "judgment", "rubric": "How present was it?", "ratings": {"0": "distracted", "1": "partly", "2": "present"}, "facts": ["action", {"fact": "action_history", "lookback_days": 7}, "general_notes"]}],
     })
     habit = (await session.call("create_habit", habit={"name": "Eat slowly", "action_id": eat, "note": "no screens"}))["created_id"]
     await session.call("update_event", updates=[
@@ -351,7 +351,7 @@ async def test_habit_backfill(session, plan):
 
 async def test_judgments_redone(session, plan):
     d5 = plan[FIRST]
-    friend = (await session.call("create_person", person={"name": "Robin Example", "what_matters": "time outdoors"}))["created_id"]
+    friend = (await session.call("create_person", person={"name": "Robin Example"}, facts={"thoughtful": {"what_matters": "time outdoors"}}))["created_id"]
     await session.call("create_trait", trait={
         "name": "Close", "parts": [{"kind": "judgment", "rubric": "How connected?", "ratings": {"0": "apart", "1": "close"}, "facts": ["general_notes", {"fact": "location_history", "lookback_days": 14}], "engagement_type": "with"}],
     })
@@ -368,6 +368,29 @@ async def test_judgments_redone(session, plan):
     await session.call("record_judgments", compaction_id=due["compaction_id"], judgments=[{"request_id": requests[0], "rating": 0, "reasoning": "on second thought"}])
     await session.call("get_event", id=d5["Lunch"])
     assert note
+
+
+async def test_trait_facts_kept(session, plan):
+    d5 = plan[FIRST]
+    friend = (await session.call("create_person", person={"name": "Robin Example"}, facts={"thoughtful": {"what_matters": "- time outdoors"}}))["created_id"]
+    await notes(session, ("2026-10-05T12:30:00-04:00", "lunch with Robin, who starts a new job Monday"))
+    context = await session.call("prepare_compaction")
+    assert any(f["fact"] == "thoughtful/what_matters" for f in context["trait_facts"])
+    robin = next(p for p in context["people"] if p["id"] == friend)
+    assert {"fact": "thoughtful/what_matters", "summary": "- time outdoors"} in robin["facts"]
+    lunch = {"event_id": d5["Lunch"], "facts": {"with_ids": [friend], "logs": {friend: {"thoughtful/what_matters": "Starts a new job Monday."}}}}
+    summary = {"person_id": friend, "fact": "thoughtful/what_matters", "summary": "- time outdoors\n- a new job, from Monday"}
+    await session.call_error("compact_notes", recap=RECAP, updates=[lunch])
+    await session.call_error("compact_notes", recap=RECAP, fact_summaries=[summary])
+    proposed = await propose(session, updates=[lunch], fact_summaries=[summary])
+    shown = await session.call("get_proposal")
+    assert shown["fact_summaries"] == [{**summary, "previous": "- time outdoors"}]
+    await session.call("confirm_proposal", proposal_id=proposed["proposal_id"], revision=proposed["revision"])
+    assert (await session.call("get_person", id_or_name=friend))["facts"]["thoughtful"]["what_matters"] == summary["summary"]
+    logs = await session.call("get_fact_logs", person_id=friend)
+    assert [(log["event_id"], log["log"]) for log in logs] == [(d5["Lunch"], "Starts a new job Monday.")]
+    due = await session.call("prepare_judgments")
+    assert due["facts"][friend]["thoughtful/what_matters"] == summary["summary"]
 
 
 async def test_refusals(session, plan):

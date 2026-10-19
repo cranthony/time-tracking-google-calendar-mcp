@@ -312,6 +312,7 @@ pub fn resolve(event: &Event, ids: &[(String, String)]) -> Event {
                 other => other.clone(),
             }),
             commute: facts.commute.clone(),
+            logs: facts.renamed_logs(&|id| Some(mapped(ids, id))),
         });
     }
     out

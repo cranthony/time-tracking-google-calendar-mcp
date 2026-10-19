@@ -13,17 +13,17 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "facts": null,
      "foundations": null,
      "id": "co2yzn",
      "name": "Friend One",
      "status": "active",
      "traits": null,
-     "version": 1,
-     "what_matters": null
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Friend One\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Friend One\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -87,6 +87,7 @@
        "location_ids": [
         "3dnjav"
        ],
+       "logs": null,
        "notes": {
         "co2yzn": "enjoyed it",
         "self": "tired"
@@ -110,7 +111,7 @@
     "timeline": "09:00 ┌ Walk · new\n10:00 └ Walk ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Walk · new\\n10:00 └ Walk ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -202,6 +203,7 @@
        "commute": true,
        "for_ids": null,
        "location_ids": null,
+       "logs": null,
        "notes": null,
        "with_ids": null
       },
@@ -220,7 +222,7 @@
     "timeline": "10:00 ┌ Drive · new\n10:30 └ Drive ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Drive\",\n      \"start\": \"2026-10-07T10:00:00-04:00\",\n      \"end\": \"2026-10-07T10:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": true\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"10:00 ┌ Drive · new\\n10:30 └ Drive ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Drive\",\n      \"start\": \"2026-10-07T10:00:00-04:00\",\n      \"end\": \"2026-10-07T10:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": null,\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": true,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"10:00 ┌ Drive · new\\n10:30 └ Drive ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -263,6 +265,7 @@
        "location_ids": [
         "3dnjav"
        ],
+       "logs": null,
        "notes": {
         "co2yzn": "enjoyed it",
         "self": "tired"
@@ -296,7 +299,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      },\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Walk\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"3dnjav\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": {\n          \"co2yzn\": \"enjoyed it\",\n          \"self\": \"tired\"\n        },\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": {\n        \"self\": {\n          \"kindness\": {\n            \"novelty\": {\n              \"rating\": 2,\n              \"scale\": 3,\n              \"reasoning\": \"new park\"\n            }\n          }\n        }\n      },\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -642,7 +645,6 @@
         "context",
         "status",
         "circles",
-        "what_matters",
         "traits",
         "foundations",
         "version"
@@ -1080,7 +1082,6 @@
         "",
         "",
         "",
-        "",
         "1"
        ]
       ]
@@ -1193,6 +1194,7 @@
         "definition",
         "parts",
         "scoring",
+        "facts",
         "version"
        ]
       ]
@@ -1225,8 +1227,9 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
         ""
        ],
        [
@@ -1235,6 +1238,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         ""
        ],
@@ -1245,6 +1249,7 @@
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
+        "",
         ""
        ],
        [
@@ -1254,6 +1259,7 @@
         "Share new experiences with them: new activities, new places.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
         "",
+        "",
         ""
        ],
        [
@@ -1261,7 +1267,8 @@
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         "",
         ""
        ]
@@ -2294,7 +2301,6 @@
         "context",
         "status",
         "circles",
-        "what_matters",
         "traits",
         "foundations",
         "version"
@@ -2304,7 +2310,6 @@
         "Friend One",
         "",
         "active",
-        "",
         "",
         "",
         "",
@@ -2351,6 +2356,7 @@
         "definition",
         "parts",
         "scoring",
+        "facts",
         "version"
        ],
        [
@@ -2358,7 +2364,9 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
+        "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]"
        ],
        [
         "reliable",
@@ -2386,7 +2394,7 @@
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
        ]
       ]
      },

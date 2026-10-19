@@ -154,17 +154,17 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "facts": {},
      "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
      "traits": null,
-     "version": 0,
-     "what_matters": null
+     "version": 0
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
    "tool": "get_people"
   },
   {
@@ -186,6 +186,14 @@
    "content": [
     {
      "definition": "Remember what matters to them, and prepare for it.",
+     "facts": [
+      {
+       "id": "what_matters",
+       "log_prompt": "What changed in what matters to them, and what in the event showed it.",
+       "name": "What matters",
+       "summary_prompt": "What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds."
+      }
+     ],
      "id": "thoughtful",
      "name": "Thoughtful",
      "parts": [
@@ -193,8 +201,7 @@
        "facts": [
         "action",
         "general_notes",
-        "person_notes",
-        "what_matters"
+        "fact:what_matters"
        ],
        "id": "judgment",
        "kind": "judgment",
@@ -211,8 +218,7 @@
        "facts": [
         "action",
         "general_notes",
-        "person_notes",
-        "what_matters"
+        "fact:what_matters"
        ],
        "id": "judgment#2",
        "kind": "judgment",
@@ -232,6 +238,7 @@
     },
     {
      "definition": "Do what I said I would, and keep contact going -- reliable to myself too.",
+     "facts": null,
      "id": "reliable",
      "name": "Reliable",
      "parts": [
@@ -261,6 +268,7 @@
     },
     {
      "definition": "Make something together with them (making something alone is taking care of myself).",
+     "facts": null,
      "id": "creative",
      "name": "Creative",
      "parts": [
@@ -291,6 +299,7 @@
     },
     {
      "definition": "Share new experiences with them: new activities, new places.",
+     "facts": null,
      "id": "adventurous",
      "name": "Adventurous",
      "parts": [
@@ -325,14 +334,14 @@
     },
     {
      "definition": "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
+     "facts": null,
      "id": "generous",
      "name": "Generous",
      "parts": [
       {
        "facts": [
         "action",
-        "general_notes",
-        "person_notes"
+        "general_notes"
        ],
        "id": "judgment",
        "kind": "judgment",
@@ -368,7 +377,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"thoughtful\",\n  \"name\": \"Thoughtful\",\n  \"status\": \"active\",\n  \"definition\": \"Remember what matters to them, and prepare for it.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"Was this preparation for them, built on what matters to them?\",\n      \"ratings\": {\n        \"0\": \"It wasn't really for them\",\n        \"1\": \"It was for them, but generic\",\n        \"2\": \"It was for them, and fit what matters to them\",\n        \"3\": \"It was carefully made around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\",\n        \"what_matters\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"reliable\",\n  \"name\": \"Reliable\",\n  \"status\": \"active\",\n  \"definition\": \"Do what I said I would, and keep contact going -- reliable to myself too.\",\n  \"parts\": [\n    {\n      \"id\": \"continuity\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"follow_through\",\n      \"kind\": \"follow_through\"\n    },\n    {\n      \"id\": \"count\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 14,\n      \"zero_at_days\": 30,\n      \"noun\": \"meetings\"\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"creative\",\n  \"name\": \"Creative\",\n  \"status\": \"active\",\n  \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 30\n        },\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"adventurous\",\n  \"name\": \"Adventurous\",\n  \"status\": \"active\",\n  \"definition\": \"Share new experiences with them: new activities, new places.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 90\n        }\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"generous\",\n  \"name\": \"Generous\",\n  \"status\": \"active\",\n  \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"person_notes\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"How much effort did I put into doing this for them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"problems\": null,\n  \"version\": 0\n}",
+   "text": "{\n  \"id\": \"thoughtful\",\n  \"name\": \"Thoughtful\",\n  \"status\": \"active\",\n  \"definition\": \"Remember what matters to them, and prepare for it.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did this event show that I remembered what matters to them?\",\n      \"ratings\": {\n        \"0\": \"Nothing in it touched on what matters to them\",\n        \"1\": \"A small sign that I remembered\",\n        \"2\": \"It clearly reflected what matters to them\",\n        \"3\": \"It was shaped around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"fact:what_matters\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"Was this preparation for them, built on what matters to them?\",\n      \"ratings\": {\n        \"0\": \"It wasn't really for them\",\n        \"1\": \"It was for them, but generic\",\n        \"2\": \"It was for them, and fit what matters to them\",\n        \"3\": \"It was carefully made around what matters to them\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\",\n        \"fact:what_matters\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": [\n    {\n      \"id\": \"what_matters\",\n      \"name\": \"What matters\",\n      \"summary_prompt\": \"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\n      \"log_prompt\": \"What changed in what matters to them, and what in the event showed it.\"\n    }\n  ],\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"reliable\",\n  \"name\": \"Reliable\",\n  \"status\": \"active\",\n  \"definition\": \"Do what I said I would, and keep contact going -- reliable to myself too.\",\n  \"parts\": [\n    {\n      \"id\": \"continuity\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    },\n    {\n      \"id\": \"follow_through\",\n      \"kind\": \"follow_through\"\n    },\n    {\n      \"id\": \"count\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 14,\n      \"zero_at_days\": 30,\n      \"noun\": \"meetings\"\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"creative\",\n  \"name\": \"Creative\",\n  \"status\": \"active\",\n  \"definition\": \"Make something together with them (making something alone is taking care of myself).\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Did we make something together?\",\n      \"ratings\": {\n        \"0\": \"Nothing was made\",\n        \"1\": \"We shared ideas, but made nothing\",\n        \"2\": \"We made something small together\",\n        \"3\": \"We made something substantial together\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 30\n        },\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"adventurous\",\n  \"name\": \"Adventurous\",\n  \"status\": \"active\",\n  \"definition\": \"Share new experiences with them: new activities, new places.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"The activity and place were routine\",\n        \"1\": \"There was a twist on the activity or place\",\n        \"2\": \"The activity or the place were new\",\n        \"3\": \"Both the activity and place were new, or the event was otherwise adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 90\n        }\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"problems\": null,\n  \"version\": 0\n}\n{\n  \"id\": \"generous\",\n  \"name\": \"Generous\",\n  \"status\": \"active\",\n  \"definition\": \"Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.\",\n  \"parts\": [\n    {\n      \"id\": \"judgment\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"How much effort and attention did I give them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\"\n      ]\n    },\n    {\n      \"id\": \"judgment#2\",\n      \"kind\": \"judgment\",\n      \"engagement_type\": \"for\",\n      \"rubric\": \"How much effort did I put into doing this for them?\",\n      \"ratings\": {\n        \"0\": \"Little effort, or my attention was elsewhere\",\n        \"1\": \"Some effort or attention\",\n        \"2\": \"Real effort, or my full attention\",\n        \"3\": \"I went out of my way for them and was fully present\"\n      },\n      \"facts\": [\n        \"action\",\n        \"general_notes\"\n      ]\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"problems\": null,\n  \"version\": 0\n}",
    "tool": "get_traits"
   },
   {
@@ -429,7 +438,7 @@
     "days": null,
     "events": [],
     "goals": [],
-    "instructions": "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\"play guitar\", \"eat a meal\"); an event can have several, the first setting its color. Each is an id -- an even part of the remaining time, what the minutes and percents leave -- or {action_id, minutes?, percent?, remaining?} when the notes say how long it took (remaining: true for its part of the remaining time as well). For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations` -- usually one; several when it moved between places; see WHERE below), with_ids (people from `people` who were there; never \"self\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \"self\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot) -- and commute: true for getting from one place to another (an event with a commute action: one `actions` lists with `commute` true; an action without it isn't one), which takes no location_ids. When the notes say how long a place or person took of the event, give {location_id or person_id, minutes?, percent?, remaining?} in place of the id: minutes (a fixed share), percent (of what the minutes leave), and remaining: true for the rest too; one given as an id takes the remaining time (each person all of it, the places an even part each). The notes aren't judgments: you don't know the traits, so just record what happened. WHERE: keep the location an event already has in the plan (its `facts`) unless the events and notes around it clearly show the user was somewhere else. An event without one is where the previous event was -- the user stays put -- unless there's evidence they moved in between: the previous event, or one between, is a commute (a commute action, or the commute fact); the notes clearly put them somewhere other than planned ('stopped by the office', 'ended up at Sam's'); or the event clearly matches another location's hint (a 'gym workout' when a location's hint is the gym) -- then say in `unsure` that no commute was recorded. After a commute they're somewhere other than before it: tell where from the location of the event after it (that one event only), or else from the locations' hints. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave), and remaining: true if it also takes the remaining time; with neither, it takes the remaining time (what the minutes and percents leave). An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
+    "instructions": "`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\"play guitar\", \"eat a meal\"); an event can have several, the first setting its color. Each is an id -- an even part of the remaining time, what the minutes and percents leave -- or {action_id, minutes?, percent?, remaining?} when the notes say how long it took (remaining: true for its part of the remaining time as well). For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations` -- usually one; several when it moved between places; see WHERE below), with_ids (people from `people` who were there; never \"self\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \"self\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot) -- and commute: true for getting from one place to another (an event with a commute action: one `actions` lists with `commute` true; an action without it isn't one), which takes no location_ids. When the notes say how long a place or person took of the event, give {location_id or person_id, minutes?, percent?, remaining?} in place of the id: minutes (a fixed share), percent (of what the minutes leave), and remaining: true for the rest too; one given as an id takes the remaining time (each person all of it, the places an even part each). The notes aren't judgments: you don't know the traits, so just record what happened. WHERE: keep the location an event already has in the plan (its `facts`) unless the events and notes around it clearly show the user was somewhere else. An event without one is where the previous event was -- the user stays put -- unless there's evidence they moved in between: the previous event, or one between, is a commute (a commute action, or the commute fact); the notes clearly put them somewhere other than planned ('stopped by the office', 'ended up at Sam's'); or the event clearly matches another location's hint (a 'gym workout' when a location's hint is the gym) -- then say in `unsure` that no commute was recorded. After a commute they're somewhere other than before it: tell where from the location of the event after it (that one event only), or else from the locations' hints. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. TRAIT FACTS: each person in `people` -- \"self\", the user, too -- lists their trait facts (`facts`: each \"<trait id>/<fact id>\", with their summary of it if they have one), each described once in `trait_facts`: what its summary of a person keeps (`summary_prompt`) and what's worth logging when it changes (`log_prompt`). Keep them current for the people each past event was with or for, and for the user: when an event's notes show something new or changed about one of a person's facts, rewrite their whole summary of it -- what it said before, changed as the notes show, as its summary_prompt asks -- in compact_notes' `fact_summaries` ({person_id, fact, summary}), and say what changed, as its log_prompt asks, in the `logs` of that event's facts ({person id: {\"<trait id>/<fact id>\": a log of at most 500 characters}}). NOT EVERY FACT IS NOTED ON EVERY EVENT: most events say nothing new about most of a person's facts, so change a fact only when the notes have something relevant to it, and never fill a summary out with what the notes don't say. A summary is changed only beside a log of the change on the event (or events) whose notes showed it, and a log only beside the summary it rewrote: give each summary once, as it stands after all of the proposal's events. A person added with new_people can have facts too, by their ref. With a proposal open, send `proposal.fact_summaries` again with your other decisions, changed as the notes and the feedback say. The user reviews them with the rest. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave), and remaining: true if it also takes the remaining time; with neither, it takes the remaining time (what the minutes and percents leave). An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \"new:\" (\"new:ukulele\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.",
     "judgments_pending": null,
     "locations": [],
     "notes": [
@@ -445,9 +454,14 @@
     "people": [
      {
       "context": null,
+      "facts": [
+       {
+        "fact": "thoughtful/what_matters",
+        "summary": null
+       }
+      ],
       "id": "self",
-      "name": "Me",
-      "what_matters": null
+      "name": "Me"
      }
     ],
     "previous_note": null,
@@ -470,10 +484,19 @@
      ],
      "now": "2026-10-07T15:30:00-04:00",
      "text": "09:00 ● x\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄"
-    }
+    },
+    "trait_facts": [
+     {
+      "fact": "thoughtful/what_matters",
+      "log_prompt": "What changed in what matters to them, and what in the event showed it.",
+      "name": "What matters",
+      "summary_prompt": "What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.",
+      "trait_name": "Thoughtful"
+     }
+    ]
    },
    "is_error": false,
-   "text": "{\n  \"notes\": [\n    {\n      \"id\": \"rs21so\",\n      \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n      \"description\": \"x\",\n      \"candidates\": []\n    }\n  ],\n  \"events\": [],\n  \"now\": \"2026-10-07T15:30:00-04:00\",\n  \"day_end\": \"2026-10-08T09:00:00-04:00\",\n  \"remaining_note_count\": 0,\n  \"days\": null,\n  \"open_compaction\": null,\n  \"judgments_pending\": null,\n  \"compaction_window_start\": \"2026-10-07T09:00:00-04:00\",\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"rs21so\",\n        \"time\": \"2026-10-07T09:00:00-04:00\",\n        \"text\": \"x\",\n        \"anchors\": [],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": false,\n    \"text\": \"09:00 ● x\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\"\n  },\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"note\": null\n    }\n  ],\n  \"people\": [\n    {\n      \"id\": \"self\",\n      \"name\": \"Me\",\n      \"context\": null,\n      \"what_matters\": null\n    }\n  ],\n  \"locations\": [],\n  \"goals\": [],\n  \"previous_note\": null,\n  \"proposal\": null,\n  \"instructions\": \"`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\\\"play guitar\\\", \\\"eat a meal\\\"); an event can have several, the first setting its color. Each is an id -- an even part of the remaining time, what the minutes and percents leave -- or {action_id, minutes?, percent?, remaining?} when the notes say how long it took (remaining: true for its part of the remaining time as well). For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations` -- usually one; several when it moved between places; see WHERE below), with_ids (people from `people` who were there; never \\\"self\\\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \\\"self\\\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot) -- and commute: true for getting from one place to another (an event with a commute action: one `actions` lists with `commute` true; an action without it isn't one), which takes no location_ids. When the notes say how long a place or person took of the event, give {location_id or person_id, minutes?, percent?, remaining?} in place of the id: minutes (a fixed share), percent (of what the minutes leave), and remaining: true for the rest too; one given as an id takes the remaining time (each person all of it, the places an even part each). The notes aren't judgments: you don't know the traits, so just record what happened. WHERE: keep the location an event already has in the plan (its `facts`) unless the events and notes around it clearly show the user was somewhere else. An event without one is where the previous event was -- the user stays put -- unless there's evidence they moved in between: the previous event, or one between, is a commute (a commute action, or the commute fact); the notes clearly put them somewhere other than planned ('stopped by the office', 'ended up at Sam's'); or the event clearly matches another location's hint (a 'gym workout' when a location's hint is the gym) -- then say in `unsure` that no commute was recorded. After a commute they're somewhere other than before it: tell where from the location of the event after it (that one event only), or else from the locations' hints. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave), and remaining: true if it also takes the remaining time; with neither, it takes the remaining time (what the minutes and percents leave). An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \\\"new:\\\" (\\\"new:ukulele\\\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\"\n}",
+   "text": "{\n  \"notes\": [\n    {\n      \"id\": \"rs21so\",\n      \"timestamp\": \"2026-10-07T09:00:00-04:00\",\n      \"description\": \"x\",\n      \"candidates\": []\n    }\n  ],\n  \"events\": [],\n  \"now\": \"2026-10-07T15:30:00-04:00\",\n  \"day_end\": \"2026-10-08T09:00:00-04:00\",\n  \"remaining_note_count\": 0,\n  \"days\": null,\n  \"open_compaction\": null,\n  \"judgments_pending\": null,\n  \"compaction_window_start\": \"2026-10-07T09:00:00-04:00\",\n  \"timeline\": {\n    \"notes\": [\n      {\n        \"id\": \"rs21so\",\n        \"time\": \"2026-10-07T09:00:00-04:00\",\n        \"text\": \"x\",\n        \"anchors\": [],\n        \"annotates\": null,\n        \"ignored\": false,\n        \"compacted\": false\n      }\n    ],\n    \"events\": [],\n    \"now\": \"2026-10-07T15:30:00-04:00\",\n    \"last_compaction\": null,\n    \"decided\": false,\n    \"text\": \"09:00 ● x\\n15:30 ┄┄ now ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄\"\n  },\n  \"actions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"note\": null\n    }\n  ],\n  \"people\": [\n    {\n      \"id\": \"self\",\n      \"name\": \"Me\",\n      \"context\": null,\n      \"facts\": [\n        {\n          \"fact\": \"thoughtful/what_matters\",\n          \"summary\": null\n        }\n      ]\n    }\n  ],\n  \"locations\": [],\n  \"goals\": [],\n  \"previous_note\": null,\n  \"proposal\": null,\n  \"trait_facts\": [\n    {\n      \"fact\": \"thoughtful/what_matters\",\n      \"trait_name\": \"Thoughtful\",\n      \"name\": \"What matters\",\n      \"summary_prompt\": \"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\n      \"log_prompt\": \"What changed in what matters to them, and what in the event showed it.\"\n    }\n  ],\n  \"instructions\": \"`timeline` shows the notes beside the planned events -- for every day of notes up to now, each under a heading with its date (`days` lists them when there's more than one). Each day is compacted on its own, but you decide them all in one list. Compare them and decide, event by event, what the notes show happened differently -- then call compact_notes with them, as `updates`, `creates` and `cancels`. SILENCE MEANS ON SCHEDULE: any past event you don't mention is recorded exactly as planned, so only mention the events the notes contradict. Notes are sparse -- the user doesn't note every event, so a missing start or end note never means an event didn't happen or ran into its neighbor. READ EACH NOTE'S TENSE to tell which edge it marks: most notes are written as something finishes, so a note in the past tense ('finished the report', 'had lunch', 'done with email', 'went for a walk') marks the END of that event -- it ran up to the note's time, not from it. Only a note in the future tense ('going to the gym', 'will start the report', 'about to eat') or one that explicitly says it's starting something ('starting email', 'heading out to', 'now working on') marks a START. Don't assume a note starts the event it names; when the tense is ambiguous (a bare 'email'), use the timing and the neighboring notes, and ask if it's still unclear. `updates` {event_id}: it happened; each edge stays as planned unless you move it -- {start_note}/{end_note} (a note id) sets that edge to the note's time and links the note to it, {start}/{end} sets an explicit time (add the note too when it gives a time relative to itself, e.g. 'leaving 15 minutes early'). An update also takes {summary} to rename an event and {annotate} to add text to its description. `creates` {summary, a start and an end (a time or note each), action_ids?, facts?}: something unplanned happened. `cancels` {event_id, counts_against_follow_through}: it didn't happen -- true if the user dropped it (skipped it, didn't get to it: it counts against the follow-through of whoever it was planned with), false if the plan changed for another reason (someone else called it off, it moved elsewhere). An event goes in only one of the lists. When the user tells you they don't remember where one event ended and the next began, grow one with an update (renamed after both) and cancel the other, not counting it -- only then, never just because the notes are sparse. NOTHING IS MOVED TO MAKE ROOM: every event you update or create must end after it starts and must not overlap any other event in `events` -- past or still to come, the others you change included. When a moved edge runs into a neighbor, move, shorten or cancel the neighbor in the same call (an overrun usually delays or shortens the next event; ask the user if the notes don't say which gives way). A call that breaks this changes nothing, and lists every problem and the day as it would leave it, so fix them all at once. Every note you don't use as a start_note/end_note has its text added to the description of the event it falls within; list any that shouldn't be in `ignore_notes`, and any that belong with another event in `annotate_notes` ({note_id, event_id} -- an event's id, or a create's `key` from the open proposal; for a new create, put the text in its `annotate`). Use only note ids from `notes` (only this round's -- a longer backlog than this takes another round, see `remaining_note_count`) and event ids from `events`. `events` may start with one that ended just before `compaction_window_start` (usually last night's sleep); if a note shows it actually ran later -- the user slept in -- move its end with an update, and say when whatever it now overlaps happened. An event with `history_until` was settled by an earlier compaction up to then -- usually one still going on when it ran: its start, and its lasting until then, are fact, so keep its start, end it no earlier (it may well have run later), and don't cancel it; compact_notes refuses otherwise. Likewise, what's still going on now is recorded up to now, and the next compaction says where it ended. When the last compaction ran in the evening, before the night, this round starts there, at `compaction_window_start`: notes written during the planned night mean the user stayed up -- move the night's start (bedtime) to when they went to bed -- and a first day with no notes of its own settles that evening and night before the morning. `previous_note`, if there is one, is the last note an earlier compaction already used, however long ago -- context only (it can't be used as a start_note/end_note or ignored): e.g. if it said 'starting the report' shortly before `compaction_window_start`, the report was already under way as this window began, and the first note may well be its end; the longer before the window it was written, the less it says about how the window began. The timeline shows it too (✓), and when the last compaction ran, both as context. COMPACTION RECORDS THE PAST: `events` runs to the end of the day, but `timeline` stops at `now`, except for later events near a note (one may be what a note starts early) and, once proposed, later events the plan changes. An update that moves a future event reschedules it -- for 'move lunch later and adjust the afternoon': move each event it now runs into too, in the same call. A day's end-of-day sleep event works differently: moving its start moves bedtime (an earlier one needs whatever runs past it shortened or cancelled in the same call), and its end -- the wake-up time -- starts the next day. Give each night at most one decision. A note that marks waking up (early or late) is that night's end_note; a note in the night that doesn't end it ('can't sleep') is just added to it. If the user slept in, the morning events the night now runs over -- past or still to come, even past this round's now -- have to be moved, shortened or cancelled in the same call. Cancel a night only if the user didn't sleep. Compaction never adjusts what's past the last night otherwise, so move only its start to change only bedtime. COMPACTION ESTABLISHES THE FACTS of every past event, which traits are judged from later -- so for each past event in the timeline, settle: what the user was doing (its ACTIONS), where it was, who was there with them, who it was for, and a note on each person who was there. Settle them from the notes, the title and the description; don't ask the user what the notes already say, and leave out what doesn't apply (a solo event has no `with_ids`). ACTIONS: each event's `action_ids` are what the user was doing, each a verb from `actions` (\\\"play guitar\\\", \\\"eat a meal\\\"); an event can have several, the first setting its color. Each is an id -- an even part of the remaining time, what the minutes and percents leave -- or {action_id, minutes?, percent?, remaining?} when the notes say how long it took (remaining: true for its part of the remaining time as well). For every past event with `suggested_action_ids`, add an update {event_id, action_ids} applying them unless the notes say otherwise; give a create its action_ids too. When no action fits, add one (see NEW below) rather than force a poor match. An update without action_ids keeps them, and [] clears them. In the timeline, ◆ marks an action an event already has and ◇ one it's being given (or, before deciding, one suggested). FACTS: add `facts` to the event's update (or create): location_ids (from `locations` -- usually one; several when it moved between places; see WHERE below), with_ids (people from `people` who were there; never \\\"self\\\" -- the user is at every event), for_ids (people it was done for who weren't there: preparing a gift or a plan -- then they're not in with_ids), and notes: {person id: a subjective line on how it was for them} for each person who was there, \\\"self\\\" for the user -- whatever the notes say that might help judge it later (they were tired, it was their idea, we laughed a lot) -- and commute: true for getting from one place to another (an event with a commute action: one `actions` lists with `commute` true; an action without it isn't one), which takes no location_ids. When the notes say how long a place or person took of the event, give {location_id or person_id, minutes?, percent?, remaining?} in place of the id: minutes (a fixed share), percent (of what the minutes leave), and remaining: true for the rest too; one given as an id takes the remaining time (each person all of it, the places an even part each). The notes aren't judgments: you don't know the traits, so just record what happened. WHERE: keep the location an event already has in the plan (its `facts`) unless the events and notes around it clearly show the user was somewhere else. An event without one is where the previous event was -- the user stays put -- unless there's evidence they moved in between: the previous event, or one between, is a commute (a commute action, or the commute fact); the notes clearly put them somewhere other than planned ('stopped by the office', 'ended up at Sam's'); or the event clearly matches another location's hint (a 'gym workout' when a location's hint is the gym) -- then say in `unsure` that no commute was recorded. After a commute they're somewhere other than before it: tell where from the location of the event after it (that one event only), or else from the locations' hints. Facts replace an event's facts whole, so an event that has some (`facts`) keeps them unless you send new ones. In the timeline, ▸ marks facts an event has and ▹ ones it's being given. Once proposed, ⚠ marks a past event still missing its action or location (listed again under `Missing:` at the end of the day): settle it from the notes and propose again, or, if they don't say, ask the user -- or, with no one to ask (a scheduled run), leave it for the user to settle in review. TRAIT FACTS: each person in `people` -- \\\"self\\\", the user, too -- lists their trait facts (`facts`: each \\\"<trait id>/<fact id>\\\", with their summary of it if they have one), each described once in `trait_facts`: what its summary of a person keeps (`summary_prompt`) and what's worth logging when it changes (`log_prompt`). Keep them current for the people each past event was with or for, and for the user: when an event's notes show something new or changed about one of a person's facts, rewrite their whole summary of it -- what it said before, changed as the notes show, as its summary_prompt asks -- in compact_notes' `fact_summaries` ({person_id, fact, summary}), and say what changed, as its log_prompt asks, in the `logs` of that event's facts ({person id: {\\\"<trait id>/<fact id>\\\": a log of at most 500 characters}}). NOT EVERY FACT IS NOTED ON EVERY EVENT: most events say nothing new about most of a person's facts, so change a fact only when the notes have something relevant to it, and never fill a summary out with what the notes don't say. A summary is changed only beside a log of the change on the event (or events) whose notes showed it, and a log only beside the summary it rewrote: give each summary once, as it stands after all of the proposal's events. A person added with new_people can have facts too, by their ref. With a proposal open, send `proposal.fact_summaries` again with your other decisions, changed as the notes and the feedback say. The user reviews them with the rest. GOALS: `goals` lists the open goals (inactive or active) that have attribution hints -- the only ones to tag events with. Tag a past event with a goal (its update's or create's `goals`: [{goal_id, minutes?, percent?}]) only when the event clearly matches that goal's `attribution_hints`; never guess for a goal that isn't listed (one without hints, or one done, missed or obsolete), and leave an event untagged when it's unclear. Tag the most specific goal that fits -- a sub-goal (its `path` names its parents) rather than its parent. When only part of the event was for the goal, give minutes (a fixed share) or percent (of what the minutes leave), and remaining: true if it also takes the remaining time; with neither, it takes the remaining time (what the minutes and percents leave). An event can be for several goals. Goals replace an event's goals whole: an update without goals keeps them, and [] clears them. NEW actions, people and locations: when an event's action, a person or a place isn't in the lists, add it with compact_notes' new_actions, new_people or new_locations -- each with a `ref` starting \\\"new:\\\" (\\\"new:ukulele\\\") that your updates and creates use wherever its id would go -- rather than by separate tools: they're created when the plan is applied, so the user confirms them with it. A new action is a verb phrase, its status active (the user approves it with the plan); a new person needs a context when their name is taken; a new location needs a hint. Check the lists first: don't add one that's already there under another name. In a conversation, confirm with the user anything you couldn't settle from the notes -- who was there, where it was -- in a short list before proposing; with no one to ask, propose what the notes do say. The user confirms the whole proposal, in the app. In a conversation, after every compact_notes show the user the result's `timeline.text` verbatim in a code block (it's laid out narrow enough for a phone, so don't reformat or widen it -- it shows each event's actions and facts compactly, under it), then the new actions, people and locations it adds, and the warnings. RECAP: every compact_notes call takes your `recap` of the proposal, which the user reads beside it in the app: a short `overview`; `did`, one point for each thing you decided (what, and from which notes); and `unsure`, one point for each thing you're not sure of, saying what you assumed and what would settle it (empty only if nothing is in doubt -- don't pad it). Each point is Markdown (bold, italics, code, bullet and numbered lists; no headings or tables), and cites the events (`event_ids`: ids, keys, or the `ref` you give a create) and notes (`note_ids`) it's about, so the user can go straight to them. Don't restate the timeline: say what a reader couldn't see from it. Write it afresh for every revision, about the proposal as it then stands; feedback answers go in `replies`. PROPOSALS: compact_notes doesn't apply anything -- it writes a proposal (or a new revision of the open one) for the user to review in the app, where they confirm it, edit it, or leave you feedback. With a proposal open (`proposal`), every compact_notes call revises it: pass its proposal_id and the revision you started from, and send ALL your decisions again -- `proposal.updates`, `creates` and `cancels` are your current ones; keep each create's `key` so the user's edits of it follow it -- changed as the notes and the feedback say, planned to now. The user's own edits (`proposal.user_edits`) are laid over yours by the server: never send them, and don't fight them -- that includes what they said a note is for (an edit with action `note`), and the additions they settled (`proposal.settled_additions`: created, found among those there, or dropped -- name each by its `id` from then on, or leave it out; send `proposal.new_actions`, `new_people` and `new_locations` again for the rest). Answer every open feedback item (`proposal.feedback`, status open) in `replies`, saying what you changed, or asking what they meant if you can't tell; to change an event (or a note) the user edited, the feedback you answer has to be about that event (`event_id`) or note (`note_id`). Nothing is applied until the user confirms it, in the app (confirm_proposal isn't yours to call). If they ask you for changes, make them with compact_notes again, passing proposal_id and the revision you started from.\"\n}",
    "tool": "prepare_compaction"
   },
   {
@@ -811,7 +834,6 @@
         "context",
         "status",
         "circles",
-        "what_matters",
         "traits",
         "foundations",
         "version"
@@ -2386,6 +2408,7 @@
         "definition",
         "parts",
         "scoring",
+        "facts",
         "version"
        ]
       ]
@@ -2418,8 +2441,9 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
         ""
        ],
        [
@@ -2428,6 +2452,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         ""
        ],
@@ -2438,6 +2463,7 @@
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
+        "",
         ""
        ],
        [
@@ -2447,6 +2473,7 @@
         "Share new experiences with them: new activities, new places.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
         "",
+        "",
         ""
        ],
        [
@@ -2454,7 +2481,8 @@
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         "",
         ""
        ]
@@ -2698,6 +2726,252 @@
    "query": {}
   },
   {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "person-facts"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "person-facts"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Person Facts"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000035,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "summary",
+        "updated_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000035
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "person-facts",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "fact-logs"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Fact Logs"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000037,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "log",
+        "event_start",
+        "event_summary",
+        "logged_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000037
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "fact-logs",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -2792,6 +3066,22 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2902,22 +3192,11 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
+     },
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000005,
+       "sheetId": 1000035,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2925,194 +3204,7 @@
      {
       "gridRange": {
        "endColumnIndex": 26,
-       "sheetId": 1000007,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000009,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000017,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000025,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000027,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000029,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000031,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000033,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     }
-    ],
-    "majorDimension": "ROWS"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000005,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000007,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000009,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000011,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000013,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000015,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000017,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000025,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000027,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000029,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000031,
-       "startColumnIndex": 0,
-       "startRowIndex": 0
-      }
-     },
-     {
-      "gridRange": {
-       "endColumnIndex": 26,
-       "sheetId": 1000033,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3223,6 +3315,22 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -3327,6 +3435,268 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     }
+    ],
+    "majorDimension": "ROWS"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchGetByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000005,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000007,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000009,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000011,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000013,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000015,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000017,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000025,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000027,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000029,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000031,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000033,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000035,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000037,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3391,7 +3761,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000035
+         "sheetId": 1000039
         },
         "metadataKey": "sheet-role",
         "metadataValue": "compactions",
@@ -3414,7 +3784,7 @@
        "gridRange": {
         "endColumnIndex": 8,
         "endRowIndex": 1,
-        "sheetId": 1000035,
+        "sheetId": 1000039,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -3494,7 +3864,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000037,
+        "sheetId": 1000041,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -3535,7 +3905,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000037
+         "sheetId": 1000041
         },
         "metadataKey": "sheet-role",
         "metadataValue": "outcome-goals",
@@ -3661,6 +4031,22 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000037,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000039,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000041,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3804,6 +4190,22 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000039,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000041,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -3931,6 +4333,22 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000037,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000039,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000041,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -4090,12 +4508,28 @@
        "sheetId": 1000035
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "compactions",
+      "metadataValue": "person-facts",
       "visibility": "PROJECT"
      },
      {
       "location": {
        "sheetId": 1000037
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "fact-logs",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000039
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "compactions",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000041
       },
       "metadataKey": "sheet-role",
       "metadataValue": "outcome-goals",
@@ -4283,7 +4717,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000035,
+       "sheetId": 1000039,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -4302,6 +4736,38 @@
         "after",
         "status",
         "detail"
+       ]
+      ]
+     },
+     "Fact Logs": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000037,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Fact Logs"
+      },
+      "rows": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "log",
+        "event_start",
+        "event_summary",
+        "logged_at",
+        "source"
        ]
       ]
      },
@@ -4432,7 +4898,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000037,
+       "sheetId": 1000041,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -4485,10 +4951,38 @@
         "context",
         "status",
         "circles",
-        "what_matters",
         "traits",
         "foundations",
         "version"
+       ]
+      ]
+     },
+     "Person Facts": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000035,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Person Facts"
+      },
+      "rows": [
+       [
+        "id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "summary",
+        "updated_at",
+        "source"
        ]
       ]
      },
@@ -4531,6 +5025,7 @@
         "definition",
         "parts",
         "scoring",
+        "facts",
         "version"
        ],
        [
@@ -4538,7 +5033,9 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
+        "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]"
        ],
        [
         "reliable",
@@ -4566,7 +5063,7 @@
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
        ]
       ]
      },

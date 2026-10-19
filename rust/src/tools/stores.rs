@@ -25,6 +25,7 @@ pub fn prefetch_people(app: &App) -> anyhow::Result<()> {
     ranges.extend(people.whole_tabs());
     ranges.extend(locations.whole_tabs());
     ranges.extend(cancellations.whole_tabs());
+    ranges.extend(app.person_facts()?.whole_tabs());
     actions.prefetch(&ranges)
 }
 

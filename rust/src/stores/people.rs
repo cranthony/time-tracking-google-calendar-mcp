@@ -13,6 +13,7 @@ use crate::stores::locations::dedup;
 use crate::stores::scoring::aggregation_problems;
 use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids};
 use anyhow::bail;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::sync::Arc;
@@ -22,7 +23,7 @@ pub const SELF_NAME: &str = "Me";
 pub const PERSON_STATUSES: [&str; 3] = ["active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 1] = ["active"];
 pub const MAX_NAME_LENGTH: usize = 100;
-pub const PERSON_CLEARABLE_FIELDS: [&str; 5] = ["context", "circles", "what_matters", "traits", "foundations"];
+pub const PERSON_CLEARABLE_FIELDS: [&str; 4] = ["context", "circles", "traits", "foundations"];
 pub const CIRCLE_CLEARABLE_FIELDS: [&str; 2] = ["note", "scoring"];
 
 // -- the types -------------------------------------------------------------------
@@ -38,7 +39,8 @@ pub enum Status {
 }
 
 /// A person as the people tools return them: plus their circles'
-/// names, and the events the user cancelled that count against their
+/// names, their trait facts' summaries ({trait id: {fact id: summary}}),
+/// and the events the user cancelled that count against their
 /// follow-through.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub struct ListedPerson {
@@ -47,10 +49,10 @@ pub struct ListedPerson {
     pub context: Option<String>,
     pub status: Option<Status>,
     pub circles: Option<Vec<String>>,
-    pub what_matters: Option<String>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
     pub circle_names: Option<Vec<String>>,
+    pub facts: Option<IndexMap<String, IndexMap<String, String>>>,
     pub cancelled_events: Option<Vec<CancelledEvent>>,
     pub version: Option<i64>,
 }
@@ -64,7 +66,6 @@ pub struct Person {
     #[row(text)]
     pub status: Option<Status>,
     pub circles: Option<Vec<String>>,
-    pub what_matters: Option<String>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
@@ -597,10 +598,10 @@ pub fn listed(person: &Person, circles: &[Circle]) -> ListedPerson {
         context: person.context.clone(),
         status: person.status,
         circles: person.circles.clone(),
-        what_matters: person.what_matters.clone(),
         traits: person.traits.clone(),
         foundations: person.foundations.clone(),
         circle_names: if names.is_empty() { None } else { Some(names) },
+        facts: None,
         cancelled_events: None,
         version: person.version,
     }

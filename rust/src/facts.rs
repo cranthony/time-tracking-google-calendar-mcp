@@ -1,6 +1,7 @@
 //! An event's facts: what compaction established about it -- where (one
 //! place or several), who with, who for, and a note on each person there
-//! -- and whether it's a commute, getting from one place to another.
+//! -- whether it's a commute, getting from one place to another, and the
+//! log of each change it made to a person's trait facts (`logs`).
 //!
 //! Each place and person is an id, or, with a share of the event
 //! (`LocationShare`, `PersonShare`), an object: {location_id or
@@ -19,6 +20,7 @@ use std::sync::LazyLock;
 pub const SELF_ID: &str = "self";
 pub const MAX_FACTS_CHARS: usize = 8 * 1024;
 pub const MAX_NOTE_CHARS: usize = 1000;
+pub const MAX_LOG_CHARS: usize = 500;
 
 static SPACES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
 
@@ -93,11 +95,20 @@ pub struct Facts {
     pub notes: Option<Value>,
     /// True for a commute: getting from one place to another.
     pub commute: Option<Value>,
+    /// What the event changed in each person's trait facts: {person id:
+    /// {"<trait id>/<fact id>": a log of the change}}.
+    pub logs: Option<Value>,
 }
 
 /// The JSON key each field is stored under, in field order.
-const FIELDS: [(&str, &str); 5] =
-    [("location_ids", "locations"), ("with_ids", "with"), ("for_ids", "for"), ("notes", "notes"), ("commute", "commute")];
+const FIELDS: [(&str, &str); 6] = [
+    ("location_ids", "locations"),
+    ("with_ids", "with"),
+    ("for_ids", "for"),
+    ("notes", "notes"),
+    ("commute", "commute"),
+    ("logs", "logs"),
+];
 
 fn is_blank(value: &Option<Value>) -> bool {
     match value {
@@ -117,6 +128,7 @@ impl Facts {
             "with_ids" => &self.with_ids,
             "for_ids" => &self.for_ids,
             "commute" => &self.commute,
+            "logs" => &self.logs,
             _ => &self.notes,
         }
     }
@@ -150,12 +162,75 @@ impl Facts {
             }
             other => other.clone(),
         };
+        let logs = match &self.logs {
+            Some(Value::Object(by_person)) => {
+                let mut kept = Map::new();
+                for (person, logged) in by_person {
+                    let Value::Object(logged) = logged else {
+                        kept.insert(person.trim().to_string(), logged.clone());
+                        continue;
+                    };
+                    let mut texts = Map::new();
+                    for (key, value) in logged {
+                        match value {
+                            Value::String(text) if text.trim().is_empty() => {}
+                            Value::String(text) => {
+                                texts.insert(key.trim().to_string(), Value::String(SPACES.replace_all(text, " ").trim().to_string()));
+                            }
+                            other => {
+                                texts.insert(key.trim().to_string(), other.clone());
+                            }
+                        }
+                    }
+                    if !texts.is_empty() {
+                        kept.insert(person.trim().to_string(), Value::Object(texts));
+                    }
+                }
+                Some(Value::Object(kept))
+            }
+            other => other.clone(),
+        };
         Facts {
             location_ids: ids(&self.location_ids),
             with_ids: ids(&self.with_ids),
             for_ids: ids(&self.for_ids),
             notes,
             commute: self.commute.clone(),
+            logs,
+        }
+    }
+
+    /// Each log, in order: (person id, "<trait id>/<fact id>", the log).
+    pub fn log_entries(&self) -> Vec<(String, String, String)> {
+        let mut out = Vec::new();
+        if let Some(Value::Object(by_person)) = &self.logs {
+            for (person, logged) in by_person {
+                for (key, log) in logged.as_object().into_iter().flatten() {
+                    if let Value::String(log) = log {
+                        out.push((person.clone(), key.clone(), log.clone()));
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    /// `logs` with each person's id as `rename` gives it -- those it gives
+    /// none dropped.
+    pub fn renamed_logs(&self, rename: &dyn Fn(&str) -> Option<String>) -> Option<Value> {
+        match &self.logs {
+            Some(Value::Object(by_person)) => {
+                let mut kept = Map::new();
+                for (person, logged) in by_person {
+                    if let Some(target) = rename(person) {
+                        if !kept.contains_key(&target) {
+                            kept.insert(target.clone(), by_person.get(&target).cloned().unwrap_or(logged.clone()));
+                        }
+                    }
+                }
+                Some(Value::Object(kept))
+            }
+            other => other.clone(),
         }
     }
 
@@ -261,6 +336,7 @@ impl Facts {
                     "with_ids" => &mut facts.with_ids,
                     "for_ids" => &mut facts.for_ids,
                     "commute" => &mut facts.commute,
+                    "logs" => &mut facts.logs,
                     _ => &mut facts.notes,
                 };
                 *slot = Some(value.clone());
@@ -282,7 +358,14 @@ impl Facts {
     /// Facts from a client's JSON (already checked against the schema).
     pub fn from_public(value: &Value) -> Facts {
         let get = |key: &str| value.get(key).filter(|v| !v.is_null()).cloned();
-        Facts { location_ids: get("location_ids"), with_ids: get("with_ids"), for_ids: get("for_ids"), notes: get("notes"), commute: get("commute") }
+        Facts {
+            location_ids: get("location_ids"),
+            with_ids: get("with_ids"),
+            for_ids: get("for_ids"),
+            notes: get("notes"),
+            commute: get("commute"),
+            logs: get("logs"),
+        }
     }
 }
 
@@ -366,16 +449,83 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
     if facts.commute.as_ref().is_some_and(|c| !c.is_null() && !c.is_boolean()) {
         problems.push("\"commute\" must be true or false".to_string());
     }
+    if let Some(logs) = facts.logs.as_ref().filter(|l| !l.is_null()) {
+        problems.extend(log_problems(logs, facts));
+    }
     if problems.is_empty() && facts.to_json().chars().count() > MAX_FACTS_CHARS {
         problems.push(format!("are longer than {MAX_FACTS_CHARS} characters as JSON"));
     }
     problems
 }
 
+/// What's wrong with `logs`' shape: each for a person it was with or for
+/// (or "self"), each of their facts "<trait id>/<fact id>", each log
+/// non-empty and at most MAX_LOG_CHARS.
+fn log_problems(logs: &Value, facts: &Facts) -> Vec<String> {
+    const SHAPE: &str = "\"logs\" must be {person id: {\"<trait id>/<fact id>\": a log of what changed}}";
+    let Value::Object(by_person) = logs else { return vec![SHAPE.to_string()] };
+    let mut problems = Vec::new();
+    let (with, for_) = (facts.with(), facts.for_());
+    let mut absent: Vec<String> = Vec::new();
+    for (person, logged) in by_person {
+        let Value::Object(logged) = logged else {
+            problems.push(SHAPE.to_string());
+            continue;
+        };
+        if person != SELF_ID && !with.contains(person) && !for_.contains(person) {
+            absent.push(person.clone());
+        }
+        for (key, log) in logged {
+            if !is_fact_key(key) {
+                problems.push(format!("\"logs\" for {}: {} isn't \"<trait id>/<fact id>\"", py::repr(person), py::repr(key)));
+            }
+            match log.as_str() {
+                Some(text) if text.chars().count() > MAX_LOG_CHARS => {
+                    problems.push(format!("\"logs\" for {}: the log of {key} must be at most {MAX_LOG_CHARS} characters", py::repr(person)))
+                }
+                Some(text) if !text.trim().is_empty() => {}
+                _ => problems.push(format!("\"logs\" for {}: the log of {} must be non-empty text", py::repr(person), py::repr(key))),
+            }
+        }
+    }
+    absent.sort();
+    if !absent.is_empty() {
+        problems.push(format!("\"logs\" are for the people it was with or for (or \"self\"), not {}", py::repr_list(&absent)));
+    }
+    problems
+}
+
+/// Whether `key` is "<trait id>/<fact id>", both non-empty.
+pub fn is_fact_key(key: &str) -> bool {
+    matches!(key.split_once('/'), Some((t, f)) if !t.trim().is_empty() && !f.trim().is_empty() && !f.contains('/'))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn logs_are_kept_and_checked() {
+        let given = facts(json!({"with_ids": ["sam"], "logs": {"sam": {"thoughtful/what_matters": "  starts a  new job "}}}));
+        assert_eq!(given.normalized().logs, Some(json!({"sam": {"thoughtful/what_matters": "starts a new job"}})));
+        assert_eq!(given.to_json(), r#"{"with":["sam"],"logs":{"sam":{"thoughtful/what_matters":"  starts a  new job "}}}"#);
+        assert_eq!(Facts::from_json(&given.to_json()), Some(given.clone()));
+        assert!(fact_problems(&given).is_empty());
+        assert_eq!(given.log_entries(), vec![("sam".into(), "thoughtful/what_matters".into(), "  starts a  new job ".into())]);
+        let long = "x".repeat(MAX_LOG_CHARS + 1);
+        for (given, problem) in [
+            (json!({"logs": ["x"]}), "\"logs\" must be {person id"),
+            (json!({"logs": {"mom": {"a/b": "x"}}}), "\"logs\" are for the people it was with or for"),
+            (json!({"logs": {"self": {"ab": "x"}}}), "\"logs\" for 'self': 'ab' isn't"),
+            (json!({"logs": {"self": {"a/b": long}}}), "\"logs\" for 'self': the log of a/b must be at most"),
+            (json!({"logs": {"self": {"a/b": 3}}}), "\"logs\" for 'self': the log of 'a/b' must be non-empty"),
+        ] {
+            let found = fact_problems(&facts(given.clone()));
+            assert!(found.first().is_some_and(|f| f.starts_with(problem)), "{given}: {found:?}");
+        }
+        assert!(fact_problems(&facts(json!({"for_ids": ["mom"], "logs": {"mom": {"a/b": "x"}}}))).is_empty());
+    }
 
     fn facts(value: Value) -> Facts {
         Facts::from_public(&value)

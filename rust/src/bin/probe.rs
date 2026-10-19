@@ -839,12 +839,12 @@ fn metadata_tabs(raw: &Raw, base: &Config) -> anyhow::Result<()> {
     step("self is there before any row", people.get_people(None)?.iter().map(|p| p.id.clone()).collect::<Vec<_>>() == vec![Some("self".to_string())], ())?;
     let family = people.create_circle(&typed(json!({"name": "Family"})))?.created_id;
     let sam = people.create_person(&typed(json!({"name": "Sam", "context": "cousin", "circles": [family]})))?.created_id;
-    people.update_person(&typed(json!({"id": "self", "what_matters": "music"})), &[])?;
+    people.update_person(&typed(json!({"id": "self", "context": "music"})), &[])?;
     let listed = people.get_people(None)?;
     let find = |id: &str| listed.iter().find(|p| p.id.as_deref() == Some(id)).cloned();
     step(
         "people and self's row read back",
-        find(&sam).and_then(|p| p.circle_names) == Some(vec!["Family".to_string()]) && find("self").and_then(|p| p.what_matters).as_deref() == Some("music"),
+        find(&sam).and_then(|p| p.circle_names) == Some(vec!["Family".to_string()]) && find("self").and_then(|p| p.context).as_deref() == Some("music"),
         (),
     )?;
     match people.create_person(&typed(json!({"name": "sam", "context": "Cousin"}))) {
@@ -2354,7 +2354,7 @@ fn walk_server(mcp: &mut Mcp, days: &[PlannedDay]) -> anyhow::Result<()> {
     println!("Stores");
     let eat = created(mcp.call("create_action", json!({"action": {"name": "eat a meal", "status": "active"}}))?);
     mcp.call("create_action_group", json!({"group": {"name": "Meals", "priority": 1}}))?;
-    let friend = created(mcp.call("create_person", json!({"person": {"name": "Probe Friend", "what_matters": "good food"}}))?);
+    let friend = created(mcp.call("create_person", json!({"person": {"name": "Probe Friend", "context": "good food"}}))?);
     let cafe = created(mcp.call("create_location", json!({"location": {"name": "Probe Cafe", "hint": "the cafe"}}))?);
     mcp.call(
         "create_trait",

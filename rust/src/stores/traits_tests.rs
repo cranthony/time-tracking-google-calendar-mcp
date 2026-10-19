@@ -330,7 +330,7 @@ fn update_refuses_what_it_cant_do() {
 fn accepts_every_kind_of_part() {
     let parts = [
         judgment(),
-        with(with(with(judgment(), "engagement_type", json!("for")), "id", json!("judgment#2")), "facts", json!(["general_notes", "person_notes"])),
+        with(with(with(judgment(), "engagement_type", json!("for")), "id", json!("judgment#2")), "facts", json!(["general_notes", "fact:interests"])),
         with(judgment(), "scoring", json!({"weight_by": "duration", "statistic": "percentile", "percentile": 50, "limit": 4.5, "limit_by": "best"})),
         with(judgment(), "facts", json!([])),
         json!({"kind": "continuity", "last_within_days": 30, "next_within_days": 7, "engagement_type": "with"}),
@@ -446,4 +446,89 @@ fn a_spacing_part_takes_an_action_a_gap_and_exceptions() {
         let problems = part_problems(&part);
         assert!(problems.first().is_some_and(|p| p.starts_with(problem)), "{part}: {problems:?}");
     }
+}
+
+// -- facts ----------------------------------------------------------------------------------------
+
+fn interests() -> Value {
+    json!({"name": "Their interests", "summary_prompt": "What they like doing.", "log_prompt": "What new interest showed."})
+}
+
+#[test]
+fn the_seeded_thoughtful_judges_from_its_own_what_matters_fact() {
+    let f = fixture();
+    let thoughtful = f.by_id("thoughtful");
+    assert_eq!(thoughtful["facts"][0]["id"], json!("what_matters"));
+    assert_eq!(thoughtful["parts"][0]["facts"], json!(["action", "general_notes", "fact:what_matters"]));
+    let seeded = seed_traits();
+    assert!(seeded.iter().all(|t| trait_problems(t).is_empty()), "{:?}", seeded.iter().map(trait_problems).collect::<Vec<_>>());
+}
+
+#[test]
+fn a_new_fact_gets_an_id_from_its_name_and_parts_can_name_it() {
+    let f = fixture();
+    let part = with(judgment(), "facts", json!(["action", "fact:their_interests"]));
+    let made = f.held(|t| t.create_trait(&given(json!({"name": "Curious", "parts": [part], "facts": [interests(), interests()]})))).unwrap_err();
+    assert!(made.to_string().contains("its facts' name 'Their interests' is used more than once"), "{made}");
+
+    let made = f
+        .held(|t| t.create_trait(&given(json!({"name": "Curious", "parts": [with(judgment(), "facts", json!(["fact:their_interests"]))], "facts": [interests()]}))))
+        .unwrap();
+    assert_eq!(made["facts"][0]["id"], json!("their_interests"));
+    assert_eq!(made["facts"][0]["summary_prompt"], json!("What they like doing."));
+
+    // A second one of the same name is told apart.
+    assert_eq!(with_new_fact_ids(&[given_fact(json!({"id": "their_interests"})), given_fact(interests())])[1]["id"], json!("their_interests_2"));
+}
+
+fn given_fact(value: Value) -> Map<String, Value> {
+    value.as_object().unwrap().clone()
+}
+
+#[test]
+fn a_part_cant_name_a_fact_its_trait_doesnt_have() {
+    let f = fixture();
+    refused(
+        f.held(|t| t.create_trait(&given(json!({"name": "Curious", "parts": [with(judgment(), "facts", json!(["fact:hobbies"]))]})))),
+        r#"part 1 \(judgment\) "facts" names 'fact:hobbies', which isn't one of its trait's facts \(it has none\)"#,
+    );
+    // Nor can a fact a part names be let go of.
+    let thoughtful = f.by_id("thoughtful");
+    let mut change = json!({"id": "thoughtful", "version": thoughtful["version"], "facts": []});
+    refused(f.held(|t| t.update_trait(&given(change.clone()), &[])), "isn't one of its trait's facts");
+    change["facts"] = json!([thoughtful["facts"][0].clone(), interests()]);
+    let updated = f.update(change);
+    assert_eq!(updated["facts"][1]["id"], json!("their_interests"));
+}
+
+#[test]
+fn refuses_what_isnt_a_fact() {
+    let f = fixture();
+    let cases = [
+        (json!({"name": "X"}), "fact 1 needs a \"summary_prompt\""),
+        (json!({"summary_prompt": "x"}), "fact 1 needs a \"name\""),
+        (json!({"id": "bad id", "name": "X", "summary_prompt": "x"}), "fact 1's \"id\" must be text"),
+        (json!({"name": "X", "summary_prompt": "x", "log_prompt": ""}), "fact 1's \"log_prompt\" must be non-empty text"),
+        (json!({"name": "X", "summary_prompt": "x", "rubric": "y"}), "fact 1 has no field \"rubric\""),
+    ];
+    for (fact, message) in cases {
+        let error = f.held(|t| t.create_trait(&given(json!({"name": "Curious", "parts": [judgment()], "facts": [fact]})))).unwrap_err();
+        assert!(error.to_string().contains(message), "{message}: {error}");
+    }
+}
+
+#[test]
+fn parts_judged_from_what_matters_and_person_notes_read_as_they_are_now() {
+    let old = given(json!({"id": "kind", "name": "Kind", "status": "active", "parts": [
+        with(judgment(), "facts", json!(["person_notes", "what_matters", "general_notes"])),
+        with(judgment(), "facts", json!(["action"])),
+    ]}));
+    let now = settled(old);
+    assert_eq!(now.parts.as_ref().unwrap()[0]["facts"], json!(["fact:what_matters", "general_notes"]));
+    assert_eq!(now.parts.as_ref().unwrap()[1]["facts"], json!(["action"]));
+    assert_eq!(now.fact_ids(), vec!["what_matters"]);
+    assert!(trait_problems(&now).is_empty(), "{:?}", trait_problems(&now));
+    // A trait that never judged from what_matters gets no fact.
+    let plain = settled(given(json!({"id": "p", "name": "P", "status": "active", "parts": [with(judgment(), "facts", json!(["person_notes"]))]})));
+    assert_eq!((plain.facts.clone(), plain.parts.as_ref().unwrap()[0]["facts"].clone()), (None, json!([])));
 }

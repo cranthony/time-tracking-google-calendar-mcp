@@ -21,14 +21,22 @@ pub const MAX_NAME_LENGTH: usize = 50;
 const MAX_ID_LENGTH: usize = 30;
 pub const ENGAGEMENT_TYPES: [&str; 2] = ["with", "for"];
 const COMMON: [&str; 2] = ["id", "engagement_type"];
-pub const FACTS: [&str; 7] =
-    ["action", "action_history", "location", "location_history", "general_notes", "person_notes", "what_matters"];
+/// The facts any judgment can be made from; a trait's own facts are named
+/// "fact:<id>" (TRAIT_FACT_PREFIX).
+pub const FACTS: [&str; 5] = ["action", "action_history", "location", "location_history", "general_notes"];
+pub const TRAIT_FACT_PREFIX: &str = "fact:";
+/// The judgment facts there were before traits had their own: what_matters
+/// became the "what_matters" trait fact, and person_notes was dropped.
+pub const WHAT_MATTERS: &str = "what_matters";
+const PERSON_NOTES: &str = "person_notes";
+const FACT_FIELDS: [&str; 4] = ["id", "name", "summary_prompt", "log_prompt"];
+const MAX_FACT_ID_LENGTH: usize = 30;
 pub const HISTORY_FACTS: [&str; 2] = ["action_history", "location_history"];
 pub const DEFAULT_LOOKBACK_DAYS: i64 = 30;
 pub const DEFAULT_TARGET: i64 = 1;
 pub const DEFAULT_WITHIN_DAYS: i64 = 14;
 pub const DEFAULT_WINDOW_DAYS: i64 = 30;
-pub const CLEARABLE_TRAIT_FIELDS: [&str; 2] = ["definition", "scoring"];
+pub const CLEARABLE_TRAIT_FIELDS: [&str; 3] = ["definition", "scoring", "facts"];
 const MAX_PART_ID_LENGTH: usize = 30;
 static PART_ID: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Za-z0-9_#-]+$").unwrap());
 
@@ -70,6 +78,10 @@ pub struct Trait {
     /// How its parts' scores combine into its own: an aggregation (see
     /// get_traits), its weights by part id. Without it, the plain mean.
     pub scoring: Option<Map<String, Value>>,
+    /// What it keeps about each person it applies to, for its judgments
+    /// (see get_traits): each {"id", "name", "summary_prompt",
+    /// "log_prompt"?}.
+    pub facts: Option<Vec<Map<String, Value>>>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -79,6 +91,30 @@ impl Trait {
     pub fn part_values(&self) -> Vec<Value> {
         self.parts.iter().flatten().map(|p| Value::Object(p.clone())).collect()
     }
+
+    /// Its facts' ids, in order.
+    pub fn fact_ids(&self) -> Vec<String> {
+        self.facts.iter().flatten().filter_map(|f| f.get("id").and_then(Value::as_str)).map(str::to_string).collect()
+    }
+
+    /// Its fact `id`'s definition, if it has one.
+    pub fn fact(&self, id: &str) -> Option<&Map<String, Value>> {
+        self.facts.iter().flatten().find(|f| f.get("id").and_then(Value::as_str) == Some(id))
+    }
+}
+
+/// What a trait keeps about what matters to each person, as what_matters
+/// was before traits had their own facts.
+pub fn what_matters_fact() -> Map<String, Value> {
+    json!({
+        "id": WHAT_MATTERS,
+        "name": "What matters",
+        "summary_prompt": "What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.",
+        "log_prompt": "What changed in what matters to them, and what in the event showed it."
+    })
+    .as_object()
+    .unwrap()
+    .clone()
 }
 
 /// A trait as get_traits lists it: plus anything wrong with it, as hand
@@ -91,6 +127,7 @@ pub struct ListedTrait {
     pub definition: Option<String>,
     pub parts: Option<Vec<Map<String, Value>>>,
     pub scoring: Option<Map<String, Value>>,
+    pub facts: Option<Vec<Map<String, Value>>>,
     pub problems: Option<Vec<String>>,
     pub version: Option<i64>,
 }
@@ -115,10 +152,10 @@ pub fn seed_traits() -> Vec<Trait> {
         definition: Some(definition.into()),
         parts: Some(parts.as_array().unwrap().iter().map(|p| p.as_object().unwrap().clone()).collect()),
         scoring: None,
+        facts: None,
         version: None,
     };
-    vec![
-        t(
+    let mut thoughtful = t(
             "thoughtful",
             "Thoughtful",
             "Remember what matters to them, and prepare for it.",
@@ -132,7 +169,7 @@ pub fn seed_traits() -> Vec<Trait> {
                         "2": "It clearly reflected what matters to them",
                         "3": "It was shaped around what matters to them"
                     },
-                    "facts": ["action", "general_notes", "person_notes", "what_matters"]
+                    "facts": ["action", "general_notes", "fact:what_matters"]
                 },
                 {
                     "kind": "judgment",
@@ -144,10 +181,13 @@ pub fn seed_traits() -> Vec<Trait> {
                         "2": "It was for them, and fit what matters to them",
                         "3": "It was carefully made around what matters to them"
                     },
-                    "facts": ["action", "general_notes", "person_notes", "what_matters"]
+                    "facts": ["action", "general_notes", "fact:what_matters"]
                 }
             ]),
-        ),
+        );
+    thoughtful.facts = Some(vec![what_matters_fact()]);
+    vec![
+        thoughtful,
         t(
             "reliable",
             "Reliable",
@@ -208,7 +248,7 @@ pub fn seed_traits() -> Vec<Trait> {
                     "kind": "judgment",
                     "rubric": "How much effort and attention did I give them?",
                     "ratings": effort_ratings(),
-                    "facts": ["action", "general_notes", "person_notes"]
+                    "facts": ["action", "general_notes"]
                 },
                 {
                     "kind": "judgment",
@@ -251,13 +291,15 @@ pub fn trait_problems(t: &Trait) -> Vec<String> {
     if t.status.is_none() {
         problems.push(format!("its status must be one of {}", TRAIT_STATUSES.join(", ")));
     }
+    problems.extend(fact_definition_problems(t.facts.as_deref().unwrap_or_default()));
     let parts = t.part_values();
     if parts.is_empty() {
         problems.push("it needs parts: a list of at least one part, each an object with a \"kind\"".into());
         return problems;
     }
+    let fact_ids = t.fact_ids();
     for (number, part) in parts.iter().enumerate() {
-        for p in part_problems(part) {
+        for p in part_problems_among(part, Some(&fact_ids)) {
             problems.push(format!("part {}{} {p}", number + 1, kind_of(part)));
         }
     }
@@ -279,7 +321,92 @@ fn repeated_part_ids(parts: &[Value]) -> Vec<String> {
     repeated.iter().map(|id| format!("its parts' id {} is used more than once", py::repr(id))).collect()
 }
 
+/// What's wrong with a trait's facts: each {"id", "name",
+/// "summary_prompt", "log_prompt"?}, ids and names each used once.
+fn fact_definition_problems(facts: &[Map<String, Value>]) -> Vec<String> {
+    let mut problems = Vec::new();
+    let (mut ids, mut names): (Vec<String>, Vec<String>) = (Vec::new(), Vec::new());
+    for (number, fact) in facts.iter().enumerate() {
+        let label = format!("fact {}", number + 1);
+        let mut extra: Vec<&String> = fact.keys().filter(|k| !FACT_FIELDS.contains(&k.as_str())).collect();
+        extra.sort();
+        for name in extra {
+            problems.push(format!("{label} has no field \"{name}\"; a fact takes \"id\", \"name\", \"summary_prompt\" and \"log_prompt\""));
+        }
+        match fact.get("id").and_then(Value::as_str) {
+            Some(id) if id.chars().count() <= MAX_FACT_ID_LENGTH && PART_ID.is_match(id) => {
+                if ids.iter().any(|i| i == id) {
+                    problems.push(format!("its facts' id {} is used more than once", py::repr(id)));
+                }
+                ids.push(id.to_string());
+            }
+            _ => problems.push(format!(
+                "{label}'s \"id\" must be text of at most {MAX_FACT_ID_LENGTH} letters, digits, \"_\", \"-\" or \"#\" (leave it out of a new fact, and one is made from its name)"
+            )),
+        }
+        match fact.get("name").and_then(Value::as_str).map(str::trim).filter(|n| !n.is_empty()) {
+            Some(name) if name.chars().count() > MAX_NAME_LENGTH => {
+                problems.push(format!("{label}'s name is longer than {MAX_NAME_LENGTH} characters"))
+            }
+            Some(name) => {
+                if names.iter().any(|n| n.to_lowercase() == name.to_lowercase()) {
+                    problems.push(format!("its facts' name {} is used more than once", py::repr(name)));
+                }
+                names.push(name.to_string());
+            }
+            None => problems.push(format!("{label} needs a \"name\"")),
+        }
+        if !fact.get("summary_prompt").and_then(Value::as_str).is_some_and(|p| !p.trim().is_empty()) {
+            problems.push(format!("{label} needs a \"summary_prompt\": what its summary of a person keeps, and how"));
+        }
+        if fact.get("log_prompt").is_some_and(|p| !p.is_null() && !p.as_str().is_some_and(|p| !p.trim().is_empty())) {
+            problems.push(format!("{label}'s \"log_prompt\" must be non-empty text, or left out"));
+        }
+    }
+    problems
+}
+
+/// `facts` with an id for each new one (one without): its name in
+/// lowercase, words joined by "_", and none another of them has.
+pub fn with_new_fact_ids(facts: &[Map<String, Value>]) -> Vec<Map<String, Value>> {
+    let mut taken: Vec<String> = facts.iter().filter_map(|f| f.get("id").and_then(Value::as_str)).map(str::to_string).collect();
+    facts
+        .iter()
+        .map(|fact| {
+            if fact.contains_key("id") {
+                return fact.clone();
+            }
+            let name = fact.get("name").and_then(Value::as_str).unwrap_or_default();
+            let words = NOT_SLUG.replace_all(&name.to_lowercase(), "_").to_string();
+            let base: String = words.trim_matches('_').chars().take(MAX_FACT_ID_LENGTH - 3).collect();
+            let base = match base.trim_matches('_') {
+                "" => "fact".to_string(),
+                trimmed => trimmed.to_string(),
+            };
+            let mut id = base.clone();
+            let mut n = 2;
+            while taken.contains(&id) {
+                id = format!("{base}_{n}");
+                n += 1;
+            }
+            taken.push(id.clone());
+            let mut out = Map::new();
+            out.insert("id".into(), json!(id));
+            out.extend(fact.clone());
+            out
+        })
+        .collect()
+}
+
+/// What's wrong with a part, any "fact:<id>" it names taken to be one of
+/// its trait's facts (see part_problems_among).
 pub fn part_problems(part: &Value) -> Vec<String> {
+    part_problems_among(part, None)
+}
+
+/// What's wrong with a part; with `fact_ids`, each "fact:<id>" it names
+/// must be one of them, its trait's facts.
+pub fn part_problems_among(part: &Value, fact_ids: Option<&[String]>) -> Vec<String> {
     let Some(object) = part.as_object().filter(|o| o.get("kind").is_some_and(Value::is_string)) else {
         return vec!["must be an object with a \"kind\"".into()];
     };
@@ -351,7 +478,7 @@ pub fn part_problems(part: &Value) -> Vec<String> {
         }
     }
     if kind == "judgment" {
-        problems.extend(judgment_problems(object));
+        problems.extend(judgment_problems(object, fact_ids));
         if let Some(scoring) = object.get("scoring") {
             problems.extend(judgment_scoring_problems(scoring).into_iter().map(|p| format!("\"scoring\": {p}")));
         }
@@ -393,7 +520,12 @@ fn exception_problems(exceptions: &Value) -> Vec<String> {
     problems
 }
 
-fn judgment_problems(part: &Map<String, Value>) -> Vec<String> {
+/// The facts a judgment part can name, for its refusals.
+fn fact_names() -> String {
+    format!("{}, or one of its trait's facts as \"{TRAIT_FACT_PREFIX}<fact id>\"", FACTS.join(", "))
+}
+
+fn judgment_problems(part: &Map<String, Value>, fact_ids: Option<&[String]>) -> Vec<String> {
     let mut problems = Vec::new();
     if !part["rubric"].as_str().is_some_and(|r| !r.trim().is_empty()) {
         problems.push("\"rubric\" must be non-empty text: the question to judge each event by".into());
@@ -412,7 +544,7 @@ fn judgment_problems(part: &Map<String, Value>) -> Vec<String> {
         );
     }
     let Value::Array(facts) = &part["facts"] else {
-        problems.push(format!("\"facts\" must be a list of facts to judge by: {}", FACTS.join(", ")));
+        problems.push(format!("\"facts\" must be a list of facts to judge by: {}", fact_names()));
         return problems;
     };
     let mut names: Vec<String> = Vec::new();
@@ -421,10 +553,19 @@ fn judgment_problems(part: &Map<String, Value>) -> Vec<String> {
             Value::Object(o) => o.get("fact").cloned().unwrap_or(Value::Null),
             other => other.clone(),
         };
-        let Some(name) = name.as_str().filter(|n| FACTS.contains(n)) else {
-            problems.push(format!("\"facts\" has {}; a fact is one of {}", python_repr(fact), FACTS.join(", ")));
+        let Some(name) = name.as_str().filter(|n| FACTS.contains(n) || trait_fact_id(n).is_some()) else {
+            problems.push(format!("\"facts\" has {}; a fact is one of {}", python_repr(fact), fact_names()));
             continue;
         };
+        if let (Some(id), Some(known)) = (trait_fact_id(name), fact_ids) {
+            if !known.iter().any(|k| k == id) {
+                problems.push(format!(
+                    "\"facts\" names {}, which isn't one of its trait's facts{}",
+                    py::repr(name),
+                    if known.is_empty() { " (it has none)".to_string() } else { format!(" ({})", known.join(", ")) }
+                ));
+            }
+        }
         names.push(name.to_string());
         if let Value::Object(o) = fact {
             let mut extra: Vec<&String> = o.keys().filter(|k| k.as_str() != "fact" && k.as_str() != "lookback_days").collect();
@@ -448,6 +589,11 @@ fn judgment_problems(part: &Map<String, Value>) -> Vec<String> {
         problems.push(format!("\"facts\" names {} more than once", repeated.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")));
     }
     problems
+}
+
+/// The trait fact's id a judgment fact names ("fact:<id>"), if it names one.
+pub fn trait_fact_id(name: &str) -> Option<&str> {
+    name.strip_prefix(TRAIT_FACT_PREFIX).filter(|id| !id.is_empty())
 }
 
 /// The highest rating a judgment part allows.
@@ -676,14 +822,56 @@ pub fn with_new_part_ids(parts: &[Map<String, Value>]) -> Vec<Map<String, Value>
         .collect()
 }
 
-/// `t` as kept since parts had ids (see settled_parts).
+/// `t` as kept since parts had ids (see settled_parts), and since traits
+/// had their own facts (see settled_facts): a part judged from
+/// what_matters judges from the trait's "what_matters" fact, made for it.
 pub fn settled(mut t: Trait) -> Trait {
     if let Some(parts) = &t.parts {
         let (parts, weights) = settled_parts(parts);
+        let (parts, what_matters) = settled_facts(&parts);
         t.parts = Some(parts);
         t.scoring = with_weights(t.scoring.take(), weights);
+        if what_matters && t.fact(WHAT_MATTERS).is_none() {
+            t.facts.get_or_insert_with(Vec::new).push(what_matters_fact());
+        }
     }
     t
+}
+
+/// `parts` with their judgment facts as kept since traits had their own:
+/// person_notes dropped, and what_matters as "fact:what_matters" -- and
+/// whether any named what_matters.
+pub fn settled_facts(parts: &[Map<String, Value>]) -> (Vec<Map<String, Value>>, bool) {
+    let mut what_matters = false;
+    let parts = parts
+        .iter()
+        .map(|part| {
+            let Some(Value::Array(facts)) = part.get("facts") else { return part.clone() };
+            let named = |fact: &Value| match fact {
+                Value::Object(o) => o.get("fact").and_then(Value::as_str).map(str::to_string),
+                other => other.as_str().map(str::to_string),
+            };
+            if !facts.iter().any(|f| matches!(named(f).as_deref(), Some(WHAT_MATTERS | PERSON_NOTES))) {
+                return part.clone();
+            }
+            let settled: Vec<Value> = facts
+                .iter()
+                .filter(|f| named(f).as_deref() != Some(PERSON_NOTES))
+                .map(|f| {
+                    if named(f).as_deref() == Some(WHAT_MATTERS) {
+                        what_matters = true;
+                        json!(format!("{TRAIT_FACT_PREFIX}{WHAT_MATTERS}"))
+                    } else {
+                        f.clone()
+                    }
+                })
+                .collect();
+            let mut out = part.clone();
+            out.insert("facts".into(), Value::Array(settled));
+            out
+        })
+        .collect();
+    (parts, what_matters)
 }
 
 /// A person's or habit's own parts for each trait, as a list of objects,
@@ -710,6 +898,7 @@ pub fn settled_spec(spec: Map<String, Value>) -> Map<String, Value> {
             continue;
         };
         let (settled, weights) = settled_parts(&maps);
+        let (settled, _) = settled_facts(&settled);
         parts_out.insert(trait_id.clone(), Value::Array(settled.into_iter().map(Value::Object).collect()));
         let existing = part_scoring.get(trait_id).and_then(Value::as_object).cloned();
         if let Some(merged) = with_weights(existing, weights) {
@@ -812,6 +1001,7 @@ impl Traits {
                     definition: t.definition,
                     parts: t.parts,
                     scoring: t.scoring,
+                    facts: t.facts,
                     problems: if problems.is_empty() { None } else { Some(problems) },
                     version: t.version,
                 }
@@ -831,6 +1021,7 @@ impl Traits {
             new.status = Some(TraitStatus::Active);
         }
         new.parts = new.parts.as_deref().map(with_new_part_ids);
+        new.facts = new.facts.as_deref().map(with_new_fact_ids);
         let problems = trait_problems(&new);
         if !problems.is_empty() {
             bail!("{}", said(&new, &problems));
@@ -880,6 +1071,9 @@ impl Traits {
                 updated.scoring = without_weights_of_gone(updated.scoring.take(), &parts);
             }
             updated.parts = Some(parts);
+        }
+        if let Some(facts) = &given.facts {
+            updated.facts = Some(with_new_fact_ids(facts));
         }
         let problems = trait_problems(&updated);
         if !problems.is_empty() {

@@ -108,17 +108,17 @@
       "a0g0jc"
      ],
      "context": null,
+     "facts": null,
      "foundations": null,
      "id": "rs21so",
      "name": "Sam Example",
      "status": "active",
      "traits": null,
-     "version": 1,
-     "what_matters": null
+     "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"a0g0jc\"\n    ],\n    \"what_matters\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Family\"\n    ],\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"a0g0jc\"\n    ],\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Family\"\n    ],\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_person"
   },
   {
@@ -282,13 +282,13 @@
      "circle_names": null,
      "circles": null,
      "context": null,
+     "facts": {},
      "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
      "traits": null,
-     "version": 0,
-     "what_matters": null
+     "version": 0
     },
     {
      "cancelled_events": [],
@@ -299,17 +299,17 @@
       "a0g0jc"
      ],
      "context": null,
+     "facts": {},
      "foundations": null,
      "id": "rs21so",
      "name": "Sam Example",
      "status": "active",
      "traits": null,
-     "version": 1,
-     "what_matters": null
+     "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_people"
   },
   {
@@ -325,16 +325,16 @@
      "a0g0jc"
     ],
     "context": null,
+    "facts": {},
     "foundations": null,
     "id": "rs21so",
     "name": "Sam Example",
     "status": "active",
     "traits": null,
-    "version": 1,
-    "what_matters": null
+    "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"what_matters\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -696,7 +696,6 @@
         "context",
         "status",
         "circles",
-        "what_matters",
         "traits",
         "foundations",
         "version"
@@ -1521,7 +1520,6 @@
         "[\"a0g0jc\"]",
         "",
         "",
-        "",
         "1"
        ]
       ]
@@ -2287,7 +2285,6 @@
         "[\"a0g0jc\"]",
         "",
         "",
-        "",
         "1"
        ]
       ]
@@ -2367,6 +2364,7 @@
         "definition",
         "parts",
         "scoring",
+        "facts",
         "version"
        ]
       ]
@@ -2399,8 +2397,9 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
         ""
        ],
        [
@@ -2409,6 +2408,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         ""
        ],
@@ -2419,6 +2419,7 @@
         "Make something together with them (making something alone is taking care of myself).",
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
+        "",
         ""
        ],
        [
@@ -2428,6 +2429,7 @@
         "Share new experiences with them: new activities, new places.",
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
         "",
+        "",
         ""
        ],
        [
@@ -2435,7 +2437,8 @@
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         "",
         ""
        ]
@@ -2679,6 +2682,252 @@
    "query": {}
   },
   {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "person-facts"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "person-facts"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Person Facts"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000043,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "summary",
+        "updated_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000043
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "person-facts",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "fact-logs"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Fact Logs"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000045,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "log",
+        "event_start",
+        "event_summary",
+        "logged_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000045
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "fact-logs",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -2757,6 +3006,22 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000041,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000043,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000045,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -2851,6 +3116,22 @@
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000043,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000045,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
      }
     ],
     "majorDimension": "ROWS"
@@ -2939,6 +3220,22 @@
       "gridRange": {
        "endColumnIndex": 26,
        "sheetId": 1000041,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000043,
+       "startColumnIndex": 0,
+       "startRowIndex": 0
+      }
+     },
+     {
+      "gridRange": {
+       "endColumnIndex": 26,
+       "sheetId": 1000045,
        "startColumnIndex": 0,
        "startRowIndex": 0
       }
@@ -3087,6 +3384,22 @@
       },
       "metadataKey": "sheet-role",
       "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000043
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "person-facts",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000045
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "fact-logs",
       "visibility": "PROJECT"
      }
     ],
@@ -3255,6 +3568,38 @@
        ]
       ]
      },
+     "Fact Logs": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000045,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Fact Logs"
+      },
+      "rows": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "log",
+        "event_start",
+        "event_summary",
+        "logged_at",
+        "source"
+       ]
+      ]
+     },
      "Habits": {
       "column_widths": {},
       "properties": {
@@ -3372,7 +3717,6 @@
         "context",
         "status",
         "circles",
-        "what_matters",
         "traits",
         "foundations",
         "version"
@@ -3385,8 +3729,36 @@
         "[\"a0g0jc\"]",
         "",
         "",
-        "",
         "1"
+       ]
+      ]
+     },
+     "Person Facts": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000043,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Person Facts"
+      },
+      "rows": [
+       [
+        "id",
+        "person_id",
+        "trait_id",
+        "fact_id",
+        "summary",
+        "updated_at",
+        "source"
        ]
       ]
      },
@@ -3429,6 +3801,7 @@
         "definition",
         "parts",
         "scoring",
+        "facts",
         "version"
        ],
        [
@@ -3436,7 +3809,9 @@
         "Thoughtful",
         "active",
         "Remember what matters to them, and prepare for it.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\",\"what_matters\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
+        "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]"
        ],
        [
         "reliable",
@@ -3464,7 +3839,7 @@
         "Generous",
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
-        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\",\"person_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
        ]
       ]
      },
