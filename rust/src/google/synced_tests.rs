@@ -76,6 +76,26 @@ fn a_mark_never_matched_lapses_after_its_write_ends() {
 }
 
 #[test]
+fn a_series_write_coming_back_keeps_the_instances_it_changed_the_servers_own() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.writing(Some("run"));
+    store.wrote(Some("run"), Some("\"2\""), now);
+
+    // Ending the series cancels its edited instance after the end, with
+    // the series' own etag, listed after it.
+    let series = json!({"id": "run", "etag": "\"2\"", "recurrence": ["RRULE:FREQ=WEEKLY;UNTIL=20261020T215959Z"]});
+    assert!(store.is_ours(&series, now));
+    store.brought(&series);
+    let instance = json!({"id": "run_20261020T220000Z", "recurringEventId": "run", "status": "cancelled", "etag": "\"2\""});
+    assert!(store.is_ours(&instance, now));
+
+    store.lapse(now + MARK_LAPSES);
+
+    assert!(!store.is_ours(&instance, now + MARK_LAPSES));
+}
+
+#[test]
 fn a_write_under_way_keeps_its_event_marked_though_an_earlier_one_comes_back() {
     let mut store = Store::default();
     let now = Instant::now();

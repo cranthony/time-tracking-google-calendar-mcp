@@ -14,9 +14,12 @@
 //! elsewhere -- is kept for the app to warn of (`take_outside`). A write
 //! marks its event (and series) as the server's own until a sync brings
 //! back the etag Calendar answered it with: Calendar's feed can lag a
-//! write, so a sync just after it may not have it yet. A mark that's never
-//! matched -- a delete, the instances a series edit reaches, an answer
-//! lost -- lapses `MARK_LAPSES` after its write ends, silently.
+//! write, so a sync just after it may not have it yet. A series' mark
+//! isn't ended so: an edit to a series (ending it, moving it) changes
+//! instances too -- cancelling or keeping its edited ones -- which come
+//! as items of their own, in that sync or a later one. It lapses, like a
+//! mark that's never matched -- a delete, an answer lost --
+//! `MARK_LAPSES` after its write ends, silently.
 //!
 //! Only the last `KEPT_DAYS` are kept, so what's kept stays about a year's
 //! size however long the calendar's history: an event (or exception) that
@@ -177,8 +180,12 @@ impl Store {
 
     /// Note `item`, brought by a sync: if it's the etag a write was answered
     /// with, that write is back, and its event's mark ends (unless another
-    /// write to it is under way).
+    /// write to it is under way) -- not a series', which also covers the
+    /// instances the write changed, still to come or be looked at.
     pub fn brought(&mut self, item: &Value) {
+        if is_master(item) {
+            return;
+        }
         let (Some(id), Some(etag)) = (item["id"].as_str(), item["etag"].as_str()) else { return };
         if self.written.get(id).is_some_and(|mark| mark.writing == 0 && mark.etags.contains(etag)) {
             self.written.remove(id);
