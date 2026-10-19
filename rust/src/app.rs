@@ -328,9 +328,8 @@ impl App {
 
     pub fn person_facts(&self) -> anyhow::Result<PersonFacts> {
         built(&self.person_facts, || {
-            let traits = self.traits()?;
             let (_, sheets, id) = self.spreadsheet()?;
-            PersonFacts::ensure(&sheets, &id, &traits)
+            PersonFacts::ensure(&sheets, &id)
         })
     }
 

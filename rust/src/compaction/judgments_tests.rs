@@ -31,7 +31,7 @@ fn for_part() -> Value {
         "engagement_type": "for",
         "rubric": "Was it built on what matters to them?",
         "ratings": {"0": "no", "1": "yes"},
-        "facts": ["action", "person_notes"],
+        "facts": ["action"],
     })
 }
 
@@ -40,14 +40,15 @@ fn with_notes_part() -> Value {
         "kind": "judgment",
         "rubric": "Were they heard?",
         "ratings": {"0": "no", "1": "yes"},
-        "facts": ["person_notes", "general_notes", "what_matters"],
+        "facts": ["general_notes", "fact:what_matters"],
     })
 }
 
 fn traits() -> Vec<Value> {
     vec![
         json!({"id": "adventurous", "name": "Adventurous", "status": "active", "definition": "New things together.", "parts": [new_part()]}),
-        json!({"id": "thoughtful", "name": "Thoughtful", "status": "active", "parts": [with_notes_part(), for_part(), {"kind": "follow_through"}]}),
+        json!({"id": "thoughtful", "name": "Thoughtful", "status": "active", "parts": [with_notes_part(), for_part(), {"kind": "follow_through"}],
+               "facts": [{"id": "what_matters", "name": "What matters", "summary_prompt": "What's important to them."}]}),
         json!({"id": "off", "name": "Off", "status": "off", "parts": [new_part()]}),
     ]
 }
@@ -55,7 +56,7 @@ fn traits() -> Vec<Value> {
 fn people() -> Vec<Value> {
     vec![
         json!({"id": "self", "name": "Me", "status": "active"}),
-        json!({"id": "sam", "name": "Sam", "status": "active", "context": "salsa", "what_matters": "- starts a new job"}),
+        json!({"id": "sam", "name": "Sam", "status": "active", "context": "salsa"}),
         json!({"id": "mom", "name": "Mom", "status": "active"}),
     ]
 }
