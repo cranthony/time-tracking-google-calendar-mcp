@@ -19,15 +19,27 @@ use std::sync::{Arc, LazyLock, Mutex};
 
 const LIST_PAGE_SIZE: usize = 2500;
 
-/// A write under way: as it ends, it moves what's kept on again (see
-/// `synced`).
+/// A write under way to an event (or, `None`, to anything): as it ends,
+/// it moves what's kept on again, and leaves its event marked as the
+/// server's own until a sync brings back the etag it was answered with
+/// (see `synced`).
 pub struct Writing {
     client: CalendarClient,
+    event_id: Option<String>,
+    etag: Option<String>,
+}
+
+impl Writing {
+    /// Note Calendar's answer to the write: the event as it made it.
+    fn answered(&mut self, event: &Value) {
+        self.etag = event["etag"].as_str().map(str::to_string);
+    }
 }
 
 impl Drop for Writing {
     fn drop(&mut self) {
-        self.client.store(|store| store.generation += 1);
+        let now = std::time::Instant::now();
+        self.client.store(|store| store.wrote(self.event_id.as_deref(), self.etag.as_deref(), now));
     }
 }
 
@@ -220,16 +232,17 @@ impl CalendarClient {
     /// Create the event `event_id` from `body`, or replace it in full if
     /// it's already there (a 409 on insert).
     pub fn replace_event_resource(&self, event_id: &str, body: &Map<String, Value>) -> anyhow::Result<Value> {
-        let _writing = self.writing_event("CalendarClient.replace_event_resource", Some(event_id))?;
+        let mut writing = self.writing_event("CalendarClient.replace_event_resource", Some(event_id))?;
         let mut full = body.clone();
         full.insert("id".into(), json!(event_id));
         let full = Value::Object(full);
-        match self.call("POST", &self.events_path(), &[], Some(&full)) {
-            Ok(created) => return Ok(created),
-            Err(error) if status_of(&error) == Some(409) => {}
+        let made = match self.call("POST", &self.events_path(), &[], Some(&full)) {
+            Ok(created) => created,
+            Err(error) if status_of(&error) == Some(409) => self.call("PUT", &self.event_path(event_id), &[], Some(&full))?,
             Err(error) => return Err(error),
-        }
-        self.call("PUT", &self.event_path(event_id), &[], Some(&full))
+        };
+        writing.answered(&made);
+        Ok(made)
     }
 
     /// Delete `event_id` if it's there: one already gone is fine.
@@ -289,7 +302,7 @@ impl CalendarClient {
     fn writing_event(&self, what: &str, event_id: Option<&str>) -> anyhow::Result<Writing> {
         writing(what)?;
         self.store(|store| store.writing(event_id));
-        Ok(Writing { client: self.clone() })
+        Ok(Writing { client: self.clone(), event_id: event_id.map(str::to_string), etag: None })
     }
 
     /// The event a write is to, for its path or, for one made, its body.
@@ -326,14 +339,16 @@ impl CalendarClient {
             },
             None => (self.changes(None)?, true),
         };
+        let now = std::time::Instant::now();
         self.store(|store| {
             if full {
                 store.events.clear();
             }
             for item in changes.items {
-                if !full && !store.is_ours(&item) {
+                if !full && !store.is_ours(&item, now) {
                     store.outside.push(item.clone());
                 }
+                store.brought(&item);
                 if let Some(id) = item["id"].as_str() {
                     store.events.insert(id.to_string(), item);
                 }
@@ -343,9 +358,8 @@ impl CalendarClient {
             // Up to date only if no write began or ended while this ran.
             if store.generation == generation {
                 store.stale = false;
-                store.written.clear();
-                store.written_all = false;
             }
+            store.lapse(now);
         });
         Ok(())
     }
@@ -432,18 +446,25 @@ impl CalendarClient {
     /// Any Calendar asks to slow down are sent again, one at a time.
     pub fn send_writes(&self, writes: &[BatchRequest]) -> anyhow::Result<Vec<anyhow::Result<Value>>> {
         writing("CalendarClient.send_writes")?;
-        let _writing: Vec<Writing> =
+        let mut writing: Vec<Writing> =
             writes.iter().map(|write| self.writing_event("CalendarClient.send_writes", Self::written_by(write).as_deref())).collect::<anyhow::Result<_>>()?;
-        if writes.len() == 1 {
-            return Ok(vec![self.send(&writes[0])]);
-        }
-        let mut answers = Vec::new();
-        for chunk in writes.chunks(BATCH_SIZE) {
-            answers.extend(self.google.calendar_batch(chunk)?);
-        }
-        for (write, answer) in writes.iter().zip(answers.iter_mut()) {
-            if answer.as_ref().is_err_and(rate_limited) {
-                *answer = self.send(write);
+        let answers = if writes.len() == 1 {
+            vec![self.send(&writes[0])]
+        } else {
+            let mut answers = Vec::new();
+            for chunk in writes.chunks(BATCH_SIZE) {
+                answers.extend(self.google.calendar_batch(chunk)?);
+            }
+            for (write, answer) in writes.iter().zip(answers.iter_mut()) {
+                if answer.as_ref().is_err_and(rate_limited) {
+                    *answer = self.send(write);
+                }
+            }
+            answers
+        };
+        for (writing, answer) in writing.iter_mut().zip(&answers) {
+            if let Ok(event) = answer {
+                writing.answered(event);
             }
         }
         Ok(answers)
@@ -468,7 +489,8 @@ impl CalendarClient {
         let request = self.create_event_request(event)?;
         let _writing = self.writing_event("CalendarClient.create_event", Self::written_by(&request).as_deref())?;
         let created = self.send(&request)?;
-        let _made = self.writing_event("CalendarClient.create_event", created["id"].as_str())?;
+        let mut made = self.writing_event("CalendarClient.create_event", created["id"].as_str())?;
+        made.answered(&created);
         Event::from_api(&created)
     }
 
@@ -503,7 +525,8 @@ impl CalendarClient {
         let mut body = event.insert_body()?;
         body.insert("iCalUID".into(), json!(ical_uid));
         let imported = self.call("POST", &format!("{}/import", self.events_path()), &[], Some(&Value::Object(body)))?;
-        let _made = self.writing_event("CalendarClient.import_event", imported["id"].as_str())?;
+        let mut made = self.writing_event("CalendarClient.import_event", imported["id"].as_str())?;
+        made.answered(&imported);
         Event::from_api(&imported)
     }
 
@@ -523,8 +546,10 @@ impl CalendarClient {
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
         // Built first: building it may read the event, perhaps from memory.
         let request = self.update_event_request(event)?;
-        let _writing = self.writing_event("CalendarClient.update_event", Self::written_by(&request).as_deref())?;
-        Event::from_api(&self.send(&request)?)
+        let mut writing = self.writing_event("CalendarClient.update_event", Self::written_by(&request).as_deref())?;
+        let updated = self.send(&request)?;
+        writing.answered(&updated);
+        Event::from_api(&updated)
     }
 
     /// The request `update_event` sends, for `send_writes`.

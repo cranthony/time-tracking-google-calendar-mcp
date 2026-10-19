@@ -109,6 +109,9 @@ struct Calendar {
     changes: Vec<String>,
     /// Events deleted, as a sync gives them: cancelled.
     gone: BTreeMap<String, Value>,
+    /// While `Some`, how many of `changes` a sync can see: Calendar's
+    /// feed lagging the writes it has answered (see `hold_feed`).
+    feed_seen: Option<usize>,
 }
 
 impl Calendar {
@@ -275,7 +278,7 @@ impl State {
         if let Some(d) = description {
             resource.insert("description".into(), json!(d));
         }
-        self.calendars.insert(id.clone(), Calendar { resource, events: BTreeMap::new(), order: Vec::new(), changes: Vec::new(), gone: BTreeMap::new() });
+        self.calendars.insert(id.clone(), Calendar { resource, events: BTreeMap::new(), order: Vec::new(), changes: Vec::new(), gone: BTreeMap::new(), feed_seen: None });
         id
     }
 
@@ -291,6 +294,14 @@ impl State {
         }
         event["etag"] = json!(etag);
         cal.put(event_id, event);
+    }
+
+    /// Hold Calendar's feed where it is (`true`), so a sync doesn't bring
+    /// changes made from now on, writes the fake has answered included --
+    /// as Calendar's feed can lag -- or let it catch up (`false`).
+    pub fn hold_feed(&mut self, calendar_id: &str, held: bool) {
+        let cal = self.calendars.get_mut(calendar_id).expect("a calendar");
+        cal.feed_seen = held.then_some(cal.changes.len());
     }
 
     pub fn add_event(&mut self, calendar_id: &str, body: Value) -> String {
@@ -510,7 +521,7 @@ impl State {
                         return Err(err(410, "Sync token is no longer valid, a full sync is required."));
                     }
                     let mut ids: Vec<&String> = Vec::new();
-                    for id in &cal.changes[seen..] {
+                    for id in &cal.changes[seen..cal.feed_seen.unwrap_or(cal.changes.len()).max(seen)] {
                         if !ids.contains(&id) {
                             ids.push(id);
                         }
@@ -535,7 +546,8 @@ impl State {
                 let mut out = Self::page(cal, &items, one("maxResults"), one("pageToken"));
                 out["timeZone"] = cal.resource.get("timeZone").cloned().unwrap_or(json!("UTC"));
                 if out.get("nextPageToken").is_none() {
-                    out["nextSyncToken"] = json!(cal.changes.len().to_string());
+                    let seen = one("syncToken").and_then(|t| t.parse::<usize>().ok()).unwrap_or(0);
+                    out["nextSyncToken"] = json!(cal.feed_seen.unwrap_or(cal.changes.len()).max(seen).to_string());
                 }
                 Ok(Some(out))
             }
