@@ -29,6 +29,10 @@ pub enum GoalField {
     DefinitionOfDone,
     #[serde(rename = "attribution_hints")]
     AttributionHints,
+    #[serde(rename = "with_ids")]
+    WithIds,
+    #[serde(rename = "for_ids")]
+    ForIds,
 }
 
 /// One goal's update: `goal` (its id and the fields to set) and the
@@ -72,6 +76,10 @@ pub struct GoalDelete {
 /// status and when, oldest first; started_at is when it first became
 /// active, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and
 /// attribution_hints (a guide for telling which events are for it).
+/// with_ids are the people it's done with (who the user works on it
+/// alongside) and for_ids those it's done for, who aren't part of doing
+/// it (a promise to them, a gift, a favor): person ids from get_people,
+/// never "self", and no one in both.
 /// Events are tagged with goals, apart from their actions (see
 /// list_events' goals): tag an event with a goal only when the goal is
 /// open (inactive or active), has attribution_hints, and the event
@@ -94,7 +102,8 @@ pub fn get_goal(app: &App, id_or_title: String) -> Result<ListedGoal, ToolError>
 
 /// Add a goal (see get_goals): a title, and optionally parent_id (the
 /// goal it's a piece of), required, priority, expected_minutes, deadline,
-/// description, definition_of_done and attribution_hints. Active unless
+/// description, definition_of_done, attribution_hints, with_ids and
+/// for_ids. Active unless
 /// given a status; an active goal needs a deadline. Its history starts
 /// with its status, now, unless given one (to backdate it, say). A
 /// sub-goal can't be due after its parent, or be expected to take

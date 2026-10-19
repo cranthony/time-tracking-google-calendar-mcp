@@ -28,16 +28,13 @@ fn share(id: &str, minutes: Option<i64>, percent: Option<i64>) -> GoalShare {
 }
 
 #[test]
-fn prepare_lists_only_the_open_goals_with_hints() {
+fn prepare_lists_the_open_goals_those_with_hints_to_tag_events_with() {
     let context = goals_setup().prepare().to_json();
 
-    assert_eq!(
-        context["goals"],
-        json!([
-            {"id": "g1", "title": "Write a book", "path": [], "attribution_hints": "writing sessions"},
-            {"id": "g2", "title": "Draft chapter one", "path": ["Write a book"], "attribution_hints": "work on chapter one"},
-        ])
-    );
+    let listed: Vec<(&str, Option<&str>)> =
+        context["goals"].as_array().unwrap().iter().map(|g| (g["id"].as_str().unwrap(), g["attribution_hints"].as_str())).collect();
+    assert_eq!(listed, vec![("g1", Some("writing sessions")), ("g2", Some("work on chapter one")), ("g3", None), ("g6", None)]);
+    assert_eq!(context["goals"][1]["path"], json!(["Write a book"]));
     assert!(DECISION_GUIDE.contains("GOALS: `goals` lists the open goals"));
 }
 

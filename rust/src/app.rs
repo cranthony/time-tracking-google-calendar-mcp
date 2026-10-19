@@ -316,7 +316,9 @@ impl App {
     pub fn goals(&self) -> anyhow::Result<Goals> {
         built(&self.goals, || {
             let (_, sheets, id) = self.spreadsheet()?;
-            Goals::ensure(&sheets, &id)
+            let me = self.me();
+            let people: crate::stores::goals::PersonIds = Arc::new(move || Ok(me.people()?.all()?.into_iter().filter_map(|p| p.id).collect()));
+            Ok(Goals::ensure(&sheets, &id)?.with_people(people))
         })
     }
 

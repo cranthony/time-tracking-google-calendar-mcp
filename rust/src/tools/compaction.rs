@@ -7,6 +7,7 @@ use crate::stores::actions::ActionShare;
 use crate::contract::{tool, wire_text, DateTimeText, Schema};
 use crate::app::App;
 use crate::compaction::additions::{Addition, Additions};
+use crate::stores::goals::GoalStatus;
 use crate::compaction::compactor::{compaction_error, NoteCompactor};
 use crate::compaction::fact_changes::{self, FactKeeping};
 use crate::compaction::judgments::{self, Judging};
@@ -292,15 +293,20 @@ pub struct ContextEvent {
     pub history_until: Option<DateTimeText>,
 }
 
-/// An open goal (inactive or active) with attribution hints: one an
-/// event can be tagged with, when it clearly matches them. `path` is its
-/// parents' titles, outermost first.
+/// An open goal (inactive or active). One with attribution hints is one
+/// an event can be tagged with, when it clearly matches them. `path` is
+/// its parents' titles, outermost first; `with_ids` the people it's done
+/// with and `for_ids` those it's done for.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ContextGoal {
     pub id: String,
     pub title: Option<String>,
     pub path: Vec<String>,
-    pub attribution_hints: String,
+    pub status: Option<GoalStatus>,
+    pub deadline: Option<String>,
+    pub attribution_hints: Option<String>,
+    pub with_ids: Option<Vec<String>>,
+    pub for_ids: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -441,6 +447,9 @@ pub struct ProposalContext {
     #[schema(optional)]
     #[serde(default)]
     pub new_locations: Vec<Map<String, Value>>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub new_goals: Vec<Map<String, Value>>,
     #[schema(optional)]
     #[serde(default)]
     pub settled_additions: Vec<AdditionSettled>,
@@ -662,6 +671,31 @@ pub struct NewPerson {
     pub r#ref: String,
 }
 
+/// A goal to propose, from what the notes say the user means to do or
+/// told someone they'd do: `ref`, a `title`, and any of a goal's other
+/// fields (see get_goals). It's inactive -- the user activates it, with a
+/// deadline, as they review it -- so a `deadline` is only for one the
+/// notes give. `parent_id` is an open goal's id; `with_ids` (the people the user means to do it with)
+/// and `for_ids` (those it's for, who aren't part of doing it: a promise
+/// to them, a favor) are people's ids or new_people refs. id is assigned
+/// when it's created.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+#[schema(deny_unknown)]
+pub struct NewGoal {
+    pub title: Option<String>,
+    pub parent_id: Option<String>,
+    pub required: Option<bool>,
+    pub priority: Option<i64>,
+    pub expected_minutes: Option<i64>,
+    pub deadline: Option<String>,
+    pub description: Option<String>,
+    pub definition_of_done: Option<String>,
+    pub attribution_hints: Option<String>,
+    pub with_ids: Option<Vec<String>>,
+    pub for_ids: Option<Vec<String>>,
+    pub r#ref: String,
+}
+
 /// A note to add to a particular event, rather than the one it falls
 /// within: an `annotate_notes` entry of compact_notes.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -852,10 +886,13 @@ pub struct Proposal {
     pub fact_summaries: Vec<ProposedSummary>,
 }
 
-/// The user's say on an action, person or location Claude's decisions
-/// add (by its `ref`): `create` it now -- with any of `name`, `context`
-/// (a person's) and `hint` (a location's) corrected -- say it's one
-/// that's `existing` (its `id`), or `drop` it from the events.
+/// The user's say on an action, person, location or goal Claude's
+/// decisions add (by its `ref`): `create` it now -- with any of `name` (a
+/// goal's title), `context` (a person's) and `hint` (a location's)
+/// corrected; a goal with its `status` and `deadline` set too -- made
+/// `active`, say, with a deadline -- say it's one that's `existing` (its
+/// `id`), or `drop` it. A goal naming a new person can't be created until
+/// they're settled.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct AdditionChoice {
     pub r#ref: String,
@@ -864,6 +901,8 @@ pub struct AdditionChoice {
     pub name: Option<String>,
     pub context: Option<String>,
     pub hint: Option<String>,
+    pub status: Option<GoalStatus>,
+    pub deadline: Option<String>,
 }
 
 /// The user's say on what a note is for: `annotate` -- add it to the
@@ -1316,7 +1355,11 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// id, a create's key from the open proposal, or its `ref`) instead.
 /// new_actions, new_people and new_locations add what isn't there yet,
 /// each with a `ref` ("new:ukulele") the updates and creates use in
-/// place of its id; they're created when it's applied. You get the
+/// place of its id; they're created when it's applied. new_goals propose
+/// goals -- inactive -- from notes where the user says they want or mean
+/// to do something longer term that no open goal covers, or told someone
+/// they would -- with the people it's with or for (ids, or new_people
+/// refs) -- created when it's applied too. You get the
 /// proposal's id and revision, the proposed changes, the additions, and
 /// a `timeline` of the notes beside the resulting events, each with its
 /// actions and facts -- in a conversation, show its `text` to the user in
@@ -1370,7 +1413,7 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// prepare_judgments and record_judgments: the compaction isn't complete
 /// until they're all recorded.
 #[tool(writes)]
-pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpdate>>, creates: Option<Vec<CompactionCreate>>, cancels: Option<Vec<EventCancel>>, ignore_notes: Option<Vec<String>>, proposal_id: Option<String>, revision: Option<i64>, replies: Option<Vec<FeedbackReply>>, new_actions: Option<Vec<NewAction>>, new_people: Option<Vec<NewPerson>>, new_locations: Option<Vec<NewLocation>>, annotate_notes: Option<Vec<NoteAnnotation>>, fact_summaries: Option<Vec<FactSummary>>) -> Result<CompactionResult, ToolError> {
+pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpdate>>, creates: Option<Vec<CompactionCreate>>, cancels: Option<Vec<EventCancel>>, ignore_notes: Option<Vec<String>>, proposal_id: Option<String>, revision: Option<i64>, replies: Option<Vec<FeedbackReply>>, new_actions: Option<Vec<NewAction>>, new_people: Option<Vec<NewPerson>>, new_locations: Option<Vec<NewLocation>>, annotate_notes: Option<Vec<NoteAnnotation>>, fact_summaries: Option<Vec<FactSummary>>, new_goals: Option<Vec<NewGoal>>) -> Result<CompactionResult, ToolError> {
     let compactor = compactor(app)?;
     let (updates, creates, cancels) = (updates.unwrap_or_default(), creates.unwrap_or_default(), cancels.unwrap_or_default());
     let mut decisions: Vec<EventDecision> = Vec::new();
@@ -1385,6 +1428,7 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
         actions: new_actions.unwrap_or_default().iter().map(addition).collect(),
         people: new_people.unwrap_or_default().iter().map(addition).collect(),
         locations: new_locations.unwrap_or_default().iter().map(addition).collect(),
+        goals: new_goals.unwrap_or_default().iter().map(addition).collect(),
     };
     let replies: Vec<proposals::FeedbackReply> =
         replies.unwrap_or_default().into_iter().map(|r| proposals::FeedbackReply { feedback_id: r.feedback_id, reply: r.reply }).collect();
@@ -1421,10 +1465,10 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// the event's whole description, notes and all -- as the proposal
 /// shows it, edited: no notes are added to it. `notes`, what notes are for --
 /// each annotating the event it falls within, or the one named
-/// (`event_id`), or ignored; `additions`, settling an action, person or
-/// location the proposal adds (by its ref) now, without confirming the
-/// rest -- `create` it (with its name, a person's context or a
-/// location's hint corrected), say it's one that's `existing` (its id),
+/// (`event_id`), or ignored; `additions`, settling an action, person,
+/// location or goal the proposal adds (by its ref) now, without
+/// confirming the rest -- `create` it (with its name -- a goal's title --,
+/// a person's context or a location's hint corrected), say it's one that's `existing` (its id),
 /// or `drop` it from the events; and `as_planned` -- events (or keys)
 /// whose decisions to clear, notes to leave as Claude had them, and refs
 /// to leave unsettled. One created stays, whatever becomes of the
@@ -1475,7 +1519,7 @@ pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Op
         let additions: Vec<proposals::AdditionChoice> = additions
             .unwrap_or_default()
             .into_iter()
-            .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint })
+            .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint, status: a.status, deadline: a.deadline })
             .collect();
         let through = when_given(through.as_ref())?;
         let proposal = compactor.amend(&proposal_id, revision, decisions, as_planned.unwrap_or_default(), notes, additions, through)?;

@@ -19,6 +19,7 @@ mod facts;
 mod goals;
 mod judging;
 mod mornings;
+mod new_goals;
 mod prepare;
 mod proposal_notes;
 mod proposals;

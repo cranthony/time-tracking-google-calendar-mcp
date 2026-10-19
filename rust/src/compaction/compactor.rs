@@ -90,7 +90,7 @@
 //! since that's where the notes tab grows), for what that means for row
 //! numbers and ids.
 
-use super::additions::{check_additions, create_additions, resolve, Added, Additions, REF_PREFIX};
+use super::additions::{check_additions, create_additions, resolve, Added, Additions, Stores, REF_PREFIX};
 use super::fact_changes::{self, FactKeeping, ProposedSummary};
 use super::guide::{APPROVAL_RULE, DECISION_GUIDE};
 use super::judgments::{HabitJudgmentsDue, Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult};
@@ -587,7 +587,7 @@ impl NoteCompactor {
                 None => None,
             },
             goals: match &self.goals {
-                Some(g) => Some(hinted_goals(&g.all()?)),
+                Some(g) => Some(open_goals(&g.all()?)),
                 None => None,
             },
             previous_note,
@@ -598,6 +598,13 @@ impl NoteCompactor {
 
     pub fn prefetch(&self) -> anyhow::Result<()> {
         self.prefetch_tabs(true)
+    }
+
+    /// The stores additions go into: with the calendar's time zone if
+    /// `additions` adds goals.
+    fn stores(&self, additions: &Additions) -> anyhow::Result<Stores<'_>> {
+        let zone = if additions.goals.is_empty() { None } else { Some(self.calendar.client().get_time_zone()?) };
+        Ok(Stores { actions: self.actions.as_ref(), people: self.people.as_ref(), locations: self.locations.as_ref(), goals: self.goals.as_ref(), zone })
     }
 
     fn prefetch_tabs(&self, facts: bool) -> anyhow::Result<()> {
@@ -774,7 +781,7 @@ impl NoteCompactor {
         let edits: Vec<UserEdit> = edit_rows.iter().filter(|(row, _)| !replaced.contains(row)).map(|(_, e)| e.clone()).collect();
         let settled_additions = merge(&proposal, &[], &edits, MergeOptions::default()).settled;
         let additions = unsettled(&claude_additions, &settled_additions);
-        let problems = check_additions(&additions, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?;
+        let problems = check_additions(&additions, self.stores(&additions)?, &settled_ids(&settled_additions))?;
         if !problems.is_empty() {
             return Err(ce_of(&problems, "additions"));
         }
@@ -1124,6 +1131,7 @@ impl NoteCompactor {
             new_actions: list("actions"),
             new_people: list("people"),
             new_locations: list("locations"),
+            new_goals: list("goals"),
             settled_additions: merge(&proposal, &[], &edits, MergeOptions::default()).settled.values().cloned().collect(),
             user_edits: edits,
             feedback,
@@ -1417,9 +1425,20 @@ impl NoteCompactor {
         if !creating.is_empty() {
             let without: Vec<UserEdit> = new_edits.iter().filter(|e| e.event_id.as_ref().is_none_or(|id| !creating.contains(id))).cloned().collect();
             planned(&without)?;
-            for (choice, item) in &choices {
+            // Goals last, so the people they name are made first.
+            let mut ordered: Vec<&(AdditionChoice, Added)> = choices.iter().collect();
+            ordered.sort_by_key(|(_, item)| matches!(item, Added::Goal(_)));
+            for (choice, item) in ordered {
                 if choice.use_ == "create" {
-                    let id = self.create_addition(item, choice)?;
+                    // Settled so far: a create not made yet isn't.
+                    let made: Vec<UserEdit> = all_edits
+                        .iter()
+                        .chain(new_edits.iter())
+                        .filter(|e| !(e.action() == Some("addition") && e.edit.get("use").and_then(Value::as_str) == Some("create") && e.edit.get("id").is_none()))
+                        .cloned()
+                        .collect();
+                    let settled = merge(proposal_id, &[], &made, MergeOptions::default()).settled;
+                    let id = self.create_addition(item, choice, &settled, &claude_additions)?;
                     // The last edit for that ref, as Python's dict keeps it.
                     if let Some(edit) = new_edits.iter_mut().rev().find(|e| {
                         e.action() == Some("addition")
@@ -1511,6 +1530,10 @@ impl NoteCompactor {
             Some(l) => l.all()?.into_iter().map(|l| l.id.unwrap_or_else(|| "None".into())).collect(),
             None => Vec::new(),
         };
+        let there_goals = match &self.goals {
+            Some(g) => g.ids()?,
+            None => Vec::new(),
+        };
         let mut problems: Vec<String> = Vec::new();
         let mut found = Vec::new();
         for choice in choices {
@@ -1523,6 +1546,7 @@ impl NoteCompactor {
                 Added::Action(_) => &there_actions,
                 Added::Person(_) => &there_people,
                 Added::Location(_) => &there_locations,
+                Added::Goal(_) => &there_goals,
             };
             if choice.use_ == "existing" && !choice.id.as_ref().is_some_and(|i| there.contains(i)) {
                 problems.push(format!("additions: {} -- there's no {kind} {}", choice.ref_, repr_opt(choice.id.as_deref())));
@@ -1530,6 +1554,10 @@ impl NoteCompactor {
             }
             if choice.use_ != "existing" && choice.id.is_some() {
                 problems.push(format!("additions: {} -- only 'existing' takes an id", choice.ref_));
+                continue;
+            }
+            if (choice.status.is_some() || choice.deadline.is_some()) && !(choice.use_ == "create" && matches!(item, Added::Goal(_))) {
+                problems.push(format!("additions: {} -- only a goal made now takes a status or deadline", choice.ref_));
                 continue;
             }
             found.push((choice.clone(), item.clone()));
@@ -1540,7 +1568,10 @@ impl NoteCompactor {
         Ok(found)
     }
 
-    fn create_addition(&self, item: &Added, choice: &AdditionChoice) -> anyhow::Result<String> {
+    /// Create `item` now, as `choice` corrects it. A goal can't be
+    /// created while it names a person the proposal adds who isn't
+    /// settled yet (one dropped is left out of it).
+    fn create_addition(&self, item: &Added, choice: &AdditionChoice, settled: &Dict<AdditionSettled>, additions: &Additions) -> anyhow::Result<String> {
         let mut item = item.clone();
         match &mut item {
             Added::Action(a) => {
@@ -1565,9 +1596,26 @@ impl NoteCompactor {
                     l.item.hint = Some(hint.clone());
                 }
             }
+            Added::Goal(g) => {
+                if let Some(name) = &choice.name {
+                    g.item.title = Some(name.clone());
+                }
+                if let Some(deadline) = &choice.deadline {
+                    g.item.deadline = Some(deadline.clone());
+                }
+                if let Some(status) = choice.status {
+                    g.item.status = Some(status);
+                }
+                let new_people: Vec<&String> = additions.people.iter().map(|p| &p.ref_).collect();
+                let waiting: Vec<&String> = goals::people_of(&g.item).into_iter().filter(|p| new_people.contains(p) && settled.get(p.as_str()).is_none()).collect();
+                if !waiting.is_empty() {
+                    return Err(ce(format!("additions: {} names {}: settle them first", g.ref_, py::repr_list(&waiting)), "additions"));
+                }
+            }
         }
         let r = item.ref_().to_string();
-        let ids = create_additions(&Additions::of(item), self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?;
+        let added = Additions::of(item);
+        let ids = create_additions(&added, self.stores(&added)?, &settled_ids(settled))?;
         Ok(lookup(&ids, &r).unwrap_or_default())
     }
 
@@ -2027,7 +2075,11 @@ impl NoteCompactor {
             }
             if refs.is_none() {
                 let additions = Additions::from_json_dict(Some(&Value::Object(days[0].additions.clone())))?;
-                refs = Some(create_additions(&additions, self.actions.as_ref(), self.people.as_ref(), self.locations.as_ref())?);
+                let settled = match &days[0].meta {
+                    Some(meta) => settled_ids(&self.settled_of(&meta.proposal)?),
+                    None => Vec::new(),
+                };
+                refs = Some(create_additions(&additions, self.stores(&additions)?, &settled)?);
             }
             let id = days[i].id.clone();
             // The steps made are marked done together, once they're made
@@ -3132,6 +3184,11 @@ fn note_targets(annotations: &[(String, String)]) -> anyhow::Result<Vec<(String,
     Ok(targets)
 }
 
+/// Each settled ref with its id: none if dropped.
+fn settled_ids(settled: &Dict<AdditionSettled>) -> Vec<(String, Option<String>)> {
+    settled.values().map(|s| (s.ref_.clone(), s.id.clone())).collect()
+}
+
 fn claude_additions_of(days: &[JournalCompaction]) -> Map<String, Value> {
     if let Some(additions) = days[0].meta.as_ref().and_then(|m| m.claude_additions.clone()) {
         return additions;
@@ -3517,15 +3574,25 @@ pub fn new_event_id(compaction_id: &str, step: i64) -> String {
     format!("cmp{compaction_id}s{step:03}")
 }
 
-/// The open goals (inactive or active) with attribution hints -- the
-/// ones compaction may tag events with -- as `prepare` lists them.
-pub fn hinted_goals(all: &[goals::Goal]) -> Vec<Value> {
+/// The open goals (inactive or active), as `prepare` lists them: those
+/// with attribution hints are the ones compaction may tag events with;
+/// all of them, the ones a new goal mustn't repeat.
+pub fn open_goals(all: &[goals::Goal]) -> Vec<Value> {
     all.iter()
         .filter(|g| g.status.is_some_and(|s| !s.is_closed()))
         .filter(|g| g.id.as_deref().is_some_and(|i| !i.is_empty()))
-        .filter_map(|g| {
-            let hints = g.attribution_hints.as_deref().map(str::trim).filter(|h| !h.is_empty())?;
-            Some(json!({"id": g.id, "title": g.title, "path": goals::path(g, all), "attribution_hints": hints}))
+        .map(|g| {
+            let hints = g.attribution_hints.as_deref().map(str::trim).filter(|h| !h.is_empty());
+            let mut out = json!({"id": g.id, "title": g.title, "path": goals::path(g, all), "status": g.status, "deadline": g.deadline});
+            if let Some(hints) = hints {
+                out["attribution_hints"] = json!(hints);
+            }
+            for (key, ids) in [("with_ids", &g.with_ids), ("for_ids", &g.for_ids)] {
+                if let Some(ids) = ids.as_ref().filter(|i| !i.is_empty()) {
+                    out[key] = json!(ids);
+                }
+            }
+            out
         })
         .collect()
 }
