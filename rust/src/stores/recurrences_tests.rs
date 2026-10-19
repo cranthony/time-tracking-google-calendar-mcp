@@ -748,3 +748,20 @@ fn refuses_what_it_cant_write() {
         assert!(error.to_string().contains(message), "{message:?} isn't in: {error}");
     }
 }
+
+#[test]
+fn split_of_a_google_split_series_holds_while_calendars_feed_lags() {
+    let f = fixture(&split_by_google(MONDAYS));
+    f.event(GOOGLE_SPLIT);
+    let calendar = f.t.calendar_id.clone();
+    f.t.fake.with(|state| state.hold_feed(&calendar, true));
+
+    // The import ends the series as a side effect, which the feed lags.
+    let split = f.held(|r| r.split(&instance(GOOGLE_SPLIT, 26)));
+
+    assert!(split.is_ok(), "{split:?}");
+    let client = f.t.app.calendar_client().unwrap();
+    assert_eq!(client.fresh_event(GOOGLE_SPLIT).unwrap().recurrence, Some(strings(&["RRULE:FREQ=WEEKLY;BYDAY=MO;UNTIL=20261026T035959Z"])));
+    // Its copy from then on goes on, not cancelled as an undone split's is.
+    assert_eq!(client.fresh_event(&split_series_id(GOOGLE_SPLIT, &at(26, 9))).unwrap().status.as_deref(), Some("confirmed"));
+}

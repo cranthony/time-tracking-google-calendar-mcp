@@ -824,7 +824,11 @@ impl Recurrences {
             &format!("{base}_R{}@google.com", at.with_timezone(&Utc).format("%Y%m%dT%H%M%S")),
         )?;
         self.calendar.update_event(&Event { id: rest.id.clone(), status: Some("cancelled".into()), ..Default::default() })?;
-        let ended = self.calendar.get_event(&series_id)?;
+        // Asked of Calendar itself: the import ended the series as a side
+        // effect, which its answer doesn't carry, and Calendar's feed can
+        // lag it -- read as kept, it'd look not ended, and the split be
+        // undone with the series ended all the same.
+        let ended = self.calendar.client().fresh_event(&series_id)?;
         if !ends_before(&ended, at) {
             let rules = match &ended.recurrence {
                 Some(r) => py::repr_list(r),

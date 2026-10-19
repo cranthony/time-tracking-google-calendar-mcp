@@ -119,3 +119,20 @@ fn an_older_version_doesnt_replace_a_newer_one_kept() {
     store.keep(json!({"id": "walk", "etag": "\"4\""}));
     assert_eq!(store.events["walk"]["etag"], json!("\"4\""));
 }
+
+#[test]
+fn a_full_listing_drops_what_it_doesnt_list_but_what_the_server_just_wrote() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    for id in ["walk", "run", "made"] {
+        store.keep(json!({"id": id}));
+    }
+    store.writing(Some("made"));
+    store.wrote(Some("made"), Some("\"1\""), now);
+
+    store.keep_only(&["walk".to_string()].into(), now);
+
+    assert_eq!(store.events.keys().collect::<Vec<_>>(), ["made", "walk"]);
+    store.keep_only(&["walk".to_string()].into(), now + MARK_LAPSES);
+    assert_eq!(store.events.keys().collect::<Vec<_>>(), ["walk"]);
+}

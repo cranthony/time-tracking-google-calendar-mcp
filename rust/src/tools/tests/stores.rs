@@ -466,3 +466,24 @@ fn a_version_newer_than_whats_kept_is_asked_of_calendar_before_an_edit_is_refuse
     s.ok("update_event", json!({"updates": [{"event": {"id": "walked", "etag": now["etag"], "location": "Park"}}]}));
     assert_eq!(s.ok("get_event", json!({"id": "walked"}))["summary"], json!("Stroll"));
 }
+
+#[test]
+fn a_property_cleared_is_removed_though_whats_kept_lags_its_being_set() {
+    let s = Server::new();
+    s.seed(&[crate::testing::event_at("08:00-09:00").id("walked").summary("Walk").build()]);
+    let client = s.t.app.calendar_client().unwrap();
+    client.get_event("walked").unwrap();
+    let calendar = s.t.calendar_id.clone();
+    s.t.fake.with(|state| state.hold_feed(&calendar, true));
+    // Set where the feed hasn't brought it: kept, the event has no priority.
+    let key = format!("{}priority", crate::event::PREFIX);
+    s.t.fake.with(|state| state.edit_event_by_hand(&calendar, "walked", json!({"extendedProperties": {"private": {key.clone(): "3"}}})));
+
+    let cleared = crate::event::Event { id: Some("walked".into()), cleared: ["priority".to_string()].into(), ..Default::default() };
+    {
+        let _held = crate::write_lock::WRITE_LOCK.hold();
+        client.update_event(&cleared).unwrap();
+    }
+
+    assert_eq!(client.fresh_event("walked").unwrap().priority, None);
+}
