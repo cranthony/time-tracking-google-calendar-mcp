@@ -115,13 +115,15 @@ impl Refresh {
     }
 
     /// Run `work` from a thread of its own named `name`, every period this
-    /// says, while `app` lives.
+    /// says, while `app` lives -- each run in flight as a call is (see
+    /// allocator::CALLS), so what it frees is given back after.
     fn start(self, app: &Arc<App>, name: &str, work: fn(&App)) {
         let Refresh::Every(period) = self else { return };
         let app = Arc::downgrade(app);
         let spawned = std::thread::Builder::new().name(name.into()).spawn(move || loop {
             std::thread::sleep(period);
             let Some(app) = app.upgrade() else { return };
+            let _in_flight = crate::allocator::CALLS.start();
             work(&app);
         });
         if let Err(error) = spawned {
@@ -407,6 +409,7 @@ impl App {
             loop {
                 std::thread::sleep(wait);
                 let Some(app) = app.upgrade() else { return };
+                let _in_flight = crate::allocator::CALLS.start();
                 let renewed = (|| {
                     let _held = WRITE_LOCK.hold();
                     app.recurrences()?.renew(&crate::determinism::now())

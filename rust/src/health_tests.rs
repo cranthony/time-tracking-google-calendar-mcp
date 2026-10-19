@@ -474,6 +474,26 @@ fn the_heap_in_use_beyond_the_parts_kept_is_never_less_than_none() {
 }
 
 #[test]
+fn what_the_allocator_holds_free_is_at_most_what_of_it_is_resident() {
+    // After a trim: glibc still counts 45 MiB free, though only 18 of it
+    // is resident (anonymous, 40 MiB, less the 22 in use).
+    TEST_HEAP.with(|c| c.set(Some(Heap { in_use_kib: 22 * 1024, free_kib: 45 * 1024 })));
+    TEST_RSS_ANON.with(|c| c.set(Some(40 * 1024)));
+    TEST_THREADS.with(|c| c.set(None));
+
+    let parts = process_parts(&vec![("Calendar".into(), 14 * 1024)]);
+
+    assert_eq!(parts, vec![(HEAP_UNTRACKED.to_string(), 8 * 1024), (ALLOCATOR_FREE.to_string(), 18 * 1024)]);
+
+    // As it's resident, all of it; and never less than none.
+    TEST_RSS_ANON.with(|c| c.set(Some(80 * 1024)));
+    assert_eq!(process_parts(&Vec::new())[1], (ALLOCATOR_FREE.to_string(), 45 * 1024));
+    TEST_RSS_ANON.with(|c| c.set(Some(20 * 1024)));
+    assert_eq!(process_parts(&Vec::new())[1], (ALLOCATOR_FREE.to_string(), 0));
+    TEST_RSS_ANON.with(|c| c.set(None));
+}
+
+#[test]
 fn without_the_allocator_or_threads_there_are_no_process_parts() {
     TEST_HEAP.with(|c| c.set(None));
     TEST_THREADS.with(|c| c.set(None));
@@ -503,6 +523,7 @@ fn glibc_and_proc_give_the_heap_and_the_thread_count() {
     let heap = glibc_heap().expect("mallinfo2");
     assert!(heap.in_use_kib >= 4096 && heap.free_kib >= 0, "{heap:?}");
     assert!(status_field("Threads:").unwrap() >= 1);
+    assert!(status_field("RssAnon:").unwrap() >= 4096);
     drop(kept);
 }
 
