@@ -695,7 +695,11 @@ async fn mcp_post(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: B
     let handled = {
         let shared = shared.clone();
         let session_id = session_id.clone();
+        // In flight until the closure ends (or is dropped unrun): the last
+        // to end trims the allocator.
+        let in_flight = crate::allocator::CALLS.start();
         tokio::task::spawn_blocking(move || {
+            let _in_flight = in_flight;
             let mut session = {
                 let sessions = shared.sessions.lock().unwrap_or_else(|e| e.into_inner());
                 crate::mcp::Session { initialized: sessions.get(&session_id).is_some_and(|s| s.initialized) }
