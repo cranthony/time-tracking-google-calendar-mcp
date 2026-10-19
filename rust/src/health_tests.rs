@@ -439,6 +439,74 @@ fn get_health_gives_each_samples_parts_and_the_rest_of_the_server() {
 }
 
 #[test]
+fn get_health_splits_the_heap_and_gives_the_thread_count() {
+    let t = test_app();
+    TEST_CLOCK_MS.with(|c| c.set(Some(1_791_000_000_000)));
+    TEST_RSS.with(|c| c.set(Some(Some(10 * 1024))));
+    TEST_HEAP.with(|c| c.set(Some(Heap { in_use_kib: 5 * 1024, free_kib: 2 * 1024 })));
+    TEST_THREADS.with(|c| c.set(Some(17)));
+    t.app.health.set_parts_source(Arc::new(|| vec![("Calendar".into(), 2048), ("Sheet: Actions".into(), 1024)]));
+    t.app.health.sample_memory();
+
+    let Ok(report) = crate::tools::run(&t.app, "get_health", json!({})).map(|o| o.0) else { panic!("get_health failed") };
+
+    assert_eq!(
+        report["memory"][0]["parts"],
+        json!([
+            {"name": "Calendar", "mib": 2.0},
+            {"name": "Sheet: Actions", "mib": 1.0},
+            {"name": "Heap in use (untracked)", "mib": 2.0},
+            {"name": "Allocator: free but held", "mib": 2.0},
+            {"name": "Rest of server", "mib": 3.0},
+        ])
+    );
+    assert_eq!(report["memory"][0]["threads"], json!(17));
+}
+
+#[test]
+fn the_heap_in_use_beyond_the_parts_kept_is_never_less_than_none() {
+    TEST_HEAP.with(|c| c.set(Some(Heap { in_use_kib: 1000, free_kib: 300 })));
+    TEST_THREADS.with(|c| c.set(None));
+
+    let parts = process_parts(&vec![("Calendar".into(), 1200)]);
+
+    assert_eq!(parts, vec![(HEAP_UNTRACKED.to_string(), 0), (ALLOCATOR_FREE.to_string(), 300)]);
+}
+
+#[test]
+fn without_the_allocator_or_threads_there_are_no_process_parts() {
+    TEST_HEAP.with(|c| c.set(None));
+    TEST_THREADS.with(|c| c.set(None));
+
+    assert_eq!(process_parts(&vec![("Calendar".into(), 1200)]), Vec::new());
+}
+
+#[test]
+fn the_thread_count_is_kept_across_restarts_with_the_parts() {
+    let before = recorder();
+    TEST_HEAP.with(|c| c.set(Some(Heap { in_use_kib: 4096, free_kib: 1024 })));
+    TEST_THREADS.with(|c| c.set(Some(23)));
+    before.sample_memory();
+
+    let after = HealthRecorder::new();
+    after.merge(&before.take_dirty().unwrap());
+
+    let parts = after.memory_parts().into_values().next().unwrap();
+    assert!(parts.contains(&(THREADS.to_string(), 23)), "{parts:?}");
+    assert!(parts.contains(&(ALLOCATOR_FREE.to_string(), 1024)), "{parts:?}");
+}
+
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+#[test]
+fn glibc_and_proc_give_the_heap_and_the_thread_count() {
+    let kept: Vec<u8> = vec![1; 4 << 20];
+    let heap = glibc_heap().expect("mallinfo2");
+    assert!(heap.in_use_kib >= 4096 && heap.free_kib >= 0, "{heap:?}");
+    assert!(status_field("Threads:").unwrap() >= 1);
+    drop(kept);
+}
+
+#[test]
 fn the_app_measures_each_kept_tab_and_the_kept_calendar() {
     let t = test_app();
     t.app.actions().unwrap().all().unwrap();

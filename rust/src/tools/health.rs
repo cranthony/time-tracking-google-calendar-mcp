@@ -35,14 +35,18 @@ pub struct LatencySummary {
 /// call, and after each
 /// background refresh of what the server keeps -- and, when they were
 /// measured, what made it up (`parts`), to stack: each Sheet tab kept
-/// ("Sheet: <title>"), the calendar kept ("Calendar"), and "Rest of
-/// server". The parts kept are estimates of what's held; the rest is the
-/// total less them.
+/// ("Sheet: <title>"), the calendar kept ("Calendar"), on Linux the rest
+/// of the heap in use ("Heap in use (untracked)") and what the allocator
+/// holds free but hasn't given back ("Allocator: free but held"), and
+/// "Rest of server" (the binary, thread stacks and the like). The parts
+/// kept are estimates of what's held; the rest is the total less the
+/// others. `threads`: how many threads the server ran then (Linux only).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct MemorySample {
     pub at: String,
     pub rss_mib: Number,
     pub parts: Option<Vec<MemoryPart>>,
+    pub threads: Option<i64>,
 }
 
 /// One part of the server's memory at a sample, in MiB.
@@ -170,17 +174,21 @@ pub fn get_health(app: &App, tool_name: Option<String>, #[schema(default = "true
     let mib: Vec<f64> = memory.iter().map(|m| round1(m.rss_kib as f64 / 1024.0)).collect();
     let parts_of = |m: &crate::health::MemorySample| -> Value {
         let Some(kept) = parts.get(&m.at_ms) else { return Value::Null };
+        let kept: Vec<&(String, i64)> = kept.iter().filter(|(name, _)| name != crate::health::THREADS).collect();
         let held: i64 = kept.iter().map(|(_, kib)| kib).sum();
         let mut out: Vec<Value> = kept.iter().map(|(name, kib)| json!({"name": name, "mib": round1(*kib as f64 / 1024.0)})).collect();
         out.push(json!({"name": crate::health::REST, "mib": round1((m.rss_kib - held).max(0) as f64 / 1024.0)}));
         Value::Array(out)
+    };
+    let threads_of = |m: &crate::health::MemorySample| -> Option<i64> {
+        parts.get(&m.at_ms)?.iter().find(|(name, _)| name == crate::health::THREADS).map(|(_, n)| *n)
     };
     let min = mib.iter().copied().fold(None, |a: Option<f64>, b| Some(a.map_or(b, |a| a.min(b))));
     let max = mib.iter().copied().fold(None, |a: Option<f64>, b| Some(a.map_or(b, |a| a.max(b))));
     from_store(json!({
         "tools": tools,
         "memory": if samples {
-            Value::Array(memory.iter().zip(&mib).map(|(m, v)| json!({"at": iso(m.at_ms), "rss_mib": v, "parts": parts_of(m)})).collect())
+            Value::Array(memory.iter().zip(&mib).map(|(m, v)| json!({"at": iso(m.at_ms), "rss_mib": v, "parts": parts_of(m), "threads": threads_of(m)})).collect())
         } else {
             Value::Null
         },

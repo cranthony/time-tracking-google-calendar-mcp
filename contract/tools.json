@@ -24726,7 +24726,7 @@
           "type": "object"
         },
         "MemorySample": {
-          "description": "The server's resident memory (RSS), in MiB, at its highest in one\ninterval (`memory_interval_seconds`; UTC) -- sampled after each tool\ncall, and after each\nbackground refresh of what the server keeps -- and, when they were\nmeasured, what made it up (`parts`), to stack: each Sheet tab kept\n(\"Sheet: <title>\"), the calendar kept (\"Calendar\"), and \"Rest of\nserver\". The parts kept are estimates of what's held; the rest is the\ntotal less them.",
+          "description": "The server's resident memory (RSS), in MiB, at its highest in one\ninterval (`memory_interval_seconds`; UTC) -- sampled after each tool\ncall, and after each\nbackground refresh of what the server keeps -- and, when they were\nmeasured, what made it up (`parts`), to stack: each Sheet tab kept\n(\"Sheet: <title>\"), the calendar kept (\"Calendar\"), on Linux the rest\nof the heap in use (\"Heap in use (untracked)\") and what the allocator\nholds free but hasn't given back (\"Allocator: free but held\"), and\n\"Rest of server\" (the binary, thread stacks and the like). The parts\nkept are estimates of what's held; the rest is the total less the\nothers. `threads`: how many threads the server ran then (Linux only).",
           "properties": {
             "at": {
               "type": "string"
@@ -24740,6 +24740,12 @@
               },
               "type": [
                 "array",
+                "null"
+              ]
+            },
+            "threads": {
+              "type": [
+                "integer",
                 "null"
               ]
             }
