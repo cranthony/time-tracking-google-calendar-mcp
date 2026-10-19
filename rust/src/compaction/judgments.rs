@@ -503,9 +503,18 @@ impl Judging {
             }
         }
         for event_id in events {
-            let existing = self.client.get_event(&event_id)?.judgments;
-            let patch = Event { id: Some(event_id.clone()), judgments: Some(merged(existing.as_ref(), requests, judgments, &event_id)), ..Default::default() };
-            self.client.update_event(&patch)?;
+            // Merged into the judgments as read, and written onto that
+            // version, so none made since -- what's kept lagging -- is lost.
+            crate::google::calendar::retry_stale(|| {
+                let read = self.client.get_event(&event_id)?;
+                let patch = Event {
+                    id: Some(event_id.clone()),
+                    judgments: Some(merged(read.judgments.as_ref(), requests, judgments, &event_id)),
+                    etag: read.etag.clone(),
+                    ..Default::default()
+                };
+                self.client.update_event(&patch)
+            })?;
         }
         Ok(judgments.len())
     }

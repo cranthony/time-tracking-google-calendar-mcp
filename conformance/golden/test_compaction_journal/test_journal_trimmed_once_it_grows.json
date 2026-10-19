@@ -23859,7 +23859,7 @@
      "dateTime": "2026-08-24T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000024\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f43e48437258cfca35d17613c4",
    "query": {}
@@ -23871,7 +23871,7 @@
      "dateTime": "2026-08-25T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000036\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a3ed657f83d6a4bc6c3589c096",
    "query": {}
@@ -23883,7 +23883,7 @@
      "dateTime": "2026-08-26T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000048\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/33f4464c132b378df2ca546d70",
    "query": {}
@@ -23895,7 +23895,7 @@
      "dateTime": "2026-08-27T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000060\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/33adbcc0c398fd9e9158125506",
    "query": {}
@@ -23907,7 +23907,7 @@
      "dateTime": "2026-08-28T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000072\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/3cd412ea87ccc699f190862e30",
    "query": {}
@@ -23919,7 +23919,7 @@
      "dateTime": "2026-08-29T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000084\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/61c1fcf1ecd63e72eea09bb777",
    "query": {}
@@ -23931,7 +23931,7 @@
      "dateTime": "2026-08-30T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000096\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/557f6007edbf6555669858a580",
    "query": {}
@@ -24497,7 +24497,7 @@
      "dateTime": "2026-08-31T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000108\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/8044c6c1992cccf5737f016bfc",
    "query": {}
@@ -24509,7 +24509,7 @@
      "dateTime": "2026-09-01T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000120\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/902d5cb14fc1935a4d0ba1de2b",
    "query": {}
@@ -24521,7 +24521,7 @@
      "dateTime": "2026-09-02T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000132\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/bca19665a987a2530bbee091f7",
    "query": {}
@@ -24533,7 +24533,7 @@
      "dateTime": "2026-09-03T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000144\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/d5198df5e8bad1af442cd4e905",
    "query": {}
@@ -24545,7 +24545,7 @@
      "dateTime": "2026-09-04T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000156\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/54a6268656f2d658c278570bb9",
    "query": {}
@@ -24557,7 +24557,7 @@
      "dateTime": "2026-09-05T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000168\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/fb15e41e1875134814b7a06047",
    "query": {}
@@ -24569,7 +24569,7 @@
      "dateTime": "2026-09-06T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000180\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/662cb70716663353bdc8b0cb07",
    "query": {}
@@ -25135,7 +25135,7 @@
      "dateTime": "2026-09-07T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000192\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/528294cd7174a28dd8ccd7a048",
    "query": {}
@@ -25147,7 +25147,7 @@
      "dateTime": "2026-09-08T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000204\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/7422f8c4aa08930b9a4079c2bb",
    "query": {}
@@ -25159,7 +25159,7 @@
      "dateTime": "2026-09-09T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000216\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/cd55a03a063ae113287a6c7fcf",
    "query": {}
@@ -25171,7 +25171,7 @@
      "dateTime": "2026-09-10T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000228\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/6d2aae023606b1d28b03543aba",
    "query": {}
@@ -25183,7 +25183,7 @@
      "dateTime": "2026-09-11T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000240\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/62dfaca966a19e9344ba6933cd",
    "query": {}
@@ -25195,7 +25195,7 @@
      "dateTime": "2026-09-12T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000252\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/0aafaacd63ba9dd896a281dd33",
    "query": {}
@@ -25207,7 +25207,7 @@
      "dateTime": "2026-09-13T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000264\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/2fdb5000ef83e30e92fa5d0ade",
    "query": {}
@@ -25773,7 +25773,7 @@
      "dateTime": "2026-09-14T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000276\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/0dc10b4a2fe79a51a631a48ef6",
    "query": {}
@@ -25785,7 +25785,7 @@
      "dateTime": "2026-09-15T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000288\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/632818bdfdd00c9d4200cec407",
    "query": {}
@@ -25797,7 +25797,7 @@
      "dateTime": "2026-09-16T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000300\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/24e4ca6f96625a1704dcffdec6",
    "query": {}
@@ -25809,7 +25809,7 @@
      "dateTime": "2026-09-17T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000312\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a9c68bc18eda748deb0bd467c3",
    "query": {}
@@ -25821,7 +25821,7 @@
      "dateTime": "2026-09-18T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000324\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f2f040fa257fda0b06a8fdeb52",
    "query": {}
@@ -25833,7 +25833,7 @@
      "dateTime": "2026-09-19T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000336\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/2713fb3b6c811d0e9c525f556d",
    "query": {}
@@ -25845,7 +25845,7 @@
      "dateTime": "2026-09-20T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000348\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/38e23a1347c7f88e6128f96dfb",
    "query": {}
@@ -26454,7 +26454,7 @@
      "dateTime": "2026-09-21T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000360\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/7a9538c798f7052b7f7f931324",
    "query": {}
@@ -26466,7 +26466,7 @@
      "dateTime": "2026-09-22T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000372\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/1450d55c1bc297502efa55417b",
    "query": {}
@@ -26478,7 +26478,7 @@
      "dateTime": "2026-09-23T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000384\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/944cff5855486f114303007197",
    "query": {}
@@ -26490,7 +26490,7 @@
      "dateTime": "2026-09-24T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000396\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/3ee8dc0c10fdd14451a19e40da",
    "query": {}
@@ -26502,7 +26502,7 @@
      "dateTime": "2026-09-25T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000408\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/40d711ccc304c686a822908c95",
    "query": {}
@@ -26514,7 +26514,7 @@
      "dateTime": "2026-09-26T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000420\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/312e212cce707063c0df33c3b5",
    "query": {}
@@ -26526,7 +26526,7 @@
      "dateTime": "2026-09-27T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000432\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/42a8860bd1ae1046b1ea3b352e",
    "query": {}
@@ -27092,7 +27092,7 @@
      "dateTime": "2026-09-28T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000444\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/24bee5bac133017d0f44c92f22",
    "query": {}
@@ -27104,7 +27104,7 @@
      "dateTime": "2026-09-29T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000456\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/1c38b955ffbef09b70fb5e5fe8",
    "query": {}
@@ -27116,7 +27116,7 @@
      "dateTime": "2026-09-30T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000468\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a5215bf7071c32a36a5063b3ca",
    "query": {}
@@ -27128,7 +27128,7 @@
      "dateTime": "2026-10-01T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000480\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f33a59cd0fbc940522046c9b74",
    "query": {}
@@ -27140,7 +27140,7 @@
      "dateTime": "2026-10-02T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000492\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/66685e7f7f3e5183a8a05c9106",
    "query": {}
@@ -27152,7 +27152,7 @@
      "dateTime": "2026-10-03T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000504\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a0b91890619f3089c8a7163e46",
    "query": {}
@@ -27164,7 +27164,7 @@
      "dateTime": "2026-10-04T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000516\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/f24d88643566080bccc2bbb471",
    "query": {}

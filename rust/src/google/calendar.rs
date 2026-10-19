@@ -274,6 +274,19 @@ impl CalendarClient {
     }
 
     /// `fresh_event`, as Calendar gives it.
+    /// After Calendar refused a write to `event_id` as made to an older
+    /// version of it (a 412): read it from Calendar itself, and its series'
+    /// master for an instance kept only as that, so what's kept has the
+    /// version that refused it -- and the write, made again on what's read
+    /// next, is made on that (see `retry_stale`).
+    fn refresh_stale(&self, event_id: &str) {
+        if let Ok(event) = self.fresh_event_resource(event_id) {
+            if let Some(master) = event["recurringEventId"].as_str().filter(|_| !self.store(|store| store.events.contains_key(event_id))) {
+                let _ = self.fresh_event_resource(master);
+            }
+        }
+    }
+
     fn fresh_event_resource(&self, event_id: &str) -> anyhow::Result<Value> {
         let event = self.call("GET", &self.event_path(event_id), &[], None)?;
         self.store(|store| {
@@ -478,9 +491,15 @@ impl CalendarClient {
             }
             answers
         };
-        for (writing, answer) in writing.iter_mut().zip(&answers) {
-            if let Ok(event) = answer {
-                writing.answered(event);
+        for ((writing, write), answer) in writing.iter_mut().zip(writes).zip(&answers) {
+            match answer {
+                Ok(event) => writing.answered(event),
+                Err(error) if is_stale(error) => {
+                    if let Some(id) = Self::written_by(write) {
+                        self.refresh_stale(&id);
+                    }
+                }
+                Err(_) => {}
             }
         }
         Ok(answers)
@@ -563,7 +582,11 @@ impl CalendarClient {
         // Built first: building it may read the event, perhaps from memory.
         let request = self.update_event_request(event)?;
         let mut writing = self.writing_event("CalendarClient.update_event", Self::written_by(&request).as_deref())?;
-        let updated = self.send(&request)?;
+        let updated = self.send(&request).inspect_err(|error| {
+            if is_stale(error) {
+                self.refresh_stale(event.id.as_deref().unwrap_or_default());
+            }
+        })?;
         writing.answered(&updated);
         Event::from_api(&updated)
     }
@@ -833,6 +856,31 @@ pub fn python_splitlines(text: &str) -> Vec<String> {
         lines.push(current);
     }
     lines
+}
+
+/// Whether `error` is Calendar refusing a write as made to an older
+/// version of the event than it has (a 412: the etag given isn't its).
+pub fn is_stale(error: &anyhow::Error) -> bool {
+    status_of(error) == Some(412)
+}
+
+/// How many times `retry_stale` makes a write.
+pub const STALE_TRIES: usize = 3;
+
+/// Run `attempt` -- which reads what it changes as kept, makes its change
+/// from that, and writes it onto the version it read (its etag) -- again
+/// while Calendar refuses the write as made to an older version: what's
+/// kept lagging Calendar's feed, or a change made meanwhile. Each refusal
+/// has the event read from Calendar itself (see `update_event`), so the
+/// next attempt reads it as it is. At most STALE_TRIES attempts.
+pub fn retry_stale<T>(mut attempt: impl FnMut() -> anyhow::Result<T>) -> anyhow::Result<T> {
+    let mut tries = 1;
+    loop {
+        match attempt() {
+            Err(error) if is_stale(&error) && tries < STALE_TRIES => tries += 1,
+            done => return done,
+        }
+    }
 }
 
 pub fn not_found(error: &anyhow::Error) -> bool {

@@ -1695,7 +1695,7 @@
      "RRULE:FREQ=DAILY;INTERVAL=2;UNTIL=20261021T035959Z"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000004\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}
@@ -1746,7 +1746,7 @@
      "RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20261116T045900Z;WKST=SU"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000021\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}
@@ -1797,7 +1797,7 @@
      "RRULE:FREQ=MONTHLY;BYMONTHDAY=5,20;COUNT=4"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000022\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}
@@ -1848,7 +1848,7 @@
      "RRULE:FREQ=MONTHLY;BYDAY=-1FR;COUNT=3"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000023\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}
@@ -1899,7 +1899,7 @@
      "RRULE:FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=5;COUNT=2"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000024\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}
@@ -1952,7 +1952,7 @@
      "RDATE;TZID=America/New_York:20261011T090000"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000025\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}

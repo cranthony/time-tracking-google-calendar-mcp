@@ -4047,7 +4047,7 @@
    "body": {
     "status": "cancelled"
    },
-   "if_match": null,
+   "if_match": "\"0000000000000032\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/ce6e21fbbbbbae2bda5a8a102b",
    "query": {}
@@ -4059,7 +4059,7 @@
      "dateTime": "2026-10-05T12:40:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000020\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
    "query": {}
@@ -4071,7 +4071,7 @@
      "dateTime": "2026-10-06T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000036\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a3ed657f83d6a4bc6c3589c096",
    "query": {}
@@ -4347,7 +4347,7 @@
      "dateTime": "2026-10-06T19:20:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000036\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/a3ed657f83d6a4bc6c3589c096",
    "query": {}

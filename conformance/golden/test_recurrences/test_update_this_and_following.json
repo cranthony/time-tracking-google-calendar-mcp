@@ -1504,6 +1504,13 @@
    "body": null,
    "if_match": null,
    "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
    "query": {}
   },
@@ -1571,7 +1578,7 @@
      "RRULE:FREQ=DAILY;UNTIL=20261011T125959Z"
     ]
    },
-   "if_match": null,
+   "if_match": "\"0000000000000004\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
    "query": {}
@@ -1588,7 +1595,7 @@
     },
     "summary": "Late standup"
    },
-   "if_match": null,
+   "if_match": "\"0000000000000026\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/p2j09g9r1eu4bkhvqub3cih2c3t7shfe",
    "query": {}

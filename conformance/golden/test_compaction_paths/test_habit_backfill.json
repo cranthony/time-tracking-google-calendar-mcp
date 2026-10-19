@@ -3013,7 +3013,7 @@
    "body": {
     "description": "Notes:\n- 08:00 work"
    },
-   "if_match": null,
+   "if_match": "\"0000000000000030\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/95245adbc9680701fe3defce4d",
    "query": {}
@@ -3234,7 +3234,7 @@
      }
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000081\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/c5aefcb1a0e717b26c9d3d4839",
    "query": {}

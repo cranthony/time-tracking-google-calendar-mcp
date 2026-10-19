@@ -6075,7 +6075,7 @@
      "dateTime": "2026-10-05T07:45:00-04:00"
     }
    },
-   "if_match": null,
+   "if_match": "\"0000000000000016\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/d820ae0f22570a19812dcb76c2",
    "query": {}
@@ -6085,7 +6085,7 @@
    "body": {
     "description": "Notes:\n- 09:20 deep work, then a call"
    },
-   "if_match": null,
+   "if_match": "\"0000000000000018\"",
    "method": "PATCH",
    "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/3bc8a594c0be6dfabc4993e74e",
    "query": {}

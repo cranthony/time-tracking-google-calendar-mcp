@@ -611,53 +611,65 @@ impl Recurrences {
             earlier = before;
             target = later;
         }
-        let mut patch = Event { id: target.id.clone(), cleared: changes.cleared.clone(), ..Default::default() };
-        for name in EDITABLE {
-            match name {
-                "summary" => patch.summary = changes.summary.clone(),
-                "start" => patch.start = changes.start,
-                "end" => patch.end = changes.end,
-                "description" => patch.description = changes.description.clone(),
-                "location" => patch.location = changes.location.clone(),
-                "priority" => patch.priority = changes.priority,
-                "action_ids" => patch.action_ids = changes.action_ids.clone(),
-                "goals" => patch.goals = changes.goals.clone(),
-                _ => patch.facts = changes.facts.clone(),
-            }
-        }
-        if target.id != series.id {
-            if let Some(start) = patch.start {
-                patch.start = Some(target.start() + (start - series.start()));
-            }
-            if let Some(end) = patch.end {
-                patch.end = Some(target.end() + (end - series.end()));
-            }
-        }
+        // Made from the series (or its part from `starting_at`) as read, and
+        // written onto that version: one changed since -- what's kept
+        // lagging -- is read again, from Calendar, and the patch made anew.
         let target_id = target.id.clone().unwrap_or_default();
-        if SPLIT_BY_GOOGLE.is_match(&target_id) {
-            if repeat.is_some() {
-                return Err(refused(format!(
-                    "Series {target_id} was split from another in Google Calendar, which won't change its rules (it would delete the series instead): change them from one of its later events on"
-                )));
+        let mut read = Some(target);
+        let updated = crate::google::calendar::retry_stale(|| {
+            let target = match read.take() {
+                Some(target) => target,
+                None => self.calendar.get_event(&target_id)?,
+            };
+            let mut patch = Event { id: target.id.clone(), cleared: changes.cleared.clone(), ..Default::default() };
+            for name in EDITABLE {
+                match name {
+                    "summary" => patch.summary = changes.summary.clone(),
+                    "start" => patch.start = changes.start,
+                    "end" => patch.end = changes.end,
+                    "description" => patch.description = changes.description.clone(),
+                    "location" => patch.location = changes.location.clone(),
+                    "priority" => patch.priority = changes.priority,
+                    "action_ids" => patch.action_ids = changes.action_ids.clone(),
+                    "goals" => patch.goals = changes.goals.clone(),
+                    _ => patch.facts = changes.facts.clone(),
+                }
             }
-            if patch.start.is_some_and(|s| s != target.start()) {
-                return Err(refused(format!(
-                    "Series {target_id} was split from another in Google Calendar, which won't move its start: move it from one of its later events on"
-                )));
+            if target.id != series.id {
+                if let Some(start) = patch.start {
+                    patch.start = Some(target.start() + (start - series.start()));
+                }
+                if let Some(end) = patch.end {
+                    patch.end = Some(target.end() + (end - series.end()));
+                }
             }
-        }
-        let zone_name = match &target.time_zone {
-            Some(zone) if !zone.is_empty() => zone.clone(),
-            _ => self.time_zone()?.name().to_string(),
-        };
-        if patch.start.is_some() || patch.end.is_some() {
-            patch.time_zone = Some(zone_name.clone());
-        }
-        if let Some(repeat) = repeat {
-            let zone: Tz = zone_name.parse().map_err(|_| anyhow::anyhow!("No time zone found with key {zone_name}"))?;
-            patch.recurrence = Some(repeat.to_rules(&zone).map_err(|e| refused(e.to_string()))?);
-        }
-        let updated = self.calendar.update_event(&patch)?;
+            let target_id = target.id.clone().unwrap_or_default();
+            if SPLIT_BY_GOOGLE.is_match(&target_id) {
+                if repeat.is_some() {
+                    return Err(refused(format!(
+                        "Series {target_id} was split from another in Google Calendar, which won't change its rules (it would delete the series instead): change them from one of its later events on"
+                    )));
+                }
+                if patch.start.is_some_and(|s| s != target.start()) {
+                    return Err(refused(format!(
+                        "Series {target_id} was split from another in Google Calendar, which won't move its start: move it from one of its later events on"
+                    )));
+                }
+            }
+            let zone_name = match &target.time_zone {
+                Some(zone) if !zone.is_empty() => zone.clone(),
+                _ => self.time_zone()?.name().to_string(),
+            };
+            if patch.start.is_some() || patch.end.is_some() {
+                patch.time_zone = Some(zone_name.clone());
+            }
+            if let Some(repeat) = repeat {
+                let zone: Tz = zone_name.parse().map_err(|_| anyhow::anyhow!("No time zone found with key {zone_name}"))?;
+                patch.recurrence = Some(repeat.to_rules(&zone).map_err(|e| refused(e.to_string()))?);
+            }
+            patch.etag = target.etag.clone();
+            self.calendar.update_event(&patch)
+        })?;
         let mut out = vec![updated];
         out.extend(earlier);
         Ok(out)
@@ -694,7 +706,10 @@ impl Recurrences {
             }
             return Err(refused(format!("Event {event_id} isn't part of a recurring series")));
         };
-        let series = self.calendar.get_event(&parent)?;
+        // Asked of Calendar itself: the series is copied from it into its
+        // part from `at` on, a create no version guards, so a copy of what's
+        // kept, lagging, would carry rules or fields changed since.
+        let series = self.calendar.client().fresh_event(&parent)?;
         let at = instance.original_start.unwrap_or(instance.start());
         if at <= series.start() {
             return Ok((None, series));
@@ -798,11 +813,22 @@ impl Recurrences {
     fn end_before(&self, series: &Event, at: &Moment) -> anyhow::Result<Event> {
         let series_id = series.id.clone().unwrap_or_default();
         let Some(caps) = SPLIT_BY_GOOGLE.captures(&series_id) else {
-            let (rules, index, parts) = rrule(series).map_err(|e| refused(e.to_string()))?;
-            return self.calendar.update_event(&Event {
-                id: series.id.clone(),
-                recurrence: Some(with_rule(&rules, index, &ending_before(&parts, at))),
-                ..Default::default()
+            // Its rules as read, ended, written onto that version: rules
+            // changed since -- what's kept lagging -- are read again, from
+            // Calendar, and ended anew.
+            let mut read = Some(series.clone());
+            return crate::google::calendar::retry_stale(|| {
+                let series = match read.take() {
+                    Some(series) => series,
+                    None => self.calendar.get_event(&series_id)?,
+                };
+                let (rules, index, parts) = rrule(&series).map_err(|e| refused(e.to_string()))?;
+                self.calendar.update_event(&Event {
+                    id: series.id.clone(),
+                    recurrence: Some(with_rule(&rules, index, &ending_before(&parts, at))),
+                    etag: series.etag.clone(),
+                    ..Default::default()
+                })
             });
         };
         let base = caps["base"].to_string();
