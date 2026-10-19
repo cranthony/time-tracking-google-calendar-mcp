@@ -30,9 +30,12 @@ pub struct Writing {
 }
 
 impl Writing {
-    /// Note Calendar's answer to the write: the event as it made it.
+    /// Note Calendar's answer to the write -- the event as it made it --
+    /// and keep it, so what's read next has it though Calendar's feed
+    /// doesn't yet.
     fn answered(&mut self, event: &Value) {
         self.etag = event["etag"].as_str().map(str::to_string);
+        self.client.store(|store| store.keep(event.clone()));
     }
 }
 
@@ -263,9 +266,17 @@ impl CalendarClient {
         Event::from_api(&self.get_event_resource(event_id)?)
     }
 
-    /// The event `event_id` as Calendar has it now: asked of Calendar.
+    /// The event `event_id` as Calendar has it now: asked of Calendar, and
+    /// kept (unless it's an instance of a series kept only as its master,
+    /// which would be taken for an exception).
     pub fn fresh_event(&self, event_id: &str) -> anyhow::Result<Event> {
-        Event::from_api(&self.call("GET", &self.event_path(event_id), &[], None)?)
+        let event = self.call("GET", &self.event_path(event_id), &[], None)?;
+        self.store(|store| {
+            if event["recurringEventId"].is_null() || store.events.contains_key(event_id) {
+                store.keep(event.clone());
+            }
+        });
+        Event::from_api(&event)
     }
 
     /// Event `event_id` as kept -- an instance of a series made from its
@@ -349,9 +360,7 @@ impl CalendarClient {
                     store.outside.push(item.clone());
                 }
                 store.brought(&item);
-                if let Some(id) = item["id"].as_str() {
-                    store.events.insert(id.to_string(), item);
-                }
+                store.keep(item);
             }
             store.token = Some(changes.token);
             store.zone = changes.zone.or(store.zone);

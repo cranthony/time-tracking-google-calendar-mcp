@@ -303,8 +303,14 @@ impl EventChanges {
         let mut again: Vec<Event> = Vec::new();
         let fresh = |event_id: &str, expected: Option<&str>, done: &dyn Fn(&Event) -> bool| -> anyhow::Result<Option<Event>> {
             let Some(expected) = expected else { return Ok(None) };
-            match self.client.get_event(event_id).ok() {
-                Some(now) if !now.is_cancelled() && now.etag.0.as_deref() == Some(expected) => Ok(None),
+            let at_expected = |now: &Event| !now.is_cancelled() && now.etag.0.as_deref() == Some(expected);
+            if self.client.get_event(event_id).ok().is_some_and(|now| at_expected(&now)) {
+                return Ok(None);
+            }
+            // What's kept may lag Calendar (its feed can be behind a write
+            // already made): ask Calendar itself before refusing.
+            match self.client.client().fresh_event(event_id).ok() {
+                Some(now) if at_expected(&now) => Ok(None),
                 Some(now) if done(&now) => Ok(Some(now)),
                 now => Err(StaleEvent { event_id: event_id.into(), expected: expected.into(), event: now.filter(|e| !e.is_cancelled()) }.into()),
             }

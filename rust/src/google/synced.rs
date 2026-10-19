@@ -136,6 +136,18 @@ impl Store {
         }
     }
 
+    /// Keep `event`, as a sync brought it or a write was answered with --
+    /// unless what's kept of it is newer (by `updated`, which Calendar
+    /// moves on with each change): Calendar's feed can lag a write the
+    /// server already has the answer to, and mustn't take it back.
+    pub fn keep(&mut self, event: Value) {
+        let Some(id) = event["id"].as_str().map(str::to_string) else { return };
+        if self.events.get(&id).is_some_and(|kept| newer(kept, &event)) {
+            return;
+        }
+        self.events.insert(id, event);
+    }
+
     /// Drop the marks that have lapsed by `now`.
     pub fn lapse(&mut self, now: Instant) {
         self.written.retain(|_, mark| mark.holds(now));
@@ -143,6 +155,13 @@ impl Store {
             self.written_all = None;
         }
     }
+}
+
+/// Whether `a` was changed after `b`, by their `updated`; not if either
+/// has none.
+fn newer(a: &Value, b: &Value) -> bool {
+    let updated = |e: &Value| e["updated"].as_str().and_then(|u| chrono::DateTime::parse_from_rfc3339(u).ok());
+    matches!((updated(a), updated(b)), (Some(a), Some(b)) if a > b)
 }
 
 /// The ids a write to event `id` marks: it, its series (for an instance),

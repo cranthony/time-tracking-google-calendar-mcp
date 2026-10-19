@@ -423,3 +423,46 @@ fn the_servers_own_write_isnt_warned_of_when_calendars_feed_lags_it() {
     s.t.app.sync_calendar();
     assert_eq!(s.t.app.health.sheet_warnings().len(), 1);
 }
+
+#[test]
+fn an_edit_after_the_servers_own_write_isnt_refused_while_calendars_feed_lags_it() {
+    let s = Server::new();
+    s.seed(&[crate::testing::event_at("08:00-09:00").id("walked").summary("Walk").build()]);
+    s.ok("list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}));
+    let calendar = s.t.calendar_id.clone();
+    s.t.fake.with(|state| state.hold_feed(&calendar, true));
+    let first = s.ok("update_event", json!({"updates": [{"event": {"id": "walked", "summary": "Long walk"}}]}));
+    let etag = first["events"][0]["etag"].clone();
+    // Read back as written, though the feed hasn't brought it.
+    assert_eq!(s.ok("get_event", json!({"id": "walked"}))["summary"], json!("Long walk"));
+
+    // The app's next edit, made on the version the first write answered with.
+    s.ok("update_event", json!({"updates": [{"event": {"id": "walked", "etag": etag, "summary": "Longer walk"}}]}));
+
+    // A sync bringing the first write late doesn't take the second back.
+    s.t.fake.with(|state| state.hold_feed(&calendar, false));
+    s.t.app.sync_calendar();
+    assert_eq!(s.ok("get_event", json!({"id": "walked"}))["summary"], json!("Longer walk"));
+}
+
+#[test]
+fn a_version_newer_than_whats_kept_is_asked_of_calendar_before_an_edit_is_refused() {
+    let s = Server::new();
+    s.seed(&[crate::testing::event_at("08:00-09:00").id("walked").summary("Walk").build()]);
+    let read = s.ok("get_event", json!({"id": "walked"}));
+    let calendar = s.t.calendar_id.clone();
+    s.t.fake.with(|state| state.hold_feed(&calendar, true));
+    // Changed where the app saw it (another copy of the server, say), but
+    // not yet in the feed.
+    s.t.fake.with(|state| state.edit_event_by_hand(&calendar, "walked", json!({"summary": "Stroll"})));
+
+    // Made on the version read before: changed since, so refused -- with it
+    // as Calendar has it, not as what's kept had it.
+    s.refused("update_event", json!({"updates": [{"event": {"id": "walked", "etag": read["etag"], "summary": "Run"}}]}), "changed after it was read");
+    let now = s.ok("get_event", json!({"id": "walked"}));
+    assert_eq!(now["summary"], json!("Stroll"));
+
+    // Made on the version Calendar has: written.
+    s.ok("update_event", json!({"updates": [{"event": {"id": "walked", "etag": now["etag"], "location": "Park"}}]}));
+    assert_eq!(s.ok("get_event", json!({"id": "walked"}))["summary"], json!("Stroll"));
+}
