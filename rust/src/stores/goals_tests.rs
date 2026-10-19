@@ -389,3 +389,17 @@ fn a_goal_keeps_its_priority_until_cleared_and_it_cant_be_negative() {
     f.change(&[], vec![cleared], vec![]).unwrap();
     assert_eq!(f.get(&id)["priority"], Value::Null);
 }
+
+#[test]
+fn a_goal_keeps_its_sort_order_until_cleared() {
+    let f = fixture();
+    let id = f.create(json!({"title": "Ship", "deadline": "2026-11-01", "sort_order": 2000})).unwrap();
+    assert_eq!(f.get(&id)["sort_order"], json!(2000));
+
+    f.change(&[], vec![edit(json!({"id": id, "sort_order": -5, "version": 1}))], vec![]).unwrap();
+    assert_eq!(f.get(&id)["sort_order"], json!(-5));
+    let mut cleared = edit(json!({"id": id, "version": 2}));
+    cleared.clear_fields = vec!["sort_order".into()];
+    f.change(&[], vec![cleared], vec![]).unwrap();
+    assert_eq!(f.get(&id)["sort_order"], Value::Null);
+}

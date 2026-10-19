@@ -12886,7 +12886,7 @@
     }
   },
   {
-    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nA priority (0 the most, as actions'; optional) says how much it\nmatters: without one, a goal takes its nearest parent's that has one,\nand with none up its tree it's treated as 3.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline (\"2026-11-01\", due at the end of that day, or\n\"2026-11-01T17:00\", in the calendar's time zone; needed while\nactive) -- a sub-goal's can follow its parent's: with\ndeadline_offset_minutes (0 for the same; 1440 a day before) it's kept\nthat far before the parent's while it's open, and setting a deadline\nwithout it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- not reached,\nand no longer pursued -- or obsolete) and its history (each change of\nstatus and when, oldest first; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal is\nopen (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
+    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nA priority (0 the most, as actions'; optional) says how much it\nmatters: without one, a goal takes its nearest parent's that has one,\nand with none up its tree it's treated as 3. sort_order (optional)\nis the user's own order among goals that otherwise list alike (the\nsame priority, due the same day): the lowest first, those without one\nafter them; leave it as it is unless asked to reorder goals.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline (\"2026-11-01\", due at the end of that day, or\n\"2026-11-01T17:00\", in the calendar's time zone; needed while\nactive) -- a sub-goal's can follow its parent's: with\ndeadline_offset_minutes (0 for the same; 1440 a day before) it's kept\nthat far before the parent's while it's open, and setting a deadline\nwithout it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- not reached,\nand no longer pursued -- or obsolete) and its history (each change of\nstatus and when, oldest first; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal is\nopen (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -12952,6 +12952,12 @@
               ]
             },
             "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "sort_order": {
               "type": [
                 "integer",
                 "null"
@@ -13121,6 +13127,12 @@
           ]
         },
         "priority": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "sort_order": {
           "type": [
             "integer",
             "null"
@@ -13296,6 +13308,13 @@
                 "null"
               ]
             },
+            "sort_order": {
+              "description": "Where it's listed among goals that otherwise list alike (the same\npriority, due the same day): the lowest first, those without one\nafter them. The user's own order, set by dragging goals in the app.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "expected_minutes": {
               "description": "How long it's expected to take, in minutes of the user's time: a\nguide to compare the time spent with, never enforced.",
               "type": [
@@ -13451,6 +13470,12 @@
                 "null"
               ]
             },
+            "sort_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "expected_minutes": {
               "type": [
                 "integer",
@@ -13585,6 +13610,7 @@
               "parent_id",
               "required",
               "priority",
+              "sort_order",
               "expected_minutes",
               "deadline",
               "deadline_offset_minutes",
@@ -13636,6 +13662,13 @@
             },
             "priority": {
               "description": "How much it matters, 0 the most, as actions' priorities; none, it\ntakes its nearest parent's that has one, and with none up its tree,\nit's treated as 3.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "sort_order": {
+              "description": "Where it's listed among goals that otherwise list alike (the same\npriority, due the same day): the lowest first, those without one\nafter them. The user's own order, set by dragging goals in the app.",
               "type": [
                 "integer",
                 "null"
@@ -13775,6 +13808,12 @@
           ]
         },
         "priority": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "sort_order": {
           "type": [
             "integer",
             "null"
@@ -13976,6 +14015,12 @@
                 "null"
               ]
             },
+            "sort_order": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "expected_minutes": {
               "type": [
                 "integer",
@@ -14167,6 +14212,13 @@
                 "null"
               ]
             },
+            "sort_order": {
+              "description": "Where it's listed among goals that otherwise list alike (the same\npriority, due the same day): the lowest first, those without one\nafter them. The user's own order, set by dragging goals in the app.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "expected_minutes": {
               "description": "How long it's expected to take, in minutes of the user's time: a\nguide to compare the time spent with, never enforced.",
               "type": [
@@ -14276,6 +14328,7 @@
                   "parent_id",
                   "required",
                   "priority",
+                  "sort_order",
                   "expected_minutes",
                   "deadline",
                   "deadline_offset_minutes",
@@ -14373,6 +14426,12 @@
               ]
             },
             "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "sort_order": {
               "type": [
                 "integer",
                 "null"

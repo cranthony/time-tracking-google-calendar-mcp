@@ -25,10 +25,11 @@ use serde::{Deserialize, Serialize};
 pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
-pub const CLEARABLE_FIELDS: [&str; 9] = [
+pub const CLEARABLE_FIELDS: [&str; 10] = [
     "parent_id",
     "required",
     "priority",
+    "sort_order",
     "expected_minutes",
     "deadline",
     "deadline_offset_minutes",
@@ -93,6 +94,10 @@ pub struct Goal {
     /// takes its nearest parent's that has one, and with none up its tree,
     /// it's treated as 3.
     pub priority: Option<i64>,
+    /// Where it's listed among goals that otherwise list alike (the same
+    /// priority, due the same day): the lowest first, those without one
+    /// after them. The user's own order, set by dragging goals in the app.
+    pub sort_order: Option<i64>,
     /// How long it's expected to take, in minutes of the user's time: a
     /// guide to compare the time spent with, never enforced.
     pub expected_minutes: Option<i64>,
@@ -129,6 +134,7 @@ pub struct ListedGoal {
     pub parent_id: Option<String>,
     pub required: Option<bool>,
     pub priority: Option<i64>,
+    pub sort_order: Option<i64>,
     pub expected_minutes: Option<i64>,
     pub deadline: Option<String>,
     pub deadline_offset_minutes: Option<i64>,
@@ -652,6 +658,7 @@ pub fn listed(goal: &Goal, goals: &[Goal]) -> ListedGoal {
         parent_id: goal.parent_id.clone(),
         required: goal.required,
         priority: goal.priority,
+        sort_order: goal.sort_order,
         expected_minutes: goal.expected_minutes,
         deadline: goal.deadline.clone(),
         deadline_offset_minutes: goal.deadline_offset_minutes,
