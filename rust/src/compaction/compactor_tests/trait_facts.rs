@@ -131,3 +131,25 @@ fn the_user_sees_each_summary_beside_what_it_was_and_applying_writes_them() {
     let due = applied.judgments.unwrap().to_json();
     assert_eq!(due["facts"], json!({"sam": {"caring/worries": "- money\n- a new job"}}));
 }
+
+#[test]
+fn a_person_with_prompts_of_their_own_is_given_them() {
+    let mut people = people();
+    people[0]["traits"] = json!({"facts": {"caring": {"worries": {"summary_prompt": {"text": "Their health, mostly.", "how": "append"}}}}});
+    let setup = Setup::with(&[("09:05", "email")], None, "11:30", Stores { people, traits: Some(vec![caring()]), ..Default::default() });
+
+    let context = setup.prepare().to_json();
+
+    let sam = context["people"].as_array().unwrap().iter().find(|p| p["id"] == json!("sam")).unwrap()["facts"].clone();
+    assert_eq!(
+        sam[0],
+        json!({
+            "fact": "caring/worries", "summary": null,
+            "summary_prompt": "What weighs on them, as a list.\n\nTheir health, mostly.", "summary_prompt_from": "the trait's, plus theirs",
+            "log_prompt": "What new worry showed.", "log_prompt_from": "the trait's"
+        })
+    );
+    // Their other fact goes by the trait's.
+    assert_eq!(sam[1], json!({"fact": "caring/joys", "summary": null}));
+    assert!(context["instructions"].as_str().unwrap().contains("follow the prompts given for that person, not the trait's"));
+}

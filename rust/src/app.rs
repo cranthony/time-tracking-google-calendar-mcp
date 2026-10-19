@@ -293,7 +293,9 @@ impl App {
             let (_, sheets, id) = self.spreadsheet()?;
             let me = self.me();
             let habits: crate::stores::foundations::NodesFn = Arc::new(move || me.habits()?.nodes());
-            Ok(People::ensure(&sheets, &id, Some(self.trait_ids_fn()))?.with_habits(habits))
+            let me = self.me();
+            let traits: crate::stores::people::TraitsFn = Arc::new(move || me.traits()?.all());
+            Ok(People::ensure(&sheets, &id, Some(self.trait_ids_fn()))?.with_habits(habits).with_traits(traits))
         })
     }
 

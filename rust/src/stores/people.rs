@@ -11,7 +11,7 @@ use crate::stores::foundations::{self, foundation_problems, Node, NodesFn, OnGra
 use crate::stores::groups::{repr_or_none, set, str_or_none};
 use crate::stores::locations::dedup;
 use crate::stores::scoring::aggregation_problems;
-use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids};
+use crate::stores::traits::{fact_override_problems, person_traits_problems, settled_fact_overrides, settled_spec, spec_with_new_part_ids, SpecOf, Trait};
 use anyhow::bail;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -159,13 +159,41 @@ pub struct People {
     circle_sheet: RowSheet,
     trait_ids: Option<TraitIds>,
     habits: Option<NodesFn>,
+    traits: Option<TraitsFn>,
 }
+
+/// Every trait, to check a person's own fact prompts against.
+pub type TraitsFn = Arc<dyn Fn() -> anyhow::Result<Vec<Trait>> + Send + Sync>;
 
 impl People {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str, trait_ids: Option<TraitIds>) -> anyhow::Result<People> {
         let sheet = RowSheet::ensure(sheets, spreadsheet_id, PEOPLE.0, PEOPLE.1, PERSON_ROW, &["id", "name"])?;
         let circle_sheet = RowSheet::ensure(sheets, spreadsheet_id, CIRCLES.0, CIRCLES.1, CIRCLE_ROW, &["id", "name"])?;
-        Ok(People { sheet, circle_sheet, trait_ids, habits: None })
+        Ok(People { sheet, circle_sheet, trait_ids, habits: None, traits: None })
+    }
+
+    /// It, checking a person's own fact prompts against `traits`' facts.
+    pub fn with_traits(mut self, traits: TraitsFn) -> People {
+        self.traits = Some(traits);
+        self
+    }
+
+    /// `person`'s own fact prompts checked against their traits' facts --
+    /// each new or changed from `before`'s, for a fact its trait has -- and
+    /// those of facts their trait no longer has let go of.
+    fn settle_fact_overrides(&self, person: &mut Person, before: Option<&Person>) -> anyhow::Result<()> {
+        let (Some(spec), Some(lookup)) = (&person.traits, &self.traits) else { return Ok(()) };
+        if !spec.contains_key("facts") {
+            return Ok(());
+        }
+        let traits = lookup()?;
+        let problems = fact_override_problems(spec, before.and_then(|b| b.traits.as_ref()), &traits);
+        if !problems.is_empty() {
+            let label = set(person.id.as_deref()).map(|i| format!("person {i}")).unwrap_or_else(|| "the person".into());
+            bail!("{}", problems.iter().map(|p| format!("{label}'s traits {p}")).collect::<Vec<_>>().join("; "));
+        }
+        person.traits = Some(settled_fact_overrides(spec, Some(&traits)));
+        Ok(())
     }
 
     /// It, checking foundations against `habits`' nodes too.
@@ -249,8 +277,9 @@ impl People {
             rows::Created::Again(made) => return Ok(CreatedPerson { person: listed(&made, &circles), created_id: made.id.clone().unwrap_or_default() }),
         };
         let traits = person.traits.as_ref().map(spec_with_new_part_ids);
-        let new =
+        let mut new =
             Person { id: Some(id.clone()), status: Some(person.status.unwrap_or(Status::Active)), traits, version: None, ..person.clone() };
+        self.settle_fact_overrides(&mut new, None)?;
         let mut everyone = vec![self_person()];
         everyone.extend(people.iter().cloned());
         check_context(&new, &everyone)?;
@@ -278,7 +307,8 @@ impl People {
         };
         let was_deleted = people[index].status == Some(Status::Deleted);
         let given = Person { traits: person.traits.as_ref().map(spec_with_new_part_ids), ..person.clone() };
-        let changed = rows::updated_item(&people[index], &given, clear_fields, &["id"])?;
+        let mut changed = rows::updated_item(&people[index], &given, clear_fields, &["id"])?;
+        self.settle_fact_overrides(&mut changed, Some(&people[index]))?;
         if person.name.is_some() || clear_fields.iter().any(|c| c == "context") {
             let mut everyone = vec![self_person()];
             everyone.extend(people.iter().cloned());
@@ -544,7 +574,7 @@ pub fn person_problems(people: &[Person], circles: &[Circle], trait_ids: Option<
             }
         }
         if let Some(traits) = &person.traits {
-            for p in person_traits_problems(&Value::Object(traits.clone()), trait_ids) {
+            for p in person_traits_problems(&Value::Object(traits.clone()), trait_ids, SpecOf::Person) {
                 problems.push(format!("{label}'s traits {p}"));
             }
         }

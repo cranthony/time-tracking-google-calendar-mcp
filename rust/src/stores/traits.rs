@@ -28,6 +28,13 @@ pub const TRAIT_FACT_PREFIX: &str = "fact:";
 /// The id of the seeded Thoughtful trait's fact.
 const WHAT_MATTERS: &str = "what_matters";
 const FACT_FIELDS: [&str; 4] = ["id", "name", "summary_prompt", "log_prompt"];
+/// The prompts of a fact a person can have their own of.
+pub const FACT_PROMPTS: [&str; 2] = ["summary_prompt", "log_prompt"];
+/// How a person's own prompt goes with the trait's: in place of it, or
+/// after it.
+pub const PROMPT_HOWS: [&str; 2] = ["replace", "append"];
+/// The most a fact's prompt can be, the trait's or a person's own.
+pub const MAX_PROMPT_CHARS: usize = 5000;
 const MAX_FACT_ID_LENGTH: usize = 30;
 pub const HISTORY_FACTS: [&str; 2] = ["action_history", "location_history"];
 pub const DEFAULT_LOOKBACK_DAYS: i64 = 30;
@@ -357,6 +364,11 @@ fn fact_definition_problems(facts: &[Map<String, Value>]) -> Vec<String> {
         if !fact.get("summary_prompt").and_then(Value::as_str).is_some_and(|p| !p.trim().is_empty()) {
             problems.push(format!("{label} needs a \"summary_prompt\": what its summary of a person keeps, and how"));
         }
+        for prompt in FACT_PROMPTS {
+            if fact.get(prompt).and_then(Value::as_str).is_some_and(|p| p.chars().count() > MAX_PROMPT_CHARS) {
+                problems.push(format!("{label}'s \"{prompt}\" is longer than {MAX_PROMPT_CHARS} characters"));
+            }
+        }
         if fact.get("log_prompt").is_some_and(|p| !p.is_null() && !p.as_str().is_some_and(|p| !p.trim().is_empty())) {
             problems.push(format!("{label}'s \"log_prompt\" must be non-empty text, or left out"));
         }
@@ -626,16 +638,31 @@ pub fn fact_lookbacks(part: &Value) -> Vec<(String, i64)> {
 
 /// What's wrong with a person's (or habit's) `traits`, as phrases
 /// following "its traits".
-const SPEC_FIELDS: [&str; 4] = ["select", "parts", "part_scoring", "scoring"];
+const SPEC_FIELDS: [&str; 5] = ["select", "parts", "part_scoring", "scoring", "facts"];
 
-pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>) -> Vec<String> {
+/// Whose `traits` a spec is: a person's can override a fact's prompts
+/// for them (its "facts"); a habit's can't.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SpecOf {
+    Person,
+    Habit,
+}
+
+pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>, of: SpecOf) -> Vec<String> {
     let Value::Object(spec) = spec else {
-        return vec!["must be an object: {\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring}".into()];
+        return vec!["must be an object: {\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring, \"facts\": {trait id: {fact id: prompts}}}".into()];
     };
     let mut extra: Vec<&String> = spec.keys().filter(|k| !SPEC_FIELDS.contains(&k.as_str())).collect();
     extra.sort();
-    let mut problems: Vec<String> =
-        extra.iter().map(|n| format!("has no field \"{n}\"; it takes \"select\", \"parts\", \"part_scoring\" and \"scoring\"")).collect();
+    let mut problems: Vec<String> = extra
+        .iter()
+        .map(|n| format!("has no field \"{n}\"; it takes \"select\", \"parts\", \"part_scoring\", \"scoring\" and \"facts\""))
+        .collect();
+    match (spec.get("facts"), of) {
+        (None, _) => {}
+        (Some(_), SpecOf::Habit) => problems.push("has no \"facts\": only a person has prompts of their own for a trait's facts".into()),
+        (Some(facts), SpecOf::Person) => problems.extend(fact_override_shape_problems(facts, trait_ids)),
+    }
     if let Some(scoring) = spec.get("scoring") {
         for p in aggregation_problems(scoring, None) {
             problems.push(format!("scoring: {p}"));
@@ -703,6 +730,186 @@ pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>) -> Vec
         Some(_) => problems.push("\"part_scoring\" must be {trait id: scoring}".into()),
     }
     problems
+}
+
+/// What's wrong with the shape of a person's "facts": {trait id: {fact
+/// id: {"summary_prompt"?, "log_prompt"?}}}, each prompt {"text":
+/// non-empty, "how": "replace" or "append"}. Whether each fact is the
+/// trait's is checked apart (fact_override_problems), only where the
+/// person's write changes it.
+fn fact_override_shape_problems(facts: &Value, trait_ids: Option<&[String]>) -> Vec<String> {
+    const SHAPE: &str = "\"facts\" must be {trait id: {fact id: {\"summary_prompt\": {\"text\": ..., \"how\": \"replace\" or \"append\"}, \"log_prompt\": {...}}}}";
+    let Value::Object(by_trait) = facts else { return vec![SHAPE.into()] };
+    let mut problems = Vec::new();
+    for (trait_id, by_fact) in by_trait {
+        if trait_ids.is_some_and(|known| !known.iter().any(|k| k == trait_id)) {
+            problems.push(format!("\"facts\" names {}, which isn't a trait", py::repr(trait_id)));
+            continue;
+        }
+        let Value::Object(by_fact) = by_fact else {
+            problems.push(SHAPE.into());
+            continue;
+        };
+        for (fact_id, prompts) in by_fact {
+            let label = format!("\"facts\" for {}'s {}", py::repr(trait_id), py::repr(fact_id));
+            let Value::Object(prompts) = prompts else {
+                problems.push(format!("{label} must be {{\"summary_prompt\": ..., \"log_prompt\": ...}}"));
+                continue;
+            };
+            let mut extra: Vec<&String> = prompts.keys().filter(|k| !FACT_PROMPTS.contains(&k.as_str())).collect();
+            extra.sort();
+            for name in extra {
+                problems.push(format!("{label} has no field \"{name}\"; it takes \"summary_prompt\" and \"log_prompt\""));
+            }
+            for prompt in FACT_PROMPTS {
+                let Some(given) = prompts.get(prompt) else { continue };
+                let Value::Object(given) = given else {
+                    problems.push(format!("{label}'s \"{prompt}\" must be {{\"text\": ..., \"how\": \"replace\" or \"append\"}}"));
+                    continue;
+                };
+                let mut extra: Vec<&String> = given.keys().filter(|k| *k != "text" && *k != "how").collect();
+                extra.sort();
+                for name in extra {
+                    problems.push(format!("{label}'s \"{prompt}\" has no field \"{name}\"; it takes \"text\" and \"how\""));
+                }
+                match given.get("text").and_then(Value::as_str) {
+                    Some(text) if text.chars().count() > MAX_PROMPT_CHARS => {
+                        problems.push(format!("{label}'s \"{prompt}\" text is longer than {MAX_PROMPT_CHARS} characters"))
+                    }
+                    Some(text) if !text.trim().is_empty() => {}
+                    _ => problems.push(format!("{label}'s \"{prompt}\" needs \"text\": non-empty text")),
+                }
+                if let Some(how) = given.get("how") {
+                    if !PROMPT_HOWS.iter().any(|h| how.as_str() == Some(*h)) {
+                        problems.push(format!("{label}'s \"{prompt}\" \"how\" must be \"replace\" or \"append\""));
+                    }
+                }
+            }
+        }
+    }
+    problems
+}
+
+/// The fact overrides of a person's `spec`, as (trait id, fact id,
+/// prompts) -- those well enough formed to read.
+fn fact_overrides(spec: &Map<String, Value>) -> Vec<(String, String, Map<String, Value>)> {
+    let mut out = Vec::new();
+    for (trait_id, by_fact) in spec.get("facts").and_then(Value::as_object).into_iter().flatten() {
+        for (fact_id, prompts) in by_fact.as_object().into_iter().flatten() {
+            if let Value::Object(prompts) = prompts {
+                out.push((trait_id.clone(), fact_id.clone(), prompts.clone()));
+            }
+        }
+    }
+    out
+}
+
+/// What's wrong with the fact overrides a person's write gives them: each
+/// that's new or changed (from `before`'s) a fact of its trait (one of
+/// `traits`). One kept as it was isn't checked: see pruned_fact_overrides.
+pub fn fact_override_problems(spec: &Map<String, Value>, before: Option<&Map<String, Value>>, traits: &[Trait]) -> Vec<String> {
+    let kept = before.map(fact_overrides).unwrap_or_default();
+    let mut problems = Vec::new();
+    for (trait_id, fact_id, prompts) in fact_overrides(spec) {
+        if kept.iter().any(|(t, f, p)| *t == trait_id && *f == fact_id && *p == prompts) {
+            continue;
+        }
+        let Some(t) = traits.iter().find(|t| t.id.as_deref() == Some(trait_id.as_str())) else { continue };
+        if t.fact(&fact_id).is_none() {
+            let has = t.fact_ids();
+            problems.push(format!(
+                "\"facts\" for {} names fact {}, which it doesn't have{}",
+                py::repr(&trait_id),
+                py::repr(&fact_id),
+                if has.is_empty() { " (it has none)".to_string() } else { format!(" ({})", has.join(", ")) }
+            ));
+        }
+    }
+    problems
+}
+
+/// `spec` with its fact overrides as kept: each prompt's "how" given
+/// ("replace" when it's missing), and those of facts their trait no
+/// longer has (of `traits`, when known) left out -- as are empty ones,
+/// and "facts" itself once it's empty.
+pub fn settled_fact_overrides(spec: &Map<String, Value>, traits: Option<&[Trait]>) -> Map<String, Value> {
+    let Some(Value::Object(by_trait)) = spec.get("facts") else { return spec.clone() };
+    let mut kept = Map::new();
+    for (trait_id, by_fact) in by_trait {
+        let Value::Object(by_fact) = by_fact else {
+            kept.insert(trait_id.clone(), by_fact.clone());
+            continue;
+        };
+        let known = traits.and_then(|all| all.iter().find(|t| t.id.as_deref() == Some(trait_id.as_str())));
+        let mut facts = Map::new();
+        for (fact_id, prompts) in by_fact {
+            if traits.is_some() && !known.is_some_and(|t| t.fact(fact_id).is_some()) {
+                continue;
+            }
+            let Value::Object(prompts) = prompts else {
+                facts.insert(fact_id.clone(), prompts.clone());
+                continue;
+            };
+            let mut settled = Map::new();
+            for (name, given) in prompts {
+                let mut given = given.clone();
+                if let Value::Object(object) = &mut given {
+                    object.entry("how").or_insert(json!("replace"));
+                }
+                settled.insert(name.clone(), given);
+            }
+            if !settled.is_empty() {
+                facts.insert(fact_id.clone(), Value::Object(settled));
+            }
+        }
+        if !facts.is_empty() {
+            kept.insert(trait_id.clone(), Value::Object(facts));
+        }
+    }
+    let mut out = spec.clone();
+    if kept.is_empty() {
+        out.remove("facts");
+    } else {
+        out.insert("facts".into(), Value::Object(kept));
+    }
+    out
+}
+
+/// Where a prompt a person's fact goes by came from, as compaction says
+/// it.
+pub const PROMPT_THE_TRAITS: &str = "the trait's";
+pub const PROMPT_THEIR_OWN: &str = "their own";
+pub const PROMPT_BOTH: &str = "the trait's, plus theirs";
+
+/// The prompts someone with `spec` as their traits keeps `fact` (of the
+/// trait `trait_id`) by: each (text, where it came from) -- the trait's,
+/// theirs in place of it ("replace"), or the trait's with theirs after it
+/// ("append"; just theirs when the trait has none). The log prompt is
+/// None when neither has one.
+pub fn effective_prompts(
+    fact: &Map<String, Value>,
+    spec: Option<&Value>,
+    trait_id: &str,
+) -> ((String, &'static str), Option<(String, &'static str)>) {
+    let fact_id = fact.get("id").and_then(Value::as_str).unwrap_or_default();
+    let own = spec
+        .and_then(|s| s.get("facts"))
+        .and_then(|f| f.get(trait_id))
+        .and_then(|f| f.get(fact_id))
+        .and_then(Value::as_object);
+    let resolve = |name: &str| -> Option<(String, &'static str)> {
+        let traits = fact.get(name).and_then(Value::as_str).filter(|t| !t.trim().is_empty());
+        let theirs = own.and_then(|o| o.get(name)).and_then(Value::as_object);
+        let text = theirs.and_then(|t| t.get("text")).and_then(Value::as_str).filter(|t| !t.trim().is_empty());
+        match (traits, text) {
+            (traits, None) => traits.map(|t| (t.to_string(), PROMPT_THE_TRAITS)),
+            (Some(traits), Some(text)) if theirs.and_then(|t| t.get("how")).and_then(Value::as_str) == Some("append") => {
+                Some((format!("{traits}\n\n{text}"), PROMPT_BOTH))
+            }
+            (_, Some(text)) => Some((text.to_string(), PROMPT_THEIR_OWN)),
+        }
+    };
+    (resolve("summary_prompt").unwrap_or_else(|| (String::new(), PROMPT_THE_TRAITS)), resolve("log_prompt"))
 }
 
 pub fn activity_label(text: &str) -> String {
@@ -871,6 +1078,7 @@ pub fn settled_spec(spec: Map<String, Value>) -> Map<String, Value> {
 /// A person's or habit's traits with an id for each new part of their
 /// own (see with_new_part_ids).
 pub fn spec_with_new_part_ids(spec: &Map<String, Value>) -> Map<String, Value> {
+    let spec = &settled_fact_overrides(spec, None);
     let Some(Value::Object(overrides)) = spec.get("parts") else {
         return spec.clone();
     };
