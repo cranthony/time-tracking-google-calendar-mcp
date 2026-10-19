@@ -21,6 +21,12 @@
 //! mark that's never matched -- a delete, an answer lost --
 //! `MARK_LAPSES` after its write ends, silently.
 //!
+//! Nor is what a full listing already had: the sync token it ends with
+//! can be from before some of what it listed, so the syncs after it
+//! bring those again -- hours later, now and then -- unchanged. Only
+//! what changed after the newest change it listed (`listed_through`, by
+//! Calendar's own clock) is kept to warn of.
+//!
 //! Only the last `KEPT_DAYS` are kept, so what's kept stays about a year's
 //! size however long the calendar's history: an event (or exception) that
 //! ended, and was to have happened, before `Store::from` is dropped as a
@@ -116,6 +122,9 @@ pub struct Store {
     pub written_all: Option<Mark>,
     /// Events a sync brought that the server didn't write, newest last.
     pub outside: Vec<Value>,
+    /// When the newest change the last full listing had was made: a sync
+    /// bringing an event changed no later is that listing catching up.
+    pub listed_through: Option<DateTime<Utc>>,
     /// The calendar's time zone, as the last sync gave it.
     pub zone: Option<chrono_tz::Tz>,
     /// Where what's kept starts: every event that ends at or after it is
@@ -176,6 +185,23 @@ impl Store {
         [id, instance_base(id), series, instance_base(series)]
             .iter()
             .any(|i| !i.is_empty() && self.written.get(*i).is_some_and(|mark| mark.holds(now)))
+    }
+
+    /// Note a full listing of `items`: what changed by its newest change is
+    /// what the server took as it was, not a change after (see
+    /// `changed_since_listed`).
+    pub fn listed(&mut self, items: &[Value]) {
+        self.listed_through = items.iter().filter_map(updated).max();
+    }
+
+    /// Whether `item`, brought by a sync since the last full listing,
+    /// changed after what that listing had: not that listing's feed
+    /// catching up.
+    pub fn changed_since_listed(&self, item: &Value) -> bool {
+        match (updated(item), self.listed_through) {
+            (Some(at), Some(listed)) => at > listed,
+            _ => true,
+        }
     }
 
     /// Note `item`, brought by a sync: if it's the etag a write was answered
@@ -242,8 +268,12 @@ impl Store {
 /// Whether `a` was changed after `b`, by their `updated`; not if either
 /// has none.
 fn newer(a: &Value, b: &Value) -> bool {
-    let updated = |e: &Value| e["updated"].as_str().and_then(|u| chrono::DateTime::parse_from_rfc3339(u).ok());
     matches!((updated(a), updated(b)), (Some(a), Some(b)) if a > b)
+}
+
+/// When `event` last changed, by its `updated`.
+fn updated(event: &Value) -> Option<DateTime<Utc>> {
+    event["updated"].as_str().and_then(|u| DateTime::parse_from_rfc3339(u).ok()).map(|u| u.with_timezone(&Utc))
 }
 
 /// The ids a write to event `id` marks: it, its series (for an instance),
