@@ -25,8 +25,16 @@ use serde::{Deserialize, Serialize};
 pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
-pub const CLEARABLE_FIELDS: [&str; 7] =
-    ["parent_id", "required", "expected_minutes", "deadline", "description", "definition_of_done", "attribution_hints"];
+pub const CLEARABLE_FIELDS: [&str; 8] = [
+    "parent_id",
+    "required",
+    "expected_minutes",
+    "deadline",
+    "deadline_offset_minutes",
+    "description",
+    "definition_of_done",
+    "attribution_hints",
+];
 
 // -- the types -------------------------------------------------------------------
 
@@ -87,6 +95,11 @@ pub struct Goal {
     /// or a date and time ("2026-11-01T17:00"), in the calendar's time
     /// zone. Needed while it's active.
     pub deadline: Option<String>,
+    /// Set, its deadline follows its parent's: this many minutes before
+    /// it (0, the same), kept so whenever the parent's changes, while
+    /// it's open. A deadline set without it unties it; so does moving it
+    /// to the top level, keeping the deadline it had.
+    pub deadline_offset_minutes: Option<i64>,
     #[row(text)]
     pub status: Option<GoalStatus>,
     /// Every change of its status, oldest first, the last its status now.
@@ -112,6 +125,7 @@ pub struct ListedGoal {
     pub required: Option<bool>,
     pub expected_minutes: Option<i64>,
     pub deadline: Option<String>,
+    pub deadline_offset_minutes: Option<i64>,
     pub status: Option<GoalStatus>,
     pub history: Option<Vec<StatusChange>>,
     pub description: Option<String>,
@@ -161,6 +175,61 @@ pub fn deadline_end(deadline: &str) -> Option<NaiveDateTime> {
         return Some(date.and_hms_opt(0, 0, 0)? + Duration::days(1));
     }
     NaiveDateTime::parse_from_str(text, "%Y-%m-%dT%H:%M").or_else(|_| NaiveDateTime::parse_from_str(text, "%Y-%m-%dT%H:%M:%S")).ok()
+}
+
+/// The deadline `minutes` before `parent`'s: a date, if `parent`'s is
+/// one and it's whole days before; else a date and time.
+pub fn deadline_before(parent: &str, minutes: i64) -> Option<String> {
+    let text = parent.trim();
+    if minutes == 0 {
+        return Some(text.to_string());
+    }
+    if let Ok(date) = NaiveDate::parse_from_str(text, "%Y-%m-%d") {
+        if minutes % (24 * 60) == 0 {
+            return Some((date - Duration::days(minutes / (24 * 60))).format("%Y-%m-%d").to_string());
+        }
+    }
+    Some((deadline_end(text)? - Duration::minutes(minutes)).format("%Y-%m-%dT%H:%M").to_string())
+}
+
+/// Each open goal whose deadline follows its parent's (see
+/// `Goal::deadline_offset_minutes`) given the deadline that follows from
+/// it, parents first -- and one at the top level untied. The ids of those
+/// changed.
+fn follow_parents(goals: &mut [Goal]) -> Vec<String> {
+    let mut changed: Vec<String> = Vec::new();
+    // A pass for each level, at most; a cycle is refused anyway.
+    for _ in 0..goals.len() {
+        let mut again = false;
+        for i in 0..goals.len() {
+            let goal = &goals[i];
+            let Some(minutes) = goal.deadline_offset_minutes else { continue };
+            if goal.status.is_some_and(GoalStatus::is_closed) || minutes < 0 {
+                continue;
+            }
+            let next = if set(goal.parent_id.as_deref()).is_none() {
+                None
+            } else {
+                let Some(parent) = parent_of(goals, goal) else { continue };
+                let Some(deadline) = set(parent.deadline.as_deref()).and_then(|d| deadline_before(d, minutes)) else { continue };
+                Some(deadline)
+            };
+            let goal = &mut goals[i];
+            match next {
+                None => goal.deadline_offset_minutes = None,
+                Some(deadline) if goal.deadline.as_deref() != Some(deadline.as_str()) => {
+                    goal.deadline = Some(deadline);
+                    again = true;
+                }
+                Some(_) => continue,
+            }
+            changed.extend(goal.id.clone());
+        }
+        if !again {
+            break;
+        }
+    }
+    changed
 }
 
 fn local(moment: &Moment, zone: &Tz) -> NaiveDateTime {
@@ -282,6 +351,11 @@ impl Goals {
             };
             let before = goals[index].clone();
             let mut after = rows::updated_item(&before, &edit.goal, &edit.clear_fields, &["id"])?;
+            let cleared = |field: &str| edit.clear_fields.iter().any(|f| f == field);
+            // A deadline of its own unties it from its parent's.
+            if (edit.goal.deadline.is_some() || cleared("deadline")) && edit.goal.deadline_offset_minutes.is_none() && !cleared("deadline_offset_minutes") {
+                after.deadline_offset_minutes = None;
+            }
             if edit.goal.history.is_none() && after.status != before.status {
                 if let Some(status) = after.status {
                     after.history.get_or_insert_with(Vec::new).push(StatusChange { status, at: now.clone() });
@@ -303,6 +377,7 @@ impl Goals {
             goals.push(Goal { id: Some(id.clone()), status: Some(status), history: Some(history), version: None, ..given.clone() });
             touched.push(id);
         }
+        touched.extend(follow_parents(&mut goals));
         let mut involved = touched.clone();
         involved.extend(deleted.iter().cloned());
         let problems: Vec<String> =
@@ -446,6 +521,9 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
             problems.push((me.clone(), format!("{name}'s status must be one of {}", GOAL_STATUSES.join(", "))));
             continue;
         };
+        if let Some(minutes) = goal.deadline_offset_minutes.filter(|m| *m < 0) {
+            problems.push((me.clone(), format!("{name}'s deadline_offset_minutes must be 0 or more, not {minutes}")));
+        }
         if status == GoalStatus::Active && set(goal.deadline.as_deref()).is_none() {
             problems.push((me.clone(), format!("{name} is active, so it needs a deadline")));
         }
@@ -566,6 +644,7 @@ pub fn listed(goal: &Goal, goals: &[Goal]) -> ListedGoal {
         required: goal.required,
         expected_minutes: goal.expected_minutes,
         deadline: goal.deadline.clone(),
+        deadline_offset_minutes: goal.deadline_offset_minutes,
         status: goal.status,
         history: goal.history.clone(),
         description: goal.description.clone(),

@@ -17,6 +17,8 @@ pub enum GoalField {
     ExpectedMinutes,
     #[serde(rename = "deadline")]
     Deadline,
+    #[serde(rename = "deadline_offset_minutes")]
+    DeadlineOffsetMinutes,
     #[serde(rename = "description")]
     Description,
     #[serde(rename = "definition_of_done")]
@@ -52,7 +54,10 @@ pub struct GoalDelete {
 /// expected to take: a guide for comparing with the time spent, never
 /// enforced), a deadline ("2026-11-01", due at the end of that day, or
 /// "2026-11-01T17:00", in the calendar's time zone; needed while
-/// active), a status (inactive, active, done, missed -- not reached,
+/// active) -- a sub-goal's can follow its parent's: with
+/// deadline_offset_minutes (0 for the same; 1440 a day before) it's kept
+/// that far before the parent's while it's open, and setting a deadline
+/// without it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- not reached,
 /// and no longer pursued -- or obsolete) and its history (each change of
 /// status and when, oldest first; started_at is when it first became
 /// active, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and

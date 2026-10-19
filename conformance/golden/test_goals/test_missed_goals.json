@@ -13,6 +13,7 @@
      "attribution_hints": null,
      "closed_at": null,
      "deadline": "2026-12-01",
+     "deadline_offset_minutes": null,
      "definition_of_done": null,
      "description": null,
      "expected_minutes": null,
@@ -33,7 +34,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Run a marathon\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-12-01\",\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Run a marathon\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-12-01\",\n    \"deadline_offset_minutes\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_goal"
   },
   {
@@ -51,6 +52,7 @@
      "attribution_hints": null,
      "closed_at": null,
      "deadline": "2026-11-01",
+     "deadline_offset_minutes": null,
      "definition_of_done": null,
      "description": null,
      "expected_minutes": null,
@@ -73,7 +75,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Run a half first\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-11-01\",\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [\n      \"Run a marathon\"\n    ],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Run a half first\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"expected_minutes\": null,\n    \"deadline\": \"2026-11-01\",\n    \"deadline_offset_minutes\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"path\": [\n      \"Run a marathon\"\n    ],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_goal"
   },
   {
@@ -119,6 +121,7 @@
       "attribution_hints": null,
       "closed_at": "2026-10-07T15:30:00-04:00",
       "deadline": "2026-11-01",
+      "deadline_offset_minutes": null,
       "definition_of_done": null,
       "description": null,
       "expected_minutes": null,
@@ -147,6 +150,7 @@
       "attribution_hints": null,
       "closed_at": "2026-10-07T15:30:00-04:00",
       "deadline": "2026-12-01",
+      "deadline_offset_minutes": null,
       "definition_of_done": null,
       "description": null,
       "expected_minutes": null,
@@ -172,7 +176,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"3dnjav\",\n      \"title\": \"Run a half first\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"expected_minutes\": null,\n      \"deadline\": \"2026-11-01\",\n      \"status\": \"missed\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"missed\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [\n        \"Run a marathon\"\n      ],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Run a marathon\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"expected_minutes\": null,\n      \"deadline\": \"2026-12-01\",\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    }\n  ],\n  \"deleted_ids\": []\n}",
+   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"3dnjav\",\n      \"title\": \"Run a half first\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"expected_minutes\": null,\n      \"deadline\": \"2026-11-01\",\n      \"deadline_offset_minutes\": null,\n      \"status\": \"missed\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"missed\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [\n        \"Run a marathon\"\n      ],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Run a marathon\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"expected_minutes\": null,\n      \"deadline\": \"2026-12-01\",\n      \"deadline_offset_minutes\": null,\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"path\": [],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    }\n  ],\n  \"deleted_ids\": []\n}",
    "tool": "update_goals"
   },
   {
@@ -193,6 +197,7 @@
      "attribution_hints": null,
      "closed_at": "2026-10-07T15:30:00-04:00",
      "deadline": "2026-11-01",
+     "deadline_offset_minutes": null,
      "definition_of_done": null,
      "description": null,
      "expected_minutes": null,
@@ -219,7 +224,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"title\": \"Run a half first\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"expected_minutes\": null,\n  \"deadline\": \"2026-11-01\",\n  \"status\": \"missed\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    },\n    {\n      \"status\": \"missed\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [\n    \"Run a marathon\"\n  ],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"title\": \"Run a half first\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"expected_minutes\": null,\n  \"deadline\": \"2026-11-01\",\n  \"deadline_offset_minutes\": null,\n  \"status\": \"missed\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    },\n    {\n      \"status\": \"missed\",\n      \"at\": \"2026-10-07T15:30:00-04:00\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"path\": [\n    \"Run a marathon\"\n  ],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
    "tool": "get_goals"
   }
  ],
@@ -329,6 +334,7 @@
         "required",
         "expected_minutes",
         "deadline",
+        "deadline_offset_minutes",
         "status",
         "history",
         "description",
@@ -390,6 +396,7 @@
         "",
         "",
         "2026-12-01",
+        "",
         "active",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
         "",
@@ -429,6 +436,7 @@
         "True",
         "",
         "2026-11-01",
+        "",
         "active",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
         "",
@@ -468,6 +476,7 @@
         "",
         "",
         "2026-12-01",
+        "",
         "done",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
         "",
@@ -482,6 +491,7 @@
         "True",
         "",
         "2026-11-01",
+        "",
         "missed",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"missed\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
         "",
@@ -554,6 +564,7 @@
         "required",
         "expected_minutes",
         "deadline",
+        "deadline_offset_minutes",
         "status",
         "history",
         "description",
@@ -568,6 +579,7 @@
         "",
         "",
         "2026-12-01",
+        "",
         "done",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"done\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
         "",
@@ -582,6 +594,7 @@
         "True",
         "",
         "2026-11-01",
+        "",
         "missed",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\"},{\"status\":\"missed\",\"at\":\"2026-10-07T15:30:00-04:00\"}]",
         "",

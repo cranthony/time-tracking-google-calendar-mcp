@@ -126,6 +126,52 @@ fn a_sub_goal_is_due_no_later_and_expected_no_longer_than_its_parent() {
 }
 
 #[test]
+fn a_tied_sub_goals_deadline_follows_its_parents_at_any_depth() {
+    let f = fixture();
+    let top = f.create(json!({"title": "Top", "deadline": "2026-11-20"})).unwrap();
+    let mid = f.create(json!({"title": "Mid", "parent_id": top, "deadline_offset_minutes": 1440})).unwrap();
+    let low = f.create(json!({"title": "Low", "parent_id": mid, "deadline_offset_minutes": 60})).unwrap();
+    assert_eq!((f.get(&mid)["deadline"].clone(), f.get(&low)["deadline"].clone()), (json!("2026-11-19"), json!("2026-11-19T23:00")));
+
+    // Moving the parent's moves them all, and gives them as changed.
+    let changed = f.change(&[], vec![edit(json!({"id": top, "deadline": "2026-11-10T17:00"}))], vec![]).unwrap();
+    assert_eq!(changed.goals.len(), 3);
+    assert_eq!((f.get(&mid)["deadline"].clone(), f.get(&low)["deadline"].clone()), (json!("2026-11-09T17:00"), json!("2026-11-09T16:00")));
+    assert_eq!(f.get(&low)["version"], json!(2));
+}
+
+#[test]
+fn a_deadline_of_its_own_or_a_move_to_the_top_unties_a_sub_goal() {
+    let f = fixture();
+    let top = f.create(json!({"title": "Top", "deadline": "2026-11-20"})).unwrap();
+    let same = f.create(json!({"title": "Same", "parent_id": top, "deadline_offset_minutes": 0})).unwrap();
+    let own = f.create(json!({"title": "Own", "parent_id": top, "deadline_offset_minutes": 0})).unwrap();
+    assert_eq!(f.get(&same)["deadline"], json!("2026-11-20"));
+    refused(f.create(json!({"title": "Odd", "parent_id": top, "deadline_offset_minutes": -5})), "deadline_offset_minutes must be 0 or more");
+
+    f.change(&[], vec![edit(json!({"id": own, "deadline": "2026-11-01"}))], vec![]).unwrap();
+    let mut moved = edit(json!({"id": same}));
+    moved.clear_fields = vec!["parent_id".into()];
+    f.change(&[], vec![moved], vec![]).unwrap();
+    f.change(&[], vec![edit(json!({"id": top, "deadline": "2026-11-25"}))], vec![]).unwrap();
+
+    assert_eq!((f.get(&own)["deadline"].clone(), f.get(&own)["deadline_offset_minutes"].clone()), (json!("2026-11-01"), Value::Null));
+    assert_eq!((f.get(&same)["deadline"].clone(), f.get(&same)["deadline_offset_minutes"].clone()), (json!("2026-11-20"), Value::Null));
+}
+
+#[test]
+fn a_closed_sub_goal_keeps_the_deadline_it_had() {
+    let f = fixture();
+    let top = f.create(json!({"title": "Top", "deadline": "2026-11-20"})).unwrap();
+    let sub = f.create(json!({"title": "Sub", "parent_id": top, "deadline_offset_minutes": 10080})).unwrap();
+    f.change(&[], vec![edit(json!({"id": sub, "status": "done"}))], vec![]).unwrap();
+
+    f.change(&[], vec![edit(json!({"id": top, "deadline": "2026-12-20"}))], vec![]).unwrap();
+
+    assert_eq!((f.get(&sub)["deadline"].clone(), f.get(&sub)["deadline_offset_minutes"].clone()), (json!("2026-11-13"), json!(10080)));
+}
+
+#[test]
 fn a_sub_goal_may_start_before_its_parent_but_never_after_its_own_deadline() {
     let f = fixture();
     let top = f.create(json!({"title": "Top", "deadline": "2026-12-01"})).unwrap();
