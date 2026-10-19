@@ -1,6 +1,7 @@
 //! The time-tracking Google Calendar MCP server (see ../README.md): what the server (src/main.rs) and the command-line tools
 //! (src/bin/) share.
 
+pub mod allocator;
 pub mod app;
 pub mod auth_mode;
 pub mod cli;

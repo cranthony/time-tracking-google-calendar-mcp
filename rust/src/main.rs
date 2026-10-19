@@ -3,6 +3,11 @@
 use time_tracker::{app, dotenv, mcp};
 use std::sync::Arc;
 
+/// The most threads tool calls (and the rest of spawn_blocking) run on at
+/// once, rather than tokio's 512: more wait their turn. The app's refresh
+/// sends about a dozen at once.
+const MAX_BLOCKING_THREADS: usize = 16;
+
 fn main() -> anyhow::Result<()> {
     // Before anything reads the environment.
     dotenv::load(std::path::Path::new(".env"));
@@ -11,10 +16,12 @@ fn main() -> anyhow::Result<()> {
         .with_writer(std::io::stderr)
         .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .init();
+    // Before any thread starts: see allocator.rs.
+    time_tracker::allocator::cap_arenas();
     let app = Arc::new(app::App::new(app::Config::from_env()));
     app.set_self();
     let transport = std::env::var("MCP_TRANSPORT").unwrap_or_else(|_| "stdio".into());
-    let runtime = tokio::runtime::Builder::new_multi_thread().enable_all().build()?;
+    let runtime = tokio::runtime::Builder::new_multi_thread().max_blocking_threads(MAX_BLOCKING_THREADS).enable_all().build()?;
     app.start_health_writer();
     app.start_series_renewal();
     app.start_sheets_refresher();
