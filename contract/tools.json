@@ -12886,7 +12886,7 @@
     }
   },
   {
-    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline (\"2026-11-01\", due at the end of that day, or\n\"2026-11-01T17:00\", in the calendar's time zone; needed while\nactive), a status (inactive, active, done, missed -- not reached,\nand no longer pursued -- or obsolete) and its history (each change of\nstatus and when, oldest first; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal is\nopen (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
+    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline (\"2026-11-01\", due at the end of that day, or\n\"2026-11-01T17:00\", in the calendar's time zone; needed while\nactive) -- a sub-goal's can follow its parent's: with\ndeadline_offset_minutes (0 for the same; 1440 a day before) it's kept\nthat far before the parent's while it's open, and setting a deadline\nwithout it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- not reached,\nand no longer pursued -- or obsolete) and its history (each change of\nstatus and when, oldest first; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal is\nopen (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -12960,6 +12960,12 @@
             "deadline": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "deadline_offset_minutes": {
+              "type": [
+                "integer",
                 "null"
               ]
             },
@@ -13117,6 +13123,12 @@
         "deadline": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "deadline_offset_minutes": {
+          "type": [
+            "integer",
             "null"
           ]
         },
@@ -13279,6 +13291,13 @@
                 "null"
               ]
             },
+            "deadline_offset_minutes": {
+              "description": "Set, its deadline follows its parent's: this many minutes before\nit (0, the same), kept so whenever the parent's changes, while\nit's open. A deadline set without it unties it; so does moving it\nto the top level, keeping the deadline it had.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "status": {
               "anyOf": [
                 {
@@ -13419,6 +13438,12 @@
                 "null"
               ]
             },
+            "deadline_offset_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "status": {
               "anyOf": [
                 {
@@ -13536,6 +13561,7 @@
               "required",
               "expected_minutes",
               "deadline",
+              "deadline_offset_minutes",
               "description",
               "definition_of_done",
               "attribution_hints"
@@ -13593,6 +13619,13 @@
               "description": "When it's due: a date (\"2026-11-01\", due at the end of that day)\nor a date and time (\"2026-11-01T17:00\"), in the calendar's time\nzone. Needed while it's active.",
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "deadline_offset_minutes": {
+              "description": "Set, its deadline follows its parent's: this many minutes before\nit (0, the same), kept so whenever the parent's changes, while\nit's open. A deadline set without it unties it; so does moving it\nto the top level, keeping the deadline it had.",
+              "type": [
+                "integer",
                 "null"
               ]
             },
@@ -13717,6 +13750,12 @@
         "deadline": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "deadline_offset_minutes": {
+          "type": [
+            "integer",
             "null"
           ]
         },
@@ -13904,6 +13943,12 @@
                 "null"
               ]
             },
+            "deadline_offset_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "status": {
               "anyOf": [
                 {
@@ -14084,6 +14129,13 @@
                 "null"
               ]
             },
+            "deadline_offset_minutes": {
+              "description": "Set, its deadline follows its parent's: this many minutes before\nit (0, the same), kept so whenever the parent's changes, while\nit's open. A deadline set without it unties it; so does moving it\nto the top level, keeping the deadline it had.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
             "status": {
               "anyOf": [
                 {
@@ -14173,6 +14225,7 @@
                   "required",
                   "expected_minutes",
                   "deadline",
+                  "deadline_offset_minutes",
                   "description",
                   "definition_of_done",
                   "attribution_hints"
@@ -14275,6 +14328,12 @@
             "deadline": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "deadline_offset_minutes": {
+              "type": [
+                "integer",
                 "null"
               ]
             },
