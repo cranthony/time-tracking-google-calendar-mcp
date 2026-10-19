@@ -67,10 +67,12 @@ or, naming none, with the event whose edge it sets. Note edits never
 touch an edge: only an event edit moves one. A note's text is never
 added to a description twice.
 
-The actions, people and locations Claude's decisions add (by `new:`
-ref) are created only when the proposal is applied. The user can settle
-one sooner, without confirming the rest: `create` it now (with its name,
-a person's context or a location's hint corrected), say it's one
+The actions, people, locations and goals Claude's decisions add (by
+`new:` ref) are created only when the proposal is applied. The user can
+settle one sooner, without confirming the rest: `create` it now (with
+its name -- a goal's title --, a person's context or a location's hint
+corrected; a goal only once the new people it names are settled, and
+without any dropped), say it's one
 that's `existing`, or `drop` it. Every revision from then on names it by
 its id, or leaves it out of the events' actions and facts, wherever the
 decisions named its ref; Claude may keep sending the ref, and isn't
@@ -98,7 +100,8 @@ rules below say what happens then. A refused call writes nothing.
 
 Proposes, revises or extends: `compact_notes(recap, updates, creates,
 cancels, ignore_notes, proposal_id?, revision?, replies?, new_actions?,
-new_people?, new_locations?, annotate_notes?)`. `replies` is
+new_people?, new_locations?, annotate_notes?, fact_summaries?,
+new_goals?)`. `replies` is
 `[{feedback_id, reply}]`; `annotate_notes` is `[{note_id, event_id}]`
 (an event's id, a create's key from the open proposal, or a create's
 `ref` from this call). Each call sends all of Claude's decisions,

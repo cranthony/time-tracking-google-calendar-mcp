@@ -17,15 +17,17 @@ use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::GOALS;
 use crate::stores::groups::{set, str_or_none};
 use crate::stores::locations::dedup;
+use crate::stores::people::SELF_ID;
 use anyhow::bail;
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
-pub const CLEARABLE_FIELDS: [&str; 10] = [
+pub const CLEARABLE_FIELDS: [&str; 12] = [
     "parent_id",
     "required",
     "priority",
@@ -36,6 +38,8 @@ pub const CLEARABLE_FIELDS: [&str; 10] = [
     "description",
     "definition_of_done",
     "attribution_hints",
+    "with_ids",
+    "for_ids",
 ];
 
 // -- the types -------------------------------------------------------------------
@@ -120,6 +124,13 @@ pub struct Goal {
     pub definition_of_done: Option<String>,
     /// A guide for telling which events are for it.
     pub attribution_hints: Option<String>,
+    /// The people it's done with: who the user works on it alongside
+    /// (person ids; never "self", and never also in for_ids).
+    pub with_ids: Option<Vec<String>>,
+    /// The people it's done for, who aren't part of doing it: a promise
+    /// to them, a gift, a favor (person ids; never "self", and never also
+    /// in with_ids).
+    pub for_ids: Option<Vec<String>>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -143,6 +154,8 @@ pub struct ListedGoal {
     pub description: Option<String>,
     pub definition_of_done: Option<String>,
     pub attribution_hints: Option<String>,
+    pub with_ids: Option<Vec<String>>,
+    pub for_ids: Option<Vec<String>>,
     pub path: Vec<String>,
     pub started_at: Option<DateTimeText>,
     pub closed_at: Option<DateTimeText>,
@@ -267,14 +280,24 @@ fn moment(text: &DateTimeText) -> Option<Moment> {
 
 // -- the store -------------------------------------------------------------------
 
+/// Every person's id, to check the people goals name against.
+pub type PersonIds = Arc<dyn Fn() -> anyhow::Result<Vec<String>> + Send + Sync>;
+
 #[derive(Clone)]
 pub struct Goals {
     sheet: RowSheet,
+    people: Option<PersonIds>,
 }
 
 impl Goals {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str) -> anyhow::Result<Goals> {
-        Ok(Goals { sheet: RowSheet::ensure(sheets, spreadsheet_id, GOALS.0, GOALS.1, GOAL_ROW, &["id", "title"])? })
+        Ok(Goals { sheet: RowSheet::ensure(sheets, spreadsheet_id, GOALS.0, GOALS.1, GOAL_ROW, &["id", "title"])?, people: None })
+    }
+
+    /// It, checking the people goals name against `people`.
+    pub fn with_people(mut self, people: PersonIds) -> Goals {
+        self.people = Some(people);
+        self
     }
 
     pub fn whole_tab(&self) -> TabRange {
@@ -392,8 +415,9 @@ impl Goals {
         touched.extend(follow_parents(&mut goals));
         let mut involved = touched.clone();
         involved.extend(deleted.iter().cloned());
-        let problems: Vec<String> =
+        let mut problems: Vec<String> =
             goal_problems(&goals, zone).into_iter().filter(|(ids, _)| ids.iter().any(|i| involved.contains(i))).map(|(_, p)| p).collect();
+        problems.extend(self.people_problems(&goals, &touched)?);
         if !stale.is_empty() {
             // With those of the goals that are there, as the write finds
             // them.
@@ -416,6 +440,31 @@ impl Goals {
             .collect();
         Ok(ChangedGoals { goals: dedup_listed(shown), deleted_ids: deleted })
     }
+}
+
+impl Goals {
+    /// The people `touched` goals name who aren't people (with `people`
+    /// to check against).
+    fn people_problems(&self, goals: &[Goal], touched: &[String]) -> anyhow::Result<Vec<String>> {
+        let Some(lookup) = &self.people else { return Ok(Vec::new()) };
+        let named: Vec<&Goal> = goals.iter().filter(|g| g.id.as_ref().is_some_and(|i| touched.contains(i))).filter(|g| !people_of(g).is_empty()).collect();
+        if named.is_empty() {
+            return Ok(Vec::new());
+        }
+        let known = lookup()?;
+        Ok(named
+            .into_iter()
+            .filter_map(|g| {
+                let unknown: Vec<&String> = people_of(g).into_iter().filter(|p| p.as_str() != SELF_ID && !known.contains(p)).collect();
+                (!unknown.is_empty()).then(|| format!("{} names {}, who aren't people (get_people lists them)", label(g), py::repr_list(&unknown)))
+            })
+            .collect())
+    }
+}
+
+/// The people `goal` is done with, then those it's done for.
+pub fn people_of(goal: &Goal) -> Vec<&String> {
+    goal.with_ids.iter().chain(goal.for_ids.iter()).flatten().collect()
 }
 
 fn dedup_listed(goals: Vec<ListedGoal>) -> Vec<ListedGoal> {
@@ -512,6 +561,16 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
                 problems.push((me.clone(), format!("{name}'s title is longer than {MAX_TITLE_LENGTH} characters")))
             }
             Some(_) => {}
+        }
+        let with = goal.with_ids.as_deref().unwrap_or_default();
+        let for_ = goal.for_ids.as_deref().unwrap_or_default();
+        if with.iter().chain(for_).any(|p| p == SELF_ID) {
+            problems.push((me.clone(), format!("{name} can't name \"self\" in with_ids or for_ids: the user is part of every goal")));
+        }
+        let mut both: Vec<&String> = with.iter().filter(|p| for_.contains(p)).collect();
+        both.dedup();
+        if !both.is_empty() {
+            problems.push((me.clone(), format!("{name} names {} both with (doing it alongside) and for (not part of doing it)", py::repr_list(&both))));
         }
         if let Some(priority) = goal.priority.filter(|p| *p < 0) {
             problems.push((me.clone(), format!("{name}'s priority must be 0 or more, not {priority}")));
@@ -667,6 +726,8 @@ pub fn listed(goal: &Goal, goals: &[Goal]) -> ListedGoal {
         description: goal.description.clone(),
         definition_of_done: goal.definition_of_done.clone(),
         attribution_hints: goal.attribution_hints.clone(),
+        with_ids: goal.with_ids.clone(),
+        for_ids: goal.for_ids.clone(),
         path: path(goal, goals),
         started_at: started_at(goal).cloned(),
         closed_at: closed_at(goal).cloned(),

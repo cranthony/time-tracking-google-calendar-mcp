@@ -2,9 +2,10 @@
 
 Goals are outcomes the user means to reach and can mark done. "Spend 40
 hours a week at work" has no "done", so it's a habit; "ship the Goals
-pane" is a goal. Goals aren't tied to actions, habits, people or places:
-events are tagged with them explicitly, apart from everything else about
-the event, and most events have none.
+pane" is a goal. Goals aren't tied to actions, habits or places, though
+a goal can name the people it's done with or for: events are tagged with
+them explicitly, apart from everything else about the event, and most
+events have none.
 
 ## A goal
 
@@ -19,6 +20,8 @@ the event, and most events have none.
 | `history` | Every change of status and when, oldest first, starting with the status it was made in. Entries can be backdated or removed; the history must stay in order and end with the status. A goal started when it first became active, and was finished when it last became done, missed or obsolete. |
 | `description`, `definition_of_done` | HTML. |
 | `attribution_hints` | A guide, for a model, to telling which events are for the goal. |
+| `with_ids` | The people the user does it with (person ids). |
+| `for_ids` | The people it's done for, who aren't part of doing it: a promise to them, a gift, a favor. No one is in both, and neither names "self". |
 | `id`, `version` | As every kind the app writes: made once by the client's id, updates and deletes by version. |
 
 ## The rules
@@ -98,9 +101,20 @@ event was for the goal. The tool docs say so where events' goals are
 set (`update_event`, `create_event`, `get_goals`).
 
 Compaction is where it does this, as it settles each past event's
-facts: `prepare_compaction` lists the open goals with hints (`goals`:
-each one's id, title, path and hints) beside the actions, people and
-locations, and `compact_notes` takes goal shares (`goals`) on its
-updates and creates. A proposal keeps them through its revisions, shows
-them on its events and changes, and writes them when it's applied; a
-share that names no goal, or doesn't fit its event, is refused.
+facts: `prepare_compaction` lists the open goals (`goals`: each one's
+id, title, path, status, deadline, and its hints and people if it has
+them) beside the actions, people and locations, and `compact_notes`
+takes goal shares (`goals`) on its updates and creates -- only for goals
+with hints. A proposal keeps them through its revisions, shows them on
+its events and changes, and writes them when it's applied; a share that
+names no goal, or doesn't fit its event, is refused. Tagging an event
+with a goal, Claude adds the goal's `with_ids` to the event's people
+unless the notes say otherwise.
+
+Compaction also proposes new goals: when a note says the user wants or
+means to do something, or told someone they would, `compact_notes`'
+`new_goals` adds one (with a `new:` ref, like a new action or person),
+naming the people it's with or for -- new people by their refs. It's
+active, so it has a deadline, and is created when the proposal is
+applied (an open goal with the same title is reused), or sooner if the
+user settles it; see [compaction proposals](compaction-proposals.md).

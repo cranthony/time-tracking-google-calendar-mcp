@@ -403,3 +403,20 @@ fn a_goal_keeps_its_sort_order_until_cleared() {
     f.change(&[], vec![cleared], vec![]).unwrap();
     assert_eq!(f.get(&id)["sort_order"], Value::Null);
 }
+
+#[test]
+fn a_goal_names_the_people_its_done_with_and_for() {
+    let mut f = fixture();
+    f.goals = f.goals.clone().with_people(Arc::new(|| Ok(vec!["self".into(), "sam".into(), "ana".into()])));
+    let id = f.create(json!({"title": "Help Sam move", "deadline": "2026-11-01", "with_ids": ["sam"], "for_ids": ["ana"]})).unwrap();
+    assert_eq!((f.get(&id)["with_ids"].clone(), f.get(&id)["for_ids"].clone()), (json!(["sam"]), json!(["ana"])));
+
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "with_ids": ["sam"], "for_ids": ["sam"]})), r"names \['sam'\] both with");
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "for_ids": ["self"]})), r#"can't name "self""#);
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "with_ids": ["bo"]})), r"names \['bo'\], who aren't people");
+
+    let mut cleared = edit(json!({"id": id, "version": 1}));
+    cleared.clear_fields = vec!["for_ids".into()];
+    f.change(&[], vec![cleared], vec![]).unwrap();
+    assert_eq!((f.get(&id)["with_ids"].clone(), f.get(&id)["for_ids"].clone()), (json!(["sam"]), Value::Null));
+}

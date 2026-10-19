@@ -1,15 +1,19 @@
 //! The actions, people and locations a compaction adds as it goes each with
 //! a `ref` ("new:ukulele") the plan's decisions name it by, created only
-//! when the plan is applied.
+//! when the plan is applied -- and the goals it proposes from what the
+//! notes say the user means to do, which name new people by their refs.
 
 use crate::event::Event;
 use crate::facts::Facts;
 use crate::stores::actions::{action_problems, Action, ActionShare, ActionStatus, Actions};
+use crate::stores::goals::{goal_problems, people_of, Goal, GoalStatus, Goals, StatusChange};
 use crate::stores::locations::{location_problems, Location, Locations};
-use crate::stores::people::{person_problems, People, Person, Status};
+use crate::stores::people::{person_problems, People, Person, Status, SELF_ID};
 use crate::py;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use chrono_tz::Tz;
+use crate::contract::DateTimeText;
 
 pub const REF_PREFIX: &str = "new:";
 
@@ -29,6 +33,7 @@ pub enum Added {
     Action(Addition<Action>),
     Person(Addition<Person>),
     Location(Addition<Location>),
+    Goal(Addition<Goal>),
 }
 
 impl Added {
@@ -37,6 +42,7 @@ impl Added {
             Added::Action(_) => "action",
             Added::Person(_) => "person",
             Added::Location(_) => "location",
+            Added::Goal(_) => "goal",
         }
     }
 
@@ -45,6 +51,7 @@ impl Added {
             Added::Action(a) => &a.ref_,
             Added::Person(p) => &p.ref_,
             Added::Location(l) => &l.ref_,
+            Added::Goal(g) => &g.ref_,
         }
     }
 
@@ -53,6 +60,7 @@ impl Added {
             Added::Action(a) => a.item.name.as_deref(),
             Added::Person(p) => p.item.name.as_deref(),
             Added::Location(l) => l.item.name.as_deref(),
+            Added::Goal(g) => g.item.title.as_deref(),
         }
     }
 }
@@ -62,6 +70,18 @@ pub struct Additions {
     pub actions: Vec<Addition<Action>>,
     pub people: Vec<Addition<Person>>,
     pub locations: Vec<Addition<Location>>,
+    pub goals: Vec<Addition<Goal>>,
+}
+
+/// The stores additions go into, each if the calendar has it, and the
+/// calendar's time zone (for goals' deadlines).
+#[derive(Clone, Copy, Default)]
+pub struct Stores<'a> {
+    pub actions: Option<&'a Actions>,
+    pub people: Option<&'a People>,
+    pub locations: Option<&'a Locations>,
+    pub goals: Option<&'a Goals>,
+    pub zone: Option<Tz>,
 }
 
 /// `value`'s set fields: its nulls left out.
@@ -73,11 +93,13 @@ fn plain(value: Value) -> Value {
 }
 
 impl Additions {
-    /// Every addition, actions first, then people, then locations.
+    /// Every addition, actions first, then people, then locations, then
+    /// goals.
     pub fn all(&self) -> Vec<Added> {
         let actions = self.actions.iter().cloned().map(Added::Action);
         let people = self.people.iter().cloned().map(Added::Person);
-        actions.chain(people).chain(self.locations.iter().cloned().map(Added::Location)).collect()
+        let locations = self.locations.iter().cloned().map(Added::Location);
+        actions.chain(people).chain(locations).chain(self.goals.iter().cloned().map(Added::Goal)).collect()
     }
 
     /// Just `added`.
@@ -87,6 +109,7 @@ impl Additions {
             Added::Action(a) => out.actions.push(a),
             Added::Person(p) => out.people.push(p),
             Added::Location(l) => out.locations.push(l),
+            Added::Goal(g) => out.goals.push(g),
         }
         out
     }
@@ -107,7 +130,7 @@ impl Additions {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.actions.is_empty() && self.people.is_empty() && self.locations.is_empty()
+        self.actions.is_empty() && self.people.is_empty() && self.locations.is_empty() && self.goals.is_empty()
     }
 
     /// Only those whose refs `keep` takes.
@@ -116,6 +139,7 @@ impl Additions {
             actions: self.actions.iter().filter(|a| keep(&a.ref_)).cloned().collect(),
             people: self.people.iter().filter(|p| keep(&p.ref_)).cloned().collect(),
             locations: self.locations.iter().filter(|l| keep(&l.ref_)).cloned().collect(),
+            goals: self.goals.iter().filter(|g| keep(&g.ref_)).cloned().collect(),
         }
     }
 
@@ -131,6 +155,9 @@ impl Additions {
         if !self.locations.is_empty() {
             out.insert("locations".into(), json(self.locations.iter().map(to_value).collect()));
         }
+        if !self.goals.is_empty() {
+            out.insert("goals".into(), json(self.goals.iter().map(to_value).collect()));
+        }
         out
     }
 
@@ -142,7 +169,12 @@ impl Additions {
                 .map(|item| serde_json::from_value(item).map_err(|e| anyhow::anyhow!("the journal's {key} additions can't be read: {e}")))
                 .collect()
         }
-        Ok(Additions { actions: list(data, "actions")?, people: list(data, "people")?, locations: list(data, "locations")? })
+        Ok(Additions {
+            actions: list(data, "actions")?,
+            people: list(data, "people")?,
+            locations: list(data, "locations")?,
+            goals: list(data, "goals")?,
+        })
     }
 }
 
@@ -164,14 +196,41 @@ fn new_location(l: &Addition<Location>) -> Location {
     Location { id: None, ..l.item.clone() }
 }
 
+/// A new goal as its store takes it: active unless given, without the id
+/// it'll be given, its parent and people named as `rename` gives them
+/// (none, left out).
+fn new_goal(g: &Addition<Goal>, rename: &dyn Fn(&str) -> Option<String>) -> Goal {
+    let people = |ids: &Option<Vec<String>>| -> Option<Vec<String>> {
+        let kept: Vec<String> = ids.iter().flatten().filter_map(|i| rename(i)).collect();
+        (!kept.is_empty()).then_some(kept)
+    };
+    Goal {
+        id: None,
+        status: Some(g.item.status.unwrap_or(GoalStatus::Active)),
+        parent_id: g.item.parent_id.as_deref().and_then(rename),
+        with_ids: people(&g.item.with_ids),
+        for_ids: people(&g.item.for_ids),
+        history: None,
+        version: None,
+        ..g.item.clone()
+    }
+}
+
+/// The id `value` stands for: a ref settled already, its id (none if
+/// dropped); else one just made, its id; else itself.
+fn renamed(settled: &[(String, Option<String>)], ids: &[(String, String)], value: &str) -> Option<String> {
+    match settled.iter().find(|(r, _)| r == value) {
+        Some((_, id)) => id.clone(),
+        None => Some(mapped(ids, value)),
+    }
+}
+
 /// `check_additions`: everything wrong with `additions` as their stores
 /// would refuse them once added to what's there, or as refs.
-pub fn check_additions(
-    additions: &Additions,
-    actions: Option<&Actions>,
-    people: Option<&People>,
-    locations: Option<&Locations>,
-) -> anyhow::Result<Vec<String>> {
+/// `settled` are the refs the user has settled already (each with its id,
+/// none if dropped), which goals may still name.
+pub fn check_additions(additions: &Additions, stores: Stores, settled: &[(String, Option<String>)]) -> anyhow::Result<Vec<String>> {
+    let Stores { actions, people, locations, goals, zone } = stores;
     let mut problems: Vec<String> = Vec::new();
     let refs: Vec<String> = additions.all().iter().map(|a| a.ref_().to_string()).collect();
     for r in &refs {
@@ -221,6 +280,58 @@ pub fn check_additions(
             }
         }
     }
+    if !additions.goals.is_empty() {
+        match (goals, zone) {
+            (Some(store), Some(zone)) => problems.extend(goal_addition_problems(additions, store, people, &zone, settled)?),
+            _ => problems.push("this calendar has no goals to add to".into()),
+        }
+    }
+    Ok(problems)
+}
+
+/// What's wrong with `additions`' goals, added to those there: as the
+/// goal store would refuse them, and the people they name who are
+/// neither people nor added (or settled) by ref.
+fn goal_addition_problems(
+    additions: &Additions,
+    store: &Goals,
+    people: Option<&People>,
+    zone: &Tz,
+    settled: &[(String, Option<String>)],
+) -> anyhow::Result<Vec<String>> {
+    let mut problems: Vec<String> = Vec::new();
+    let mut all = store.all()?;
+    let now = DateTimeText(py::pydantic_datetime(&crate::determinism::now()));
+    let refs: Vec<String> = additions.goals.iter().map(|g| g.ref_.clone()).collect();
+    for g in &additions.goals {
+        let status = g.item.status.unwrap_or(GoalStatus::Active);
+        all.push(Goal {
+            id: Some(g.ref_.clone()),
+            status: Some(status),
+            history: Some(vec![StatusChange { status, at: now.clone() }]),
+            version: None,
+            ..g.item.clone()
+        });
+    }
+    problems.extend(
+        goal_problems(&all, zone).into_iter().filter(|(ids, _)| ids.iter().any(|i| refs.contains(i))).map(|(_, p)| format!("new goals: {p}")),
+    );
+    let mut known: Vec<String> = match people {
+        Some(p) => p.all()?.into_iter().filter_map(|p| p.id).collect(),
+        None => Vec::new(),
+    };
+    known.extend(additions.people.iter().map(|p| p.ref_.clone()));
+    known.extend(settled.iter().map(|(r, _)| r.clone()));
+    for g in &additions.goals {
+        let unknown: Vec<&String> = people_of(&g.item).into_iter().filter(|p| p.as_str() != SELF_ID && !known.contains(p)).collect();
+        if !unknown.is_empty() {
+            problems.push(format!(
+                "new goals: {} names {}, who aren't people (get_people lists them; add someone new with new_people)",
+                py::repr(&g.ref_),
+                py::repr_list(&unknown)
+            ));
+        }
+    }
     Ok(problems)
 }
 
@@ -230,12 +341,10 @@ fn folded(value: Option<&str>) -> String {
 
 /// `create_additions`: create `additions` -- reusing any already there by
 /// the same name (and context, for a person) -- and each ref's id.
-pub fn create_additions(
-    additions: &Additions,
-    actions: Option<&Actions>,
-    people: Option<&People>,
-    locations: Option<&Locations>,
-) -> anyhow::Result<Vec<(String, String)>> {
+/// Goals come last, naming the people just made (or `settled`) by their
+/// ids, and reuse an open goal with the same title.
+pub fn create_additions(additions: &Additions, stores: Stores, settled: &[(String, Option<String>)]) -> anyhow::Result<Vec<(String, String)>> {
+    let Stores { actions, people, locations, goals, zone } = stores;
     let mut ids: Vec<(String, String)> = Vec::new();
     let put = |ids: &mut Vec<(String, String)>, r: String, id: String| match ids.iter_mut().find(|(k, _)| *k == r) {
         Some(slot) => slot.1 = id,
@@ -270,6 +379,18 @@ pub fn create_additions(
             let id = match found {
                 Some(found) => found.id.unwrap_or_default(),
                 None => store.create_location(&new_location(new))?.created_id,
+            };
+            put(&mut ids, new.ref_.clone(), id);
+        }
+    }
+    if let (false, Some(store), Some(zone)) = (additions.goals.is_empty(), goals, zone) {
+        let open = |g: &Goal| g.status.is_some_and(|s| !s.is_closed());
+        for new in &additions.goals {
+            let wanted = folded(new.item.title.as_deref().map(str::trim));
+            let found = store.all()?.into_iter().find(|g| open(g) && folded(g.title.as_deref().map(str::trim)) == wanted);
+            let id = match found {
+                Some(found) => found.id.unwrap_or_default(),
+                None => store.create_goal(&new_goal(new, &|r| renamed(settled, &ids, r)), &zone)?.created_id,
             };
             put(&mut ids, new.ref_.clone(), id);
         }

@@ -1916,6 +1916,8 @@
         "description",
         "definition_of_done",
         "attribution_hints",
+        "with_ids",
+        "for_ids",
         "version"
        ]
       ]
@@ -2563,6 +2565,8 @@
         "description",
         "definition_of_done",
         "attribution_hints",
+        "with_ids",
+        "for_ids",
         "version"
        ]
       ]

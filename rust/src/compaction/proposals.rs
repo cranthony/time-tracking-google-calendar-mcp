@@ -543,6 +543,7 @@ pub struct ProposalContext {
     pub new_actions: Vec<Value>,
     pub new_people: Vec<Value>,
     pub new_locations: Vec<Value>,
+    pub new_goals: Vec<Value>,
     pub settled_additions: Vec<AdditionSettled>,
     pub user_edits: Vec<UserEdit>,
     pub feedback: Vec<Feedback>,
@@ -565,6 +566,7 @@ impl ProposalContext {
         out.insert("new_actions".into(), json!(self.new_actions));
         out.insert("new_people".into(), json!(self.new_people));
         out.insert("new_locations".into(), json!(self.new_locations));
+        out.insert("new_goals".into(), json!(self.new_goals));
         out.insert("settled_additions".into(), Value::Array(self.settled_additions.iter().map(AdditionSettled::to_json).collect()));
         out.insert("user_edits".into(), Value::Array(self.user_edits.iter().map(UserEdit::to_json).collect()));
         out.insert("feedback".into(), Value::Array(self.feedback.iter().map(Feedback::to_json).collect()));
