@@ -5,10 +5,12 @@
 //! memory parts): 66 -> 221 MiB on one burst, nearly all of it free. So the
 //! server caps the arenas at 2 as it starts (cap_arenas), and hands what's
 //! free back to the system once no tool call is in flight (CALLS, Calls),
-//! at most every TRIM_EVERY_MS. Elsewhere than Linux/glibc, neither does
-//! anything.
+//! at most every TRIM_EVERY_MS. The background work (the refreshes and
+//! syncs, the Health tab's load and writes) counts as calls too: it
+//! allocates as much, and would otherwise leave what it frees held until
+//! the next tool call. Elsewhere than Linux/glibc, neither does anything.
 
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
 /// The most arenas glibc makes (M_ARENA_MAX); MALLOC_ARENA_MAX, if set,
 /// wins.
@@ -16,8 +18,17 @@ pub const ARENAS: i32 = 2;
 /// The least time between two trims.
 pub const TRIM_EVERY_MS: i64 = 10_000;
 
-/// The server's tool calls in flight (see Calls).
+/// The server's tool calls, and background work, in flight (see Calls).
 pub static CALLS: Calls = Calls::new();
+
+/// The runtime a trim waits on when the call that ends isn't on one (the
+/// background threads aren't): see set_runtime.
+static RUNTIME: OnceLock<tokio::runtime::Handle> = OnceLock::new();
+
+/// Have trims wait on `runtime` when the call that ends isn't on one.
+pub fn set_runtime(runtime: tokio::runtime::Handle) {
+    let _ = RUNTIME.set(runtime);
+}
 
 #[cfg(test)]
 thread_local! {
@@ -25,6 +36,8 @@ thread_local! {
     pub static TEST_TRIMS: std::cell::Cell<Option<u32>> = const { std::cell::Cell::new(None) };
     /// The unit tests' clock, as set.
     pub static TEST_NOW_MS: std::cell::Cell<Option<i64>> = const { std::cell::Cell::new(None) };
+    /// The unit tests' set_runtime, for this thread alone.
+    pub static TEST_RUNTIME: std::cell::RefCell<Option<tokio::runtime::Handle>> = const { std::cell::RefCell::new(None) };
 }
 
 /// The tool calls in flight, and when the allocator was last trimmed: as
@@ -128,10 +141,10 @@ impl Drop for InFlight {
     }
 }
 
-/// Trims in `ms`, on the runtime this runs on -- if none, the next call to
-/// end trims instead.
+/// Trims in `ms`, on the runtime this runs on, or else the one set_runtime
+/// gave -- if none, the next call to end trims instead.
 fn wait_then_trim(calls: &'static Calls, ms: i64) {
-    let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+    let Some(runtime) = tokio::runtime::Handle::try_current().ok().or_else(set_runtime_given) else {
         calls.lock().waiting = false;
         return;
     };
@@ -141,6 +154,13 @@ fn wait_then_trim(calls: &'static Calls, ms: i64) {
             let _ = tokio::task::spawn_blocking(trim).await;
         }
     });
+}
+
+fn set_runtime_given() -> Option<tokio::runtime::Handle> {
+    #[cfg(test)]
+    return TEST_RUNTIME.with(|r| r.borrow().clone());
+    #[cfg(not(test))]
+    RUNTIME.get().cloned()
 }
 
 fn now_ms() -> i64 {

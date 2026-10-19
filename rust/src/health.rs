@@ -43,7 +43,8 @@ pub const REST: &str = "Rest of server";
 /// allocations) less the parts' estimates (Linux only).
 pub const HEAP_UNTRACKED: &str = "Heap in use (untracked)";
 /// What get_health calls what the allocator holds free: freed by the
-/// server, but not given back to the system (Linux only).
+/// server, but not given back to the system, and still resident (Linux
+/// only).
 pub const ALLOCATOR_FREE: &str = "Allocator: free but held";
 /// Not a part, though kept among a sample's parts (so the Health tab keeps
 /// it too): how many threads the server ran then. get_health gives it as
@@ -261,6 +262,9 @@ thread_local! {
     pub static TEST_HEAP: std::cell::Cell<Option<Heap>> = const { std::cell::Cell::new(None) };
     /// The unit tests' thread count (unset: none, on every platform).
     pub static TEST_THREADS: std::cell::Cell<Option<i64>> = const { std::cell::Cell::new(None) };
+    /// The unit tests' anonymous resident memory (unset: none, on every
+    /// platform).
+    pub static TEST_RSS_ANON: std::cell::Cell<Option<i64>> = const { std::cell::Cell::new(None) };
 }
 
 /// This process's resident memory, in KiB (Linux only).
@@ -270,6 +274,16 @@ pub fn rss_kib() -> Option<i64> {
         return rss;
     }
     status_field("VmRSS:")
+}
+
+/// This process's anonymous resident memory, in KiB: its resident memory
+/// but for what files back (the binary, libraries) -- the heap, stacks and
+/// the like (Linux only).
+pub fn rss_anon_kib() -> Option<i64> {
+    #[cfg(test)]
+    return TEST_RSS_ANON.with(std::cell::Cell::get);
+    #[cfg(not(test))]
+    status_field("RssAnon:")
 }
 
 /// How many threads this process runs (Linux only).
@@ -348,12 +362,19 @@ pub fn glibc_heap() -> Option<Heap> {
 /// What the whole process adds to the parts `kept` (see MemoryParts): the
 /// heap in use beyond them, what the allocator holds free, and the thread
 /// count -- each when it can be had.
+///
+/// What the allocator holds free is what of it is resident: glibc counts
+/// what malloc_trim gave back of its free chunks (no longer resident) as
+/// free still, so it's at most the anonymous resident memory less the heap
+/// in use. (The rest of that -- stacks and the like -- stays the rest of
+/// the server.)
 pub fn process_parts(kept: &MemoryParts) -> MemoryParts {
     let mut parts = MemoryParts::new();
     if let Some(heap) = heap() {
         let tracked: i64 = kept.iter().map(|(_, kib)| kib).sum();
         parts.push((HEAP_UNTRACKED.into(), (heap.in_use_kib - tracked).max(0)));
-        parts.push((ALLOCATOR_FREE.into(), heap.free_kib));
+        let resident = rss_anon_kib().map_or(heap.free_kib, |anon| heap.free_kib.min((anon - heap.in_use_kib).max(0)));
+        parts.push((ALLOCATOR_FREE.into(), resident));
     }
     if let Some(threads) = threads() {
         parts.push((THREADS.into(), threads));
@@ -800,8 +821,12 @@ impl HealthWriter {
         writer
     }
 
+    /// Each load and flush in flight as a call is (see allocator::CALLS).
     fn run(&self) {
-        self.load();
+        {
+            let _in_flight = crate::allocator::CALLS.start();
+            self.load();
+        }
         loop {
             let (lock, wake) = &self.stop;
             let stopped = lock.lock().unwrap_or_else(|e| e.into_inner());
@@ -810,6 +835,7 @@ impl HealthWriter {
                 return;
             }
             drop(stopped);
+            let _in_flight = crate::allocator::CALLS.start();
             if self.tab.lock().unwrap_or_else(|e| e.into_inner()).is_none() {
                 self.load();
             } else {

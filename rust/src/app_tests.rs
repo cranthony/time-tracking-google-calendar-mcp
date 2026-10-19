@@ -79,6 +79,23 @@ fn the_calendar_client_is_on_the_configured_calendar() {
 }
 
 #[test]
+fn each_background_refresh_is_in_flight_as_a_call_is() {
+    // So the allocator is trimmed once it ends (see allocator::CALLS).
+    static IN_FLIGHT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let t = test_app();
+
+    Refresh::Every(std::time::Duration::from_millis(1)).start(&t.app, "test-refresh", |_| {
+        IN_FLIGHT.store(crate::allocator::CALLS.in_flight(), std::sync::atomic::Ordering::SeqCst);
+    });
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while IN_FLIGHT.load(std::sync::atomic::Ordering::SeqCst) == 0 && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert!(IN_FLIGHT.load(std::sync::atomic::Ordering::SeqCst) >= 1);
+}
+
+#[test]
 fn what_is_kept_is_refreshed_every_five_minutes_unless_told_otherwise() {
     let every = |seconds| Refresh::Every(std::time::Duration::from_secs(seconds));
 

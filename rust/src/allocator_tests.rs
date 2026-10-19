@@ -85,6 +85,27 @@ async fn a_waited_trim_is_made_once_the_wait_is_over() {
     assert_eq!(state.last_trim_ms, Some(TRIM_EVERY_MS));
 }
 
+#[test]
+fn a_wait_off_any_runtime_waits_on_the_one_set() {
+    // As a background thread's call ends: on no runtime, but one set.
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
+    TEST_RUNTIME.with(|r| *r.borrow_mut() = Some(runtime.handle().clone()));
+    counting(0);
+    let calls = calls();
+    drop(calls.start());
+    TEST_NOW_MS.with(|c| c.set(Some(TRIM_EVERY_MS - 50)));
+    drop(calls.start());
+    assert_eq!(trims(), 1);
+    assert!(calls.lock().waiting);
+    TEST_NOW_MS.with(|c| c.set(Some(TRIM_EVERY_MS)));
+    // The current-thread runtime runs the wait here, by this clock.
+    runtime.block_on(async { tokio::time::sleep(std::time::Duration::from_millis(300)).await });
+    TEST_RUNTIME.with(|r| *r.borrow_mut() = None);
+    let state = calls.lock();
+    assert!(!state.waiting);
+    assert_eq!(state.last_trim_ms, Some(TRIM_EVERY_MS));
+}
+
 impl Calls {
     /// A call starts and ends at `now_ms` (with no InFlight to trim).
     fn finished_after_start(&self, now_ms: i64) -> Trim {

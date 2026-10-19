@@ -22,6 +22,8 @@ fn main() -> anyhow::Result<()> {
     app.set_self();
     let transport = std::env::var("MCP_TRANSPORT").unwrap_or_else(|_| "stdio".into());
     let runtime = tokio::runtime::Builder::new_multi_thread().max_blocking_threads(MAX_BLOCKING_THREADS).enable_all().build()?;
+    // Before the background threads start: their trims wait on it.
+    time_tracker::allocator::set_runtime(runtime.handle().clone());
     app.start_health_writer();
     app.start_series_renewal();
     app.start_sheets_refresher();
