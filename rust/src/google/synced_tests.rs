@@ -179,20 +179,3 @@ fn starting_later_drops_what_falls_out_and_never_starts_earlier() {
     assert_eq!(store.from, Some(at("2026-02-01T00:00:00Z")));
     assert_eq!(store.events.keys().collect::<Vec<_>>(), vec!["second"]);
 }
-
-#[test]
-fn a_change_to_just_who_its_indexed_under_is_no_edit() {
-    let mut store = Store::default();
-    let kept = json!({"id": "walk", "etag": "\"1\"", "summary": "Walk", "extendedProperties": {"private": {"cascading-time-tracker-facts": "{}"}}});
-    store.keep(kept.clone());
-
-    let mut reindexed = kept.clone();
-    reindexed["etag"] = json!("\"2\"");
-    reindexed["extendedProperties"]["private"]["cascading-time-tracker-person-sam"] = json!("1");
-    let mut edited = reindexed.clone();
-    edited["summary"] = json!("Run");
-
-    assert!(store.only_reindexed(&reindexed));
-    assert!(!store.only_reindexed(&edited));
-    assert!(!store.only_reindexed(&json!({"id": "other"})));
-}

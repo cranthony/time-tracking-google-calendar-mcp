@@ -338,6 +338,8 @@ fn print_actions(out: &mut dyn Write, listed: &Value, key: &str, none: &str) {
 /// series' master is left alone and listed -- a patch to one resets every
 /// instance edited on its own -- as are those Calendar refuses (changed
 /// meanwhile: run it again). With `dry_run`, only says what it would do.
+/// A running server warns of each change it makes (get_health's
+/// sheet_warnings), as of any change made outside it.
 fn index_people(app: &Arc<App>, dry_run: bool, out: &mut dyn Write) -> Result<(), Failure> {
     use crate::event::{is_person_key, person_properties, PERSON_INDEXED};
     let client = app.calendar_client()?;

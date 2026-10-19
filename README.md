@@ -290,7 +290,8 @@ calendar_cli delete <event-id>
 # facts name (what list_events' person_id lists by): once, for events
 # written before the index was. --dry-run says what it would change.
 # A series' master is listed, not patched (a patch would reset its
-# instances); one changed meanwhile fails -- run it again.
+# instances); one changed meanwhile fails -- run it again. A running
+# server warns of each change it makes, as of any made outside it.
 calendar_cli index_people --dry-run
 
 # List this calendar's custom event labels, as Calendar itself stores
