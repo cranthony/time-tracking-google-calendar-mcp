@@ -1025,9 +1025,11 @@ pub struct Proposal {
 /// decisions add (by its `ref`): `create` it now -- with any of `name` (a
 /// goal's title), `context` (a person's) and `hint` (a location's)
 /// corrected; a goal with its `status` and `deadline` set too -- made
-/// `active`, say, with a deadline -- say it's one that's `existing` (its
-/// `id`), or `drop` it. A goal naming a new person can't be created until
-/// they're settled.
+/// `active`, say, with a deadline; and any of its other `fields`, as its
+/// create tool takes them (a location's `group_id` and `map_location`,
+/// an action's `group_id`, a person's `circles`...), set over Claude's --
+/// say it's one that's `existing` (its `id`), or `drop` it. A goal naming
+/// a new person can't be created until they're settled.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct AdditionChoice {
     pub r#ref: String,
@@ -1038,6 +1040,7 @@ pub struct AdditionChoice {
     pub hint: Option<String>,
     pub status: Option<GoalStatus>,
     pub deadline: Option<String>,
+    pub fields: Option<Map<String, Value>>,
 }
 
 /// The user's say on what a note is for: `annotate` -- add it to the
@@ -1712,7 +1715,7 @@ pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Op
         let additions: Vec<proposals::AdditionChoice> = additions
             .unwrap_or_default()
             .into_iter()
-            .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint, status: a.status, deadline: a.deadline })
+            .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint, status: a.status, deadline: a.deadline, fields: a.fields })
             .collect();
         let mut changes: Vec<goal_changes::GoalChangeChoice> = Vec::new();
         for c in goal_changes.unwrap_or_default().iter() {

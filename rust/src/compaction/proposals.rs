@@ -184,6 +184,10 @@ pub struct AdditionChoice {
     /// A goal's, set as it's made: active, say, with its deadline.
     pub status: Option<GoalStatus>,
     pub deadline: Option<String>,
+    /// Any of its other fields, as its create tool takes them -- a
+    /// location's group_id, say -- set as it's made, under the corrections
+    /// above.
+    pub fields: Option<Map<String, Value>>,
 }
 
 impl AdditionChoice {
@@ -198,6 +202,7 @@ impl AdditionChoice {
             hint: text("hint"),
             status: value.get("status").and_then(|s| serde_json::from_value(s.clone()).ok()),
             deadline: text("deadline"),
+            fields: value.get("fields").and_then(Value::as_object).cloned(),
         }
     }
 }
