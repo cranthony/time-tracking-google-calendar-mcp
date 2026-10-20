@@ -4,6 +4,7 @@
 //! the requests the fake was sent, or what it now holds.
 
 use super::*;
+use crate::compaction::goal_changes::{GoalChange, GoalChangeChoice};
 use crate::compaction::plan::EventDecision;
 use crate::compaction::proposals::{AdditionChoice, NoteEdit, Proposal, ProposalEvent};
 use crate::sheet::{ACTIONS, GOALS, LOCATIONS, PEOPLE, TRAITS};
@@ -16,6 +17,7 @@ use crate::write_lock::WRITE_LOCK;
 mod commit;
 mod dry_run;
 mod facts;
+mod goal_changes;
 mod goals;
 mod judging;
 mod historical_notes;
@@ -74,6 +76,7 @@ pub struct DryRun {
     pub recap: Option<Recap>,
     pub create_refs: Vec<Option<String>>,
     pub fact_summaries: Vec<ProposedSummary>,
+    pub goal_changes: Vec<GoalChange>,
 }
 
 /// What `amend` takes: the user's edits.
@@ -83,6 +86,7 @@ pub struct Amend {
     pub as_planned: Vec<String>,
     pub notes: Vec<NoteEdit>,
     pub additions: Vec<AdditionChoice>,
+    pub goal_changes: Vec<GoalChangeChoice>,
     pub through: Option<Moment>,
 }
 
@@ -225,6 +229,7 @@ impl Setup {
                 options.recap,
                 options.create_refs,
                 options.fact_summaries,
+                options.goal_changes,
             )
         })
     }
@@ -242,7 +247,7 @@ impl Setup {
     }
 
     pub fn try_amend(&self, proposal_id: &str, revision: i64, amend: Amend) -> anyhow::Result<Proposal> {
-        self.call(|c| c.amend(proposal_id, revision, amend.decisions, amend.as_planned, amend.notes, amend.additions, amend.through))
+        self.call(|c| c.amend(proposal_id, revision, amend.decisions, amend.as_planned, amend.notes, amend.additions, amend.goal_changes, amend.through))
     }
 
     pub fn amend(&self, proposal_id: &str, revision: i64, decisions: Vec<EventDecision>) -> Proposal {

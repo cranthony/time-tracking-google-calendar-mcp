@@ -80,6 +80,27 @@ decisions named its ref; Claude may keep sending the ref, and isn't
 refused for one the user created. `as_planned` on a ref unsettles it.
 One created stays, whatever becomes of the proposal.
 
+Goals there are change the same way. Claude's decisions can include
+**goal changes** (`goal_changes`): a goal becomes done, missed or
+obsolete at a time in the window -- from a note that says its outcome
+was reached or that the user dropped it, or, for a goal whose deadline
+fell inside the window with nothing showing it done, missed at its
+deadline. A missed goal can carry a `retry_deadline`: it's missed and
+tried again by then, so it stays open. They're kept with the revision,
+sent again by Claude each revision like its other decisions, and made
+when the proposal is applied -- after the calendar writes, each as one
+update of its goal (sub-goals before their parents), its history gaining
+the change at the change's time with the deadline then in force. The
+user settles one sooner in review: `apply` it now, `drop` it (the goal
+is left alone), or `change` it -- their status, time and retry deadline
+over Claude's, kept in the proposal and never overridden by Claude's
+later revisions except through feedback, as other user edits -- and can
+add a change of a goal Claude didn't change. Claude's later revisions
+name a settled one or leave it out, as with settled additions. A change
+the goal rules refuse when the proposal is applied -- the goal changed
+meanwhile -- doesn't stop the apply: it's dropped, and the revision's
+warnings say so, for the user to redo.
+
 ## Contract
 
 Every write names the revision it started from (`revision`). Writes
@@ -99,17 +120,24 @@ rules below say what happens then. A refused call writes nothing.
   summary, its notes) but not its times, nor cancel or merge it
   (`compacted`). The timeline shows it first, under its date, marked
   revisited.
+- `goals` lists the open goals (id, title, path, status, deadline, hints,
+  people); one whose deadline fell inside the window -- its start to now
+  -- has `due_in_window: true`, for the triage pass (see
+  `compact_notes`' `goal_changes`).
 - With a proposal open, also returns `proposal`: its current revision's
   Claude decisions (`updates`, `creates` with their keys, `cancels`,
-  `ignore_notes`, `annotate_notes`), its last `recap`, the user ledger,
-  every feedback item, and `user_seq` (the last ledger entry included).
+  `ignore_notes`, `annotate_notes`, `new_*`, `goal_changes`), its last
+  `recap`, the user ledger, every feedback item, the additions and goal
+  changes the user settled (`settled_additions`,
+  `settled_goal_changes`), and `user_seq` (the last ledger entry
+  included).
 
 ### `compact_notes` (Claude; plans only)
 
 Proposes, revises or extends: `compact_notes(recap, updates, creates,
 cancels, ignore_notes, proposal_id?, revision?, replies?, new_actions?,
 new_people?, new_locations?, annotate_notes?, fact_summaries?,
-new_goals?)`. `replies` is
+new_goals?, goal_changes?)`. `replies` is
 `[{feedback_id, reply}]`; `annotate_notes` is `[{note_id, event_id}]`
 (an event's id, a create's key from the open proposal, or a create's
 `ref` from this call). Each call sends all of Claude's decisions,
@@ -119,12 +147,26 @@ has a key.
 
 - `recap` (required) is Claude's account of the revision, for the user
   reviewing it: `{overview, did, unsure}`, each of `did` and `unsure` a
-  list of `{text, event_ids?, note_ids?}` -- `text` in Markdown (bold,
-  italics, code, lists), citing the events (ids, keys or refs) and notes
-  it's about. `did` must say something; `unsure` may be empty. A point
-  citing an event or note the revision doesn't have is refused. It's
-  kept with the revision, and the user's revisions after it keep it
-  until Claude writes another.
+  list of `{text, event_ids?, note_ids?, goal_ids?}` -- `text` in
+  Markdown (bold, italics, code, lists), citing the events (ids, keys or
+  refs), notes and goal changes (by goal id) it's about. `did` must say
+  something; `unsure` may be empty. A point citing an event, note or
+  goal change the revision doesn't have is refused. It's kept with the
+  revision, and the user's revisions after it keep it until Claude
+  writes another.
+- `goal_changes` is `[{goal_id, status: done | missed | obsolete, at?,
+  note_ids?, retry_deadline?}]`: the changes to goals there are (see
+  above). `at` is a time in the window, the proposal's `through` when
+  left out; `note_ids` the notes it came from; `retry_deadline` (with
+  `missed` only) makes it a retry -- the goal's history gains missed
+  (with the deadline it missed) then its prior status (with the new one)
+  at `at`, and it stays open. Refused, naming the goal: a goal that
+  isn't there or isn't open, a status other than those three, a time
+  outside the window, a note that isn't the proposal's, a goal given
+  twice, and a change the goal rules refuse as the goals are now --
+  closing a goal with open sub-goals, say, unless the call closes or
+  retries them too. Claude sends them all again each revision; one for a
+  goal the user settled is ignored, not refused.
 
 - `dry_run=False` is removed: Claude can't apply anything.
 - With no proposal open, starts one (revision 1). With one open, a call
@@ -169,6 +211,12 @@ as it is now:
 - `changes` (the calendar writes), `warnings`, `timeline`, `additions`
   (those still to create on apply) and `settled_additions` (`ref`,
   `use`, `id`: those the user settled).
+- `goal_changes`: the goal changes it makes when applied -- Claude's,
+  less those the user applied or dropped, as the user changed them, plus
+  the user's own -- each `goal_id`, `title`, `path`, `status`, `at`,
+  `note_ids`, `retry_deadline` and `decided_by` (`claude` or `user`);
+  and `settled_goal_changes` (`goal_id`, `use`: `apply`, `drop` or
+  `change`, and the `status`, `at` and `retry_deadline` settled).
 - `user_edits`: the ledger (`id`, `edit`, `status` `active`,
   `inapplicable` or `replaced`, `created`, `base_revision`).
 - `feedback`: `id`, `text`, `event_id`, `note_id`, `at`, `by` (`user`/`server`),
@@ -183,13 +231,14 @@ as it is now:
 ### `amend_proposal` (app)
 
 `amend_proposal(proposal_id, revision, updates?, creates?, cancels?,
-as_planned?, notes?, additions?, through?)`: `updates`/`creates`/`cancels` as
+as_planned?, notes?, additions?, goal_changes?, through?)`: `updates`/`creates`/`cancels` as
 update_event takes them -- an update is `{event, clear_fields?}` (the
 event's id may be a key), a create an event -- each update and create
 also taking `start_note`/`end_note` (a note that sets that edge);
 `notes` is `[{note_id, use: annotate | ignore, event_id?}]`;
 `additions` is `[{ref, use: create | existing | drop, id?, name?,
-context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the new revision, as `get_proposal` does, with
+context?, hint?}]`; `goal_changes` is `[{goal_id, use: apply | drop |
+change, status?, at?, retry_deadline?}]`; `as_planned` event ids, keys, note ids or refs. Returns the new revision, as `get_proposal` does, with
 `replaced`: the ids of events whose newer Claude change it overrode.
 
 - Appends one ledger entry per edit and writes a new revision with
@@ -230,6 +279,18 @@ context?, hint?}]`; `as_planned` event ids, keys, note ids or refs. Returns the 
   to plan, so a refused amend creates nothing. One settled with a ref
   the proposal doesn't add, an `existing` id that isn't there, or an
   id with any other use, is refused.
+- A goal change the user settles (by its goal's id) gets one ledger
+  entry, the last for a goal winning. `apply` makes it now, once the
+  revision is known to plan -- one update of the goal, with the change's
+  `at` as the history time, refused as `update_goals` would refuse it,
+  and then nothing is settled; `drop` leaves the goal alone; `change`
+  keeps it in the proposal with the user's `status`, `at` and
+  `retry_deadline` over Claude's. Any of the three may give those fields
+  over the proposal's; `at` defaults to the proposal's `through`. A
+  `change` of a goal the proposal doesn't change adds one, and then
+  needs a status; `apply` or `drop` of one is refused. The user's change
+  is checked as Claude's is (an open goal, a time in the window, the
+  goal rules).
 - Edits set actions and facts (location, people, notes on people) as
   `compact_notes` does, naming existing ones by id. A new action,
   person or location is created first (`create_action`,
@@ -263,6 +324,10 @@ proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`,
   night (the end-of-day sleep that ends after it), so a calendar change
   up to then can count; one after it can't.
   - Same writes, same notes: applies them (status `applying`), then
+    makes the revision's goal changes (each as one update, sub-goals
+    before parents; one the goal rules now refuse is dropped and added
+    to the revision's `warnings`, the rest still made; one made already
+    by an apply that stopped is left as it is), then
     stamps its notes and makes `through` the new start of history. An
     event changed on the calendar meanwhile that the plan doesn't
     write is left as it is now.
@@ -337,11 +402,11 @@ compaction_id | step | kind | event_id | before | after | status | detail
 
 | `kind` | `compaction_id` | `step` | Other columns |
 |---|---|---|---|
-| `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `note_targets` (note -> event), `batch`/`day`, `additions`, `revisits`: the events historical notes revisit) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision), `claude_ignore_notes`, `claude_note_targets` and `claude_additions` (Claude's own, before the user's note edits and settled additions; the first day's `additions` are those left to create) |
+| `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings` -- the plan's, plus what applying it couldn't do -- `ignore_notes`, `note_targets` (note -> event), `batch`/`day`, `additions`, `revisits`: the events historical notes revisit) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision), `claude_ignore_notes`, `claude_note_targets`, `claude_additions` (Claude's own, before the user's note edits and settled additions; the first day's `additions` are those left to create), `claude_fact_summaries` and `claude_goal_changes` (Claude's goal changes, `[{goal_id, status, at, note_ids?, retry_deadline?}]`; the user's settlements are ledger entries) |
 | `decision` | revision-day id | 0 | A decision the day was planned with -- Claude's and the user's merged -- as JSON in `before`; `event_id` repeats its event |
 | `claude_decision` | revision's first day | 0 | One of Claude's own decisions, as JSON in `before`: what the next revision starts from |
 | `update`/`create`/`cancel` | revision-day id | 1… | One calendar write: `event_id` (a create's key, for a create), the event's state `before` and `after`, `pending`/`done`, reason in `detail` |
-| `user_decision` | proposal id | n (id `<proposal>u<n>`) | The edit as JSON in `before` (a decision, `as_planned`, a `note` edit, whose `event_id` column holds the note's id, or an `addition`, whose `event_id` column holds its ref); `status` `active`, `inapplicable`, or `replaced` (by Claude answering the user's feedback on that event); `detail`: when, and the revision it started from |
+| `user_decision` | proposal id | n (id `<proposal>u<n>`) | The edit as JSON in `before` (a decision, `as_planned`, a `note` edit, whose `event_id` column holds the note's id, an `addition`, whose `event_id` column holds its ref, or a `goal_change` -- `{action: goal_change, use: apply \| drop \| change, status?, at?, retry_deadline?}` -- whose `event_id` column holds the goal's id); `status` `active`, `inapplicable`, or `replaced` (by Claude answering the user's feedback on that event); `detail`: when, and the revision it started from |
 | `feedback` | proposal id | n (id `<proposal>f<n>`) | `before`: text, `at`, `note_id`, author (`user`/`server`), when; `after`: reply and answering revision; `status` `open`, `answered` or `withdrawn` |
 
 `compaction` row statuses:
