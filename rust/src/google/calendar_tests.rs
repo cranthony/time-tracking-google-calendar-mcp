@@ -778,6 +778,41 @@ fn what_a_full_listing_had_isnt_warned_of_when_the_feed_brings_it_again() {
 }
 
 #[test]
+fn a_cancelled_occurrence_calendar_restamps_isnt_warned_of_but_is_kept() {
+    let f = fixture();
+    let mut series = event(Some("series1"), "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00").insert_body().unwrap();
+    series.insert("id".into(), json!("series1"));
+    series.insert("recurrence".into(), json!(["RRULE:FREQ=DAILY;COUNT=3"]));
+    f.fake.add_event(&f.calendar_id, Value::Object(series));
+    let id = "series1_20260102T090000Z";
+    let mut occurrence = event(None, "2026-01-02T09:00:00+00:00", "2026-01-02T10:00:00+00:00").insert_body().unwrap();
+    occurrence.insert("id".into(), json!(id));
+    occurrence.insert("recurringEventId".into(), json!("series1"));
+    occurrence.insert("originalStartTime".into(), json!({"dateTime": "2026-01-02T09:00:00+00:00"}));
+    f.fake.add_event(&f.calendar_id, Value::Object(occurrence));
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    let kept_etag = || synced::with(&f.client.root(), &f.calendar_id, |store| store.events[id]["etag"].clone());
+    let outside = || f.client.take_outside().iter().map(|e| e["id"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+
+    // Cancelled by hand: warned of.
+    f.fake.with(|s| s.edit_event_by_hand(&f.calendar_id, id, json!({"status": "cancelled"})));
+    f.client.sync().unwrap();
+    assert_eq!(outside(), vec![id]);
+
+    // Re-stamped about 30 days on, still cancelled: not warned of, but kept.
+    let before = kept_etag();
+    f.fake.with(|s| s.edit_event_by_hand(&f.calendar_id, id, json!({})));
+    f.client.sync().unwrap();
+    assert!(outside().is_empty());
+    assert_ne!(kept_etag(), before);
+
+    // Brought back: warned of.
+    f.fake.with(|s| s.edit_event_by_hand(&f.calendar_id, id, json!({"status": "confirmed"})));
+    f.client.sync().unwrap();
+    assert_eq!(outside(), vec![id]);
+}
+
+#[test]
 fn an_instance_is_got_from_its_kept_series_and_one_not_kept_from_calendar() {
     let f = fixture();
     let mut series = event(Some("series1"), "2026-01-01T09:00:00+00:00", "2026-01-01T10:00:00+00:00").insert_body().unwrap();

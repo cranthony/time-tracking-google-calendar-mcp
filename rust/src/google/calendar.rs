@@ -379,7 +379,14 @@ impl CalendarClient {
                 store.listed(&changes.items);
             }
             for item in changes.items {
-                if !full && store.changed_since_listed(&item) && !store.is_ours(&item, now) {
+                // Google Calendar re-stamps each cancelled recurring
+                // occurrence about 30 days after it was cancelled: a new
+                // `updated` and etag, still cancelled. That's no change
+                // to warn of -- but the new copy is still kept below.
+                // Cancelling a live one, or bringing one back, still is.
+                let restamped = item["status"] == "cancelled"
+                    && item["id"].as_str().and_then(|id| store.events.get(id)).is_some_and(|kept| kept["status"] == "cancelled");
+                if !full && !restamped && store.changed_since_listed(&item) && !store.is_ours(&item, now) {
                     store.outside.push(item.clone());
                 }
                 store.brought(&item);
