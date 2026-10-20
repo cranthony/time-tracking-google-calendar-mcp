@@ -368,6 +368,24 @@ fn an_action_approved_now_is_created_active() {
 }
 
 #[test]
+fn one_made_now_takes_its_other_fields() {
+    let s = settling();
+    let locations = s.setup.compactor.locations.as_ref().unwrap();
+    let group = crate::stores::locations::LocationGroup { name: Some("Downtown".into()), ..Default::default() };
+    let downtown = s.setup.call(|_| locations.create_location_group(&group)).unwrap().created_id;
+
+    s.settle(1, json!({"ref": "new:cafe", "use": "create", "hint": "on the corner", "fields": {"map_location": "1 Main St", "group_id": downtown, "hint": "Claude's"}})).unwrap();
+
+    let all = locations.all().unwrap();
+    let cafe = all.iter().find(|l| l.name.as_deref() == Some("Corner cafe")).unwrap();
+    // The correction wins over the same field.
+    assert_eq!(
+        (cafe.hint.as_deref(), cafe.map_location.as_deref(), cafe.group_id.as_deref()),
+        (Some("on the corner"), Some("1 Main St"), Some(downtown.as_str()))
+    );
+}
+
+#[test]
 fn claudes_revision_keeps_what_the_user_settled() {
     let s = settling();
     s.settle(1, json!({"ref": "new:alex", "use": "create"})).unwrap();
@@ -419,6 +437,10 @@ fn a_choice_that_cant_be_made_is_refused() {
         (json!({"ref": "new:nobody", "use": "drop"}), "isn't something the proposal adds"),
         (json!({"ref": "new:alex", "use": "existing", "id": "nope"}), "there's no person 'nope'"),
         (json!({"ref": "new:alex", "use": "create", "id": "sam"}), "only 'existing' takes an id"),
+        (json!({"ref": "new:alex", "use": "drop", "fields": {"context": "x"}}), "only one made now takes fields"),
+        (json!({"ref": "new:alex", "use": "create", "fields": {"id": "x"}}), r"its fields can't set \['id'\]"),
+        (json!({"ref": "new:cafe", "use": "create", "fields": {"colour": "red"}}), r"it has no field \['colour'\]"),
+        (json!({"ref": "new:cafe", "use": "create", "fields": {"group_id": 3}}), "its fields don't fit"),
     ];
     let s = settling();
 

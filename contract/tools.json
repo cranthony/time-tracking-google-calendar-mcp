@@ -20050,7 +20050,7 @@
           "type": "object"
         },
         "AdditionChoice": {
-          "description": "The user's say on an action, person, location or goal Claude's\ndecisions add (by its `ref`): `create` it now -- with any of `name` (a\ngoal's title), `context` (a person's) and `hint` (a location's)\ncorrected; a goal with its `status` and `deadline` set too -- made\n`active`, say, with a deadline -- say it's one that's `existing` (its\n`id`), or `drop` it. A goal naming a new person can't be created until\nthey're settled.",
+          "description": "The user's say on an action, person, location or goal Claude's\ndecisions add (by its `ref`): `create` it now -- with any of `name` (a\ngoal's title), `context` (a person's) and `hint` (a location's)\ncorrected; a goal with its `status` and `deadline` set too -- made\n`active`, say, with a deadline; and any of its other `fields`, as its\ncreate tool takes them (a location's `group_id` and `map_location`,\nan action's `group_id`, a person's `circles`...), set over Claude's --\nsay it's one that's `existing` (its `id`), or `drop` it. A goal naming\na new person can't be created until they're settled.",
           "properties": {
             "ref": {
               "type": "string"
@@ -20107,6 +20107,13 @@
             "deadline": {
               "type": [
                 "string",
+                "null"
+              ]
+            },
+            "fields": {
+              "additionalProperties": true,
+              "type": [
+                "object",
                 "null"
               ]
             }

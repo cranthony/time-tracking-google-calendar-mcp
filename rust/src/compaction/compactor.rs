@@ -142,6 +142,23 @@ fn prefetch_after() -> Duration {
     Duration::hours(48)
 }
 
+/// `item` with `fields` set over it, as its create tool takes them: each
+/// one of its fields, or refused.
+fn with_fields<T: serde::Serialize + serde::de::DeserializeOwned>(item: &mut T, fields: &Map<String, Value>) -> anyhow::Result<()> {
+    let mut value = serde_json::to_value(&*item)?;
+    let Some(map) = value.as_object_mut() else { anyhow::bail!("it can't take fields") };
+    // A field left out of it when false (a goal's) is still one of its own.
+    let unknown: Vec<&String> = fields.keys().filter(|k| !map.contains_key(*k) && fields[*k] != Value::Bool(false)).collect();
+    if !unknown.is_empty() {
+        anyhow::bail!("it has no field {}", py::repr_list(&unknown));
+    }
+    for (key, field) in fields {
+        map.insert(key.clone(), field.clone());
+    }
+    *item = serde_json::from_value(value).map_err(|e| anyhow::anyhow!("its fields don't fit: {e}"))?;
+    Ok(())
+}
+
 /// A CompactionError, as an error to return.
 fn ce(message: impl Into<String>, category: &str) -> anyhow::Error {
     error(message, category).into()
@@ -1632,6 +1649,17 @@ impl NoteCompactor {
                 problems.push(format!("additions: {} -- only a goal made now takes a status or deadline", choice.ref_));
                 continue;
             }
+            if let Some(fields) = &choice.fields {
+                if choice.use_ != "create" {
+                    problems.push(format!("additions: {} -- only one made now takes fields", choice.ref_));
+                    continue;
+                }
+                let reserved: Vec<&String> = fields.keys().filter(|k| ["id", "ref", "version"].contains(&k.as_str())).collect();
+                if !reserved.is_empty() {
+                    problems.push(format!("additions: {} -- its fields can't set {}", choice.ref_, py::repr_list(&reserved)));
+                    continue;
+                }
+            }
             found.push((choice.clone(), item.clone()));
         }
         if !problems.is_empty() {
@@ -1645,6 +1673,15 @@ impl NoteCompactor {
     /// settled yet (one dropped is left out of it).
     fn create_addition(&self, item: &Added, choice: &AdditionChoice, settled: &Dict<AdditionSettled>, additions: &Additions) -> anyhow::Result<String> {
         let mut item = item.clone();
+        if let Some(fields) = choice.fields.as_ref().filter(|f| !f.is_empty()) {
+            let set = |what: anyhow::Result<()>| what.map_err(|e| ce(format!("additions: {}: {e}", choice.ref_), "additions"));
+            match &mut item {
+                Added::Action(a) => set(with_fields(&mut a.item, fields))?,
+                Added::Person(p) => set(with_fields(&mut p.item, fields))?,
+                Added::Location(l) => set(with_fields(&mut l.item, fields))?,
+                Added::Goal(g) => set(with_fields(&mut g.item, fields))?,
+            }
+        }
         match &mut item {
             Added::Action(a) => {
                 if let Some(name) = &choice.name {
