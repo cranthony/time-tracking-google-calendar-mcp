@@ -129,9 +129,13 @@ the user's for helping someone with a goal of theirs or something
 they're struggling with, but not a friend's own goal with no idea of
 the user's attached. A note prefixed `todo:`, `for <person>:`,
 `with <person>:` or `idea for <person>:` is a definite goal: the person
-named is who it's for or with, and the rest is its title, phrased as an
-outcome. It's inactive. A goal for the user alone has a deadline only
-when the notes give one; a goal with or for someone always has one --
+named is who it's for or with, and the rest is its title, phrased as
+what the user will do. A title is always that: the active voice, from
+the user's side ("Fix the fence", "Send Mom the photos", "Encourage
+Gary to make a project with AI"), never the outcome as a state ("Fence
+fixed", "Photos sent to Mom"). The goal is inactive. A goal for the
+user alone has a deadline only when the notes give one; a goal with or
+for someone always has one --
 the notes' or, failing that, about a week after the note, which the
 recap's `unsure` says was assumed -- so it shows on the goals-due strip.
 It's created when the proposal is applied (an open goal with the same

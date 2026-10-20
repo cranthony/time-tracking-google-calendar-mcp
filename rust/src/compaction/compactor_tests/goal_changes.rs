@@ -16,8 +16,8 @@ fn started(at: &str) -> Value {
 fn goals() -> Vec<Value> {
     vec![
         json!({"id": "g1", "title": RECIPE, "status": "active", "deadline": "2026-01-10", "history": started("09:00")}),
-        json!({"id": "g2", "title": "Fence fixed", "status": "active", "deadline": "2026-01-01T10:00", "history": started("09:00")}),
-        json!({"id": "g3", "title": "Posts bought", "parent_id": "g2", "status": "active", "deadline": "2026-01-01T09:30", "history": started("09:30")}),
+        json!({"id": "g2", "title": "Fix the fence", "status": "active", "deadline": "2026-01-01T10:00", "history": started("09:00")}),
+        json!({"id": "g3", "title": "Buy the posts", "parent_id": "g2", "status": "active", "deadline": "2026-01-01T09:30", "history": started("09:30")}),
         json!({"id": "g4", "title": "Juggle", "status": "inactive", "deadline": "2026-01-01", "history": [{"status": "inactive", "at": "2025-12-30T09:00:00+00:00", "deadline": "2026-01-01"}]}),
         json!({"id": "g5", "title": "Read", "status": "done", "deadline": "2025-12-31", "history": [{"status": "done", "at": "2025-12-30T09:00:00+00:00", "deadline": "2025-12-31"}]}),
     ]
@@ -147,7 +147,7 @@ fn a_retry_marks_the_goal_missed_then_open_again_by_its_new_deadline() {
 fn closing_a_goal_with_open_sub_goals_is_refused_unless_they_close_too() {
     let setup = setup();
 
-    refused(proposed(&setup, vec![change("g2", GoalStatus::Done, Some("10:20"))]), r"goal g3 \('Posts bought'\) is active, but its parent goal g2 \('Fence fixed'\) is done");
+    refused(proposed(&setup, vec![change("g2", GoalStatus::Done, Some("10:20"))]), r"goal g3 \('Buy the posts'\) is active, but its parent goal g2 \('Fix the fence'\) is done");
 
     let both = vec![change("g2", GoalStatus::Done, Some("10:20")), change("g3", GoalStatus::Done, Some("10:00"))];
     let p = proposed(&setup, both).unwrap().proposal_id.unwrap();
@@ -227,7 +227,7 @@ fn a_users_goal_change_is_checked_as_claudes_is() {
     refused(settle(&setup, &p, 1, vec![json!({"goal_id": "g3", "use": "drop"})]), "g3 isn't a goal the proposal changes, so there's nothing to drop");
     refused(settle(&setup, &p, 1, vec![json!({"goal_id": "g3", "use": "apply"})]), "g3 isn't a goal the proposal changes: give its status");
     refused(settle(&setup, &p, 1, vec![json!({"goal_id": "g3", "use": "change"})]), "its change needs a status");
-    refused(settle(&setup, &p, 1, vec![json!({"goal_id": "g2", "use": "change", "status": "done"})]), r"goal g3 \('Posts bought'\) is active, but its parent");
+    refused(settle(&setup, &p, 1, vec![json!({"goal_id": "g2", "use": "change", "status": "done"})]), r"goal g3 \('Buy the posts'\) is active, but its parent");
     refused(settle(&setup, &p, 1, vec![json!({"goal_id": "g1", "use": "stop"})]), "use is one of apply, drop, change");
     refused(settle(&setup, &p, 1, vec![json!({"goal_id": "g5", "use": "change", "status": "obsolete"})]), "is done already, not open");
     // An apply the goals refuse is refused whole: nothing is settled.

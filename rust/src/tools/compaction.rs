@@ -792,8 +792,10 @@ pub struct NewPerson {
 
 /// A goal to propose, from what the notes say the user means to do, told
 /// someone they'd do, or means to do for someone (however small): `ref`,
-/// a `title`, and any of a goal's other fields (see get_goals). It's
-/// inactive -- the user activates it as they review it. A `deadline` is
+/// a `title` -- what the user will do, in the active voice ('Fix the
+/// fence', 'Send Mom the photos'; never 'Fence fixed') -- and any of a
+/// goal's other fields (see get_goals). It's inactive -- the user
+/// activates it as they review it. A `deadline` is
 /// one the notes give, except that a goal with `with_ids` or `for_ids`
 /// always has one (about a week after the note when the notes give none,
 /// said to be assumed in the recap's `unsure`). `parent_id` is an open
