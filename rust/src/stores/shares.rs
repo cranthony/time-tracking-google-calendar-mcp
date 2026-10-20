@@ -33,17 +33,24 @@ pub fn is_false(flag: &bool) -> bool {
     !*flag
 }
 
+/// How much a share takes, as an event keeps it -- "45m", "30%", "10m+r"
+/// -- or None for one with neither minutes nor percent.
+pub fn amount_text<S: Share>(share: &S) -> Option<String> {
+    let plus = if share.remaining() { "+r" } else { "" };
+    match (share.minutes(), share.percent()) {
+        (Some(m), _) => Some(format!("{m}m{plus}")),
+        (None, Some(p)) => Some(format!("{p}%{plus}")),
+        (None, None) => None,
+    }
+}
+
 /// Shares as an event keeps them: "a b=45m c=30% d=10m+r".
 pub fn shares_text<S: Share>(shares: &[S]) -> String {
     shares
         .iter()
-        .map(|s| {
-            let plus = if s.remaining() { "+r" } else { "" };
-            match (s.minutes(), s.percent()) {
-                (Some(m), _) => format!("{}={m}m{plus}", s.id()),
-                (None, Some(p)) => format!("{}={p}%{plus}", s.id()),
-                (None, None) => s.id().to_string(),
-            }
+        .map(|s| match amount_text(s) {
+            Some(amount) => format!("{}={amount}", s.id()),
+            None => s.id().to_string(),
         })
         .collect::<Vec<_>>()
         .join(" ")
