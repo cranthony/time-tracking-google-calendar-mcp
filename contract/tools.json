@@ -17665,7 +17665,7 @@
         },
         "NewGoal": {
           "additionalProperties": false,
-          "description": "A goal to propose, from what the notes say the user means to do, told\nsomeone they'd do, or means to do for someone (however small): `ref`,\na `title`, and any of a goal's other fields (see get_goals). It's\ninactive -- the user activates it as they review it. A `deadline` is\none the notes give, except that a goal with `with_ids` or `for_ids`\nalways has one (about a week after the note when the notes give none,\nsaid to be assumed in the recap's `unsure`). `parent_id` is an open\ngoal's id; `with_ids` (the people the user means to do it with) and\n`for_ids` (those it's for, who aren't part of doing it: a promise to\nthem, a favor) are people's ids or new_people refs. id is assigned\nwhen it's created.",
+          "description": "A goal to propose, from what the notes say the user means to do, told\nsomeone they'd do, or means to do for someone (however small): `ref`,\na `title` -- what the user will do, in the active voice ('Fix the\nfence', 'Send Mom the photos'; never 'Fence fixed') -- and any of a\ngoal's other fields (see get_goals). It's inactive -- the user\nactivates it as they review it. A `deadline` is\none the notes give, except that a goal with `with_ids` or `for_ids`\nalways has one (about a week after the note when the notes give none,\nsaid to be assumed in the recap's `unsure`). `parent_id` is an open\ngoal's id; `with_ids` (the people the user means to do it with) and\n`for_ids` (those it's for, who aren't part of doing it: a promise to\nthem, a favor) are people's ids or new_people refs. id is assigned\nwhen it's created.",
           "properties": {
             "title": {
               "type": [
