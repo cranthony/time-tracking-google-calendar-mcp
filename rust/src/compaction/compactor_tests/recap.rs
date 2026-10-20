@@ -163,8 +163,8 @@ fn a_cleared_description_is_written_empty() {
 fn recap(did_events: &[&str], unsure_notes: &[String], unsure_events: &[&str]) -> Recap {
     Recap {
         overview: "A **quiet** morning".into(),
-        did: vec![RecapPoint { text: "Moved the *email*:\n- to 09:05".into(), event_ids: strings(did_events), note_ids: vec![] }],
-        unsure: vec![RecapPoint { text: "Was it a report?".into(), event_ids: strings(unsure_events), note_ids: unsure_notes.to_vec() }],
+        did: vec![RecapPoint { text: "Moved the *email*:\n- to 09:05".into(), event_ids: strings(did_events), ..Default::default() }],
+        unsure: vec![RecapPoint { text: "Was it a report?".into(), event_ids: strings(unsure_events), note_ids: unsure_notes.to_vec(), ..Default::default() }],
     }
 }
 

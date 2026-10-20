@@ -108,6 +108,9 @@ pub struct RevisionMeta {
     pub recap_revision: Option<i64>,
     /// The trait fact summaries Claude rewrote: [{person_id, fact, summary}].
     pub claude_fact_summaries: Option<Value>,
+    /// The goal changes Claude proposed: [{goal_id, status, at, note_ids,
+    /// retry_deadline}] (see compaction::goal_changes).
+    pub claude_goal_changes: Option<Value>,
 }
 
 impl RevisionMeta {
@@ -162,6 +165,9 @@ impl RevisionMeta {
         if let Some(summaries) = &self.claude_fact_summaries {
             out.insert("claude_fact_summaries".into(), summaries.clone());
         }
+        if let Some(changes) = &self.claude_goal_changes {
+            out.insert("claude_goal_changes".into(), changes.clone());
+        }
         out
     }
 
@@ -193,6 +199,7 @@ impl RevisionMeta {
             claude_recap: detail.get("claude_recap").filter(|v| !v.is_null()).cloned(),
             recap_revision: detail.get("recap_revision").and_then(Value::as_i64),
             claude_fact_summaries: detail.get("claude_fact_summaries").filter(|v| !v.is_null()).cloned(),
+            claude_goal_changes: detail.get("claude_goal_changes").filter(|v| !v.is_null()).cloned(),
         })
     }
 }
@@ -597,6 +604,28 @@ impl CompactionJournal {
         self.write_status(compaction.row, status)?;
         compaction.status = status.into();
         Ok(())
+    }
+
+    /// Add `warnings` to `compaction`'s -- what applying it couldn't do,
+    /// say -- in its row's detail, the rest of the detail as it is.
+    pub fn add_warnings(&self, compaction: &mut JournalCompaction, warnings: &[String]) -> anyhow::Result<()> {
+        if warnings.is_empty() {
+            return Ok(());
+        }
+        let rows = self.read_rows()?;
+        let index = (compaction.row - FIRST_DATA_ROW) as usize;
+        let mut detail = match rows.get(index) {
+            Some(row) if row[0] == compaction.id && row[2] == "compaction" => parse(&row[7])?,
+            _ => anyhow::bail!("compaction {} isn't in row {} of the journal any more", compaction.id, compaction.row),
+        };
+        compaction.warnings.extend(warnings.iter().cloned());
+        detail["warnings"] = json!(compaction.warnings);
+        self.sheets.write_rows_in_sheet(
+            &self.spreadsheet_id,
+            self.sheet_id,
+            &format!("H{}:H{}", compaction.row, compaction.row),
+            &vec![vec![py::json_default(&detail)]],
+        )
     }
 
     /// Delete rows nothing needs any more, anywhere in the tab, bottom

@@ -7,6 +7,7 @@ use crate::stores::actions::ActionShare;
 use crate::contract::{tool, wire_text, DateTimeText, Schema};
 use crate::app::App;
 use crate::compaction::additions::{Addition, Additions};
+use crate::compaction::goal_changes;
 use crate::stores::goals::GoalStatus;
 use crate::compaction::compactor::{compaction_error, NoteCompactor};
 use crate::compaction::fact_changes::{self, FactKeeping};
@@ -46,6 +47,38 @@ pub enum AdditionSettledUse {
     Existing,
     #[serde(rename = "drop")]
     Drop,
+}
+
+/// What a goal change marks a goal: done (its outcome reached), missed
+/// (its deadline passed without it) or obsolete (no longer wanted).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum GoalChangeStatus {
+    #[serde(rename = "done")]
+    Done,
+    #[serde(rename = "missed")]
+    Missed,
+    #[serde(rename = "obsolete")]
+    Obsolete,
+}
+
+impl GoalChangeStatus {
+    fn status(self) -> GoalStatus {
+        match self {
+            GoalChangeStatus::Done => GoalStatus::Done,
+            GoalChangeStatus::Missed => GoalStatus::Missed,
+            GoalChangeStatus::Obsolete => GoalStatus::Obsolete,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum GoalChangeUse {
+    #[serde(rename = "apply")]
+    Apply,
+    #[serde(rename = "drop")]
+    Drop,
+    #[serde(rename = "change")]
+    Change,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -302,7 +335,9 @@ pub struct ContextEvent {
 /// An open goal (inactive or active). One with attribution hints is one
 /// an event can be tagged with, when it clearly matches them. `path` is
 /// its parents' titles, outermost first; `with_ids` the people it's done
-/// with and `for_ids` those it's done for.
+/// with and `for_ids` those it's done for. `due_in_window` says its
+/// deadline fell inside the window (its start to now): one to propose
+/// missed (`goal_changes`) unless a note or event shows it done.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ContextGoal {
     pub id: String,
@@ -313,6 +348,74 @@ pub struct ContextGoal {
     pub attribution_hints: Option<String>,
     pub with_ids: Option<Vec<String>>,
     pub for_ids: Option<Vec<String>>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub due_in_window: bool,
+}
+
+/// A change to a goal there is, from what the notes say or a deadline
+/// that passed in the window: `goal_id` (from prepare_compaction's
+/// `goals`) becomes `status` at `at` (a time in the window; the
+/// proposal's `through` if left out), from `note_ids`. With
+/// `retry_deadline` (status missed only) the goal is missed and tried
+/// again by then: its history gains missed (the deadline it missed) then
+/// its prior status (the new one), both at `at`, and it stays open --
+/// never Claude's to propose; the user picks it in review. Applied when
+/// the proposal is, each as one update of the goal; the user settles each
+/// in review first.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+#[schema(deny_unknown)]
+pub struct GoalChange {
+    pub goal_id: String,
+    pub status: GoalChangeStatus,
+    pub at: Option<DateTimeText>,
+    pub note_ids: Option<Vec<String>>,
+    pub retry_deadline: Option<String>,
+}
+
+/// A goal change as a proposal makes it when applied: the goal's `title`
+/// and `path` now, its new `status`, when (`at`), the notes it came from,
+/// `retry_deadline` if it's missed and tried again, and who decided it
+/// (`claude`, or `user` once they changed it).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct ProposalGoalChange {
+    pub goal_id: String,
+    pub title: Option<String>,
+    pub path: Vec<String>,
+    pub status: GoalStatus,
+    pub at: DateTimeText,
+    #[schema(optional)]
+    #[serde(default)]
+    pub note_ids: Vec<String>,
+    pub retry_deadline: Option<String>,
+    pub decided_by: ProposalEventDecidedBy,
+}
+
+/// The user's say on a goal change (by its goal's id): `apply` it now
+/// (as update_goals would, with the change's `at` as the history time;
+/// refused as it would refuse it), `drop` it (the goal is left alone), or
+/// `change` it -- their `status`, `at` and `retry_deadline` over Claude's,
+/// kept in the proposal; a `change` of a goal the proposal doesn't change
+/// adds one (then with a status). Any of the three may give `status`,
+/// `at` and `retry_deadline` over the proposal's.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct GoalChangeChoice {
+    pub goal_id: String,
+    pub r#use: GoalChangeUse,
+    pub status: Option<GoalChangeStatus>,
+    pub at: Option<DateTimeText>,
+    pub retry_deadline: Option<String>,
+}
+
+/// A goal change the user settled, as a proposal shows it: applied,
+/// dropped, or changed to their `status`, `at` and `retry_deadline`.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct GoalChangeSettled {
+    pub goal_id: String,
+    pub r#use: GoalChangeUse,
+    pub status: Option<GoalStatus>,
+    pub at: Option<DateTimeText>,
+    pub retry_deadline: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -469,6 +572,12 @@ pub struct ProposalContext {
     #[schema(optional)]
     #[serde(default)]
     pub fact_summaries: Vec<FactSummary>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub goal_changes: Vec<Map<String, Value>>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub settled_goal_changes: Vec<GoalChangeSettled>,
 }
 
 /// Claude's account of a revision, for the user reviewing it in the
@@ -487,7 +596,8 @@ pub struct Recap {
 /// One point of Claude's recap: `text` in Markdown (bold, italics,
 /// code, bullet and numbered lists -- no headings, tables or images), and
 /// the events (`event_ids`: ids, keys, or a create's `ref` from the same
-/// call) and notes (`note_ids`) it's about, for the user to go to.
+/// call), notes (`note_ids`) and goal changes (`goal_ids`: goals the
+/// call's `goal_changes` change) it's about, for the user to go to.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct RecapPoint {
     pub text: String,
@@ -497,6 +607,9 @@ pub struct RecapPoint {
     #[schema(optional)]
     #[serde(default)]
     pub note_ids: Vec<String>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub goal_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -898,6 +1011,12 @@ pub struct Proposal {
     #[schema(optional)]
     #[serde(default)]
     pub fact_summaries: Vec<ProposedSummary>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub goal_changes: Vec<ProposalGoalChange>,
+    #[schema(optional)]
+    #[serde(default)]
+    pub settled_goal_changes: Vec<GoalChangeSettled>,
 }
 
 /// The user's say on an action, person, location or goal Claude's
@@ -1146,7 +1265,7 @@ fn stored_recap(recap: &Recap) -> proposals::Recap {
     let points = |given: &[RecapPoint]| -> Vec<proposals::RecapPoint> {
         given
             .iter()
-            .map(|p| proposals::RecapPoint { text: p.text.clone(), event_ids: p.event_ids.clone(), note_ids: p.note_ids.clone() })
+            .map(|p| proposals::RecapPoint { text: p.text.clone(), event_ids: p.event_ids.clone(), note_ids: p.note_ids.clone(), goal_ids: p.goal_ids.clone() })
             .collect()
     };
     proposals::Recap { overview: recap.overview.clone(), did: points(&recap.did), unsure: points(&recap.unsure) }
@@ -1155,6 +1274,28 @@ fn stored_recap(recap: &Recap) -> proposals::Recap {
 /// An addition as the compactor keeps it: the store's item, and its ref.
 fn addition<T: Serialize, U: DeserializeOwned>(given: &T) -> Addition<U> {
     serde_json::from_value(serde_json::to_value(given).expect("an argument is JSON")).expect("a new item is its store's item")
+}
+
+/// A compact_notes goal change, as the compactor keeps it.
+fn goal_change(given: &GoalChange) -> Result<goal_changes::GoalChange, ToolError> {
+    Ok(goal_changes::GoalChange {
+        goal_id: given.goal_id.clone(),
+        status: given.status.status(),
+        at: when_given(given.at.as_ref())?,
+        note_ids: given.note_ids.clone().unwrap_or_default(),
+        retry_deadline: given.retry_deadline.clone(),
+    })
+}
+
+/// An amend_proposal goal change, as the compactor takes it.
+fn goal_change_choice(given: &GoalChangeChoice) -> anyhow::Result<goal_changes::GoalChangeChoice> {
+    Ok(goal_changes::GoalChangeChoice {
+        goal_id: given.goal_id.clone(),
+        use_: wire_text(&given.r#use),
+        status: given.status.map(GoalChangeStatus::status),
+        at: when_given(given.at.as_ref())?,
+        retry_deadline: given.retry_deadline.clone(),
+    })
 }
 
 /// What the client sees of a compactor's result (as the tool's type).
@@ -1335,8 +1476,11 @@ pub struct DeletedNote {
 /// user as "self", each with their trait facts' summaries) and every
 /// location (`locations`), to settle the facts from; each trait fact,
 /// described once (`trait_facts`), to keep people's summaries by; and the
-/// open goals with attribution hints (`goals`), the only ones to tag
-/// events with, by those hints. `proposal` is the open proposal, if there is one: revise or
+/// open goals (`goals`: those with attribution hints are the only ones to
+/// tag events with, by those hints; one with `due_in_window` had its
+/// deadline pass inside the window, to propose missed with
+/// compact_notes' `goal_changes` unless something shows it done).
+/// `proposal` is the open proposal, if there is one: revise or
 /// extend it (see the instructions). judgments_pending names the last
 /// compaction if its judgments aren't all made: make them first
 /// (prepare_judgments, record_judgments). Read-only.
@@ -1373,19 +1517,29 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// goals -- inactive -- from notes where the user says they want or mean
 /// to do something longer term that no open goal covers, or told someone
 /// they would -- with the people it's with or for (ids, or new_people
-/// refs) -- created when it's applied too. You get the
+/// refs) -- created when it's applied too. goal_changes propose changes
+/// to goals there are, applied when it's applied: {goal_id, status: done
+/// | missed | obsolete, at?, note_ids?, retry_deadline?} -- `done` at
+/// the note's time when a note says the goal's outcome was reached,
+/// `obsolete` when one says the user dropped it, and `missed` at its
+/// deadline for every goal with `due_in_window` that nothing shows done
+/// (never with a retry_deadline: the user picks that in review). A
+/// change naming a goal that isn't open, timed outside the window, or
+/// that the goal rules refuse (open sub-goals, unless the call closes
+/// them too) is refused, naming the goal. You get the
 /// proposal's id and revision, the proposed changes, the additions, and
 /// a `timeline` of the notes beside the resulting events, each with its
 /// actions and facts -- in a conversation, show its `text` to the user in
-/// a code block.
+/// a code block, then the additions, the goal changes and the warnings.
 ///
 /// `recap` is your account of it, for the user reviewing it in the app:
 /// a short `overview`, then one point for each thing you `did` (what you
 /// decided, and from which notes) and each thing you're `unsure` of
 /// (saying what you assumed -- empty only if nothing is in doubt). Each
 /// point is Markdown (bold, italics, code, lists; no headings) and cites
-/// the events (`event_ids`: ids, keys, or a create's `ref`) and the notes
-/// (`note_ids`) it's about, so the user can go straight to them. Give a
+/// the events (`event_ids`: ids, keys, or a create's `ref`), the notes
+/// (`note_ids`) and the goal changes (`goal_ids`) it's about, so the user
+/// can go straight to them. Give a
 /// create a `ref` of your choosing to name it before it has a key, here
 /// and in `annotate_notes`. Write it afresh every call, for the proposal
 /// as it now stands.
@@ -1393,9 +1547,10 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// With a proposal open (prepare_compaction's `proposal`), every call
 /// revises or extends it: pass its `proposal_id` and the `revision` you
 /// started from, send all your decisions again (each create with the
-/// `key` it was given), and answer every open feedback item in
-/// `replies`. The user's own edits -- of events, and of what notes are
-/// for -- are laid over your decisions by the server; never send them.
+/// `key` it was given; your goal_changes too, less those the user settled
+/// -- `proposal.settled_goal_changes`), and answer every open feedback item in
+/// `replies`. The user's own edits -- of events, of what notes are
+/// for, and of goal changes -- are laid over your decisions by the server; never send them.
 ///
 /// NOTHING IS MOVED TO MAKE ROOM: every event you update or create must
 /// end after it starts and must not overlap any other event -- past or
@@ -1427,7 +1582,7 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// prepare_judgments and record_judgments: the compaction isn't complete
 /// until they're all recorded.
 #[tool(writes)]
-pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpdate>>, creates: Option<Vec<CompactionCreate>>, cancels: Option<Vec<EventCancel>>, ignore_notes: Option<Vec<String>>, proposal_id: Option<String>, revision: Option<i64>, replies: Option<Vec<FeedbackReply>>, new_actions: Option<Vec<NewAction>>, new_people: Option<Vec<NewPerson>>, new_locations: Option<Vec<NewLocation>>, annotate_notes: Option<Vec<NoteAnnotation>>, fact_summaries: Option<Vec<FactSummary>>, new_goals: Option<Vec<NewGoal>>) -> Result<CompactionResult, ToolError> {
+pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpdate>>, creates: Option<Vec<CompactionCreate>>, cancels: Option<Vec<EventCancel>>, ignore_notes: Option<Vec<String>>, proposal_id: Option<String>, revision: Option<i64>, replies: Option<Vec<FeedbackReply>>, new_actions: Option<Vec<NewAction>>, new_people: Option<Vec<NewPerson>>, new_locations: Option<Vec<NewLocation>>, annotate_notes: Option<Vec<NoteAnnotation>>, fact_summaries: Option<Vec<FactSummary>>, new_goals: Option<Vec<NewGoal>>, goal_changes: Option<Vec<GoalChange>>) -> Result<CompactionResult, ToolError> {
     let compactor = compactor(app)?;
     let (updates, creates, cancels) = (updates.unwrap_or_default(), creates.unwrap_or_default(), cancels.unwrap_or_default());
     let mut decisions: Vec<EventDecision> = Vec::new();
@@ -1453,8 +1608,23 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
         .into_iter()
         .map(|s| fact_changes::ProposedSummary { person_id: s.person_id, fact: s.fact, summary: s.summary })
         .collect();
-    let result =
-        compactor.dry_run(decisions, ignore_notes, additions, proposal_id, revision, replies, annotate, Some(stored_recap(&recap)), create_refs, summaries);
+    let mut changes: Vec<goal_changes::GoalChange> = Vec::new();
+    for c in goal_changes.unwrap_or_default().iter() {
+        changes.push(goal_change(c)?);
+    }
+    let result = compactor.dry_run(
+        decisions,
+        ignore_notes,
+        additions,
+        proposal_id,
+        revision,
+        replies,
+        annotate,
+        Some(stored_recap(&recap)),
+        create_refs,
+        summaries,
+        changes,
+    );
     shown("compact_notes", result.map(|r| r.to_json()))
 }
 
@@ -1463,7 +1633,9 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
 /// to `through`), `state`, every event of its days as it leaves them
 /// (`events`, each with its id -- or a new event's key -- its times, what
 /// it was planned as, and who decided it), the notes, the calendar writes
-/// it makes, its `timeline`, the user's edits and the feedback with any
+/// it makes, its `timeline`, the goal changes it makes when applied
+/// (`goal_changes`, each with who decided it) and those the user settled
+/// (`settled_goal_changes`), the user's edits and the feedback with any
 /// replies. With since_revision, `changed_since` lists the events whose
 /// outcome changed after it. Read-only.
 #[tool]
@@ -1483,9 +1655,14 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// location or goal the proposal adds (by its ref) now, without
 /// confirming the rest -- `create` it (with its name -- a goal's title --,
 /// a person's context or a location's hint corrected), say it's one that's `existing` (its id),
-/// or `drop` it from the events; and `as_planned` -- events (or keys)
+/// or `drop` it from the events; `goal_changes`, settling a goal change
+/// the proposal makes (by its goal's id) now -- `apply` it (an update of
+/// the goal, refused as update_goals would refuse it), `drop` it, or
+/// `change` it, the user's status, `at` and retry_deadline over Claude's,
+/// kept in the proposal (a `change` of a goal the proposal doesn't change
+/// adds one, with a status); and `as_planned` -- events (or keys)
 /// whose decisions to clear, notes to leave as Claude had them, and refs
-/// to leave unsettled. One created stays, whatever becomes of the
+/// to leave unsettled. One created or applied stays, whatever becomes of the
 /// proposal. `through`, later than the proposal's, extends it there (no
 /// later than now; it can't be cut short): each note it takes in is added
 /// to the event it falls within, unless `notes` says otherwise, and the
@@ -1507,7 +1684,7 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// user has explicitly approved changing history. It's kept with these
 /// edits, so later revisions keep to it. Nothing is moved to make room.
 #[tool(writes)]
-pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Option<Vec<ProposalUpdate>>, creates: Option<Vec<ProposalCreate>>, cancels: Option<Vec<EventCancel>>, as_planned: Option<Vec<String>>, notes: Option<Vec<NoteEdit>>, additions: Option<Vec<AdditionChoice>>, through: Option<DateTimeText>, #[schema(default = "false")] allow_compacted_changes: bool) -> Result<Proposal, ToolError> {
+pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Option<Vec<ProposalUpdate>>, creates: Option<Vec<ProposalCreate>>, cancels: Option<Vec<EventCancel>>, as_planned: Option<Vec<String>>, notes: Option<Vec<NoteEdit>>, additions: Option<Vec<AdditionChoice>>, through: Option<DateTimeText>, #[schema(default = "false")] allow_compacted_changes: bool, goal_changes: Option<Vec<GoalChangeChoice>>) -> Result<Proposal, ToolError> {
     let compactor = compactor(app)?;
     let allow = allow_compacted_changes;
     let run = || -> anyhow::Result<Value> {
@@ -1535,8 +1712,12 @@ pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Op
             .into_iter()
             .map(|a| proposals::AdditionChoice { ref_: a.r#ref, use_: wire_text(&a.r#use), id: a.id, name: a.name, context: a.context, hint: a.hint, status: a.status, deadline: a.deadline })
             .collect();
+        let mut changes: Vec<goal_changes::GoalChangeChoice> = Vec::new();
+        for c in goal_changes.unwrap_or_default().iter() {
+            changes.push(goal_change_choice(c)?);
+        }
         let through = when_given(through.as_ref())?;
-        let proposal = compactor.amend(&proposal_id, revision, decisions, as_planned.unwrap_or_default(), notes, additions, through)?;
+        let proposal = compactor.amend(&proposal_id, revision, decisions, as_planned.unwrap_or_default(), notes, additions, changes, through)?;
         Ok(proposal.to_json())
     };
     match run() {

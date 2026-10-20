@@ -138,3 +138,29 @@ It's created when the proposal is applied (an open goal with the same
 title is reused), or sooner if the user settles it -- made active then,
 with a deadline, if they like; see
 [compaction proposals](compaction-proposals.md).
+
+Compaction also proposes changes to goals there are, with
+`compact_notes`' `goal_changes` -- each a goal's id, a status (`done`,
+`missed` or `obsolete`), a time in the window (`at`; the proposal's
+`through` if left out) and the notes it came from -- so that, with goals
+as the user's task list, a note like "sent Kopal the recipe" marks that
+goal done without the user doing it by hand. When a note says a goal's
+outcome was reached, it proposes `done` at the note's time; when a note
+says the user dropped it, `obsolete`. Then a triage pass: `prepare_compaction`'s
+`goals` flag each goal whose deadline fell inside the window
+(`due_in_window`), and every one of them that no note or event shows
+done is proposed `missed` at its deadline, with a point in the recap's
+`unsure` that it may have been done without a note. A goal the notes
+and the deadline say nothing about is left alone; a goal with open
+sub-goals isn't closed unless the notes settle them too (the server
+refuses otherwise, naming them, as `update_goals` would); and a change
+for a goal the user already settled is left out. Claude never proposes a
+retry itself. The user settles each change in review -- applying it
+now, dropping it, or changing it, including turning a `missed` into a
+retry with a `retry_deadline` (the goal's history gains `missed` with
+the old deadline then its prior status with the new one, both at the
+change's time, and it stays open) -- and the rest are made when the
+proposal is applied, each as one update with the change's time as the
+history time and the deadline then in force as its stamp. One the goal
+rules refuse by then is dropped and reported in the proposal's
+warnings, for the user to redo.

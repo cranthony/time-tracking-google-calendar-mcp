@@ -92,6 +92,7 @@
 
 use super::additions::{check_additions, create_additions, resolve, Added, Additions, Stores, REF_PREFIX};
 use super::fact_changes::{self, FactKeeping, ProposedSummary};
+use super::goal_changes::{self, GoalChange, GoalChangeChoice, GoalChangeSettled};
 use super::guide::{APPROVAL_RULE, DECISION_GUIDE};
 use super::judgments::{HabitJudgmentsDue, Judging, Judgment, JudgmentRequest, JudgmentsDue, JudgmentsResult};
 use super::plan::{
@@ -113,7 +114,7 @@ use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::actions::{share_ids, ActionShare, ActionTree, Actions};
 use crate::stores::cancellations::Cancellations;
 use crate::stores::event_changes::{ChangeError, Problem};
-use crate::stores::goals::{self, share_problems, Goals};
+use crate::stores::goals::{self, deadline_end, share_problems, Goals};
 use crate::stores::groups::{python_repr, python_str, truthy};
 use crate::stores::habits::{subject_id, SUBJECT_PREFIX};
 use crate::stores::journal::{
@@ -597,13 +598,25 @@ impl NoteCompactor {
                 None => None,
             },
             goals: match &self.goals {
-                Some(g) => Some(open_goals(&g.all()?)),
+                Some(g) => {
+                    let all = g.all()?;
+                    // The calendar's zone is read only when a deadline has to be
+                    // placed in the window.
+                    let dated = all.iter().any(|g| g.status.is_some_and(|s| !s.is_closed()) && g.deadline.as_deref().is_some_and(|d| !d.trim().is_empty()));
+                    let window = if dated { Some((self.zone()?, day.compaction_window_start, day.now)) } else { None };
+                    Some(open_goals(&all, window))
+                }
                 None => None,
             },
             previous_note,
             judgments_pending: pending,
             proposal,
         })
+    }
+
+    /// The calendar's time zone: what goals' deadlines are in.
+    fn zone(&self) -> anyhow::Result<chrono_tz::Tz> {
+        self.calendar.client().get_time_zone()
     }
 
     pub fn prefetch(&self) -> anyhow::Result<()> {
@@ -738,6 +751,7 @@ impl NoteCompactor {
         recap: Option<Recap>,
         create_refs: Vec<Option<String>>,
         fact_summaries: Vec<ProposedSummary>,
+        goal_changes: Vec<GoalChange>,
     ) -> anyhow::Result<CompactionResult> {
         self.prefetch_tabs(true)?;
         self.journal.garbage_collect()?;
@@ -789,7 +803,8 @@ impl NoteCompactor {
         }
         let (answered, replaced) = self.answers(&proposal, &replies, &feedback_rows, &edit_rows, base_meta.as_ref())?;
         let edits: Vec<UserEdit> = edit_rows.iter().filter(|(row, _)| !replaced.contains(row)).map(|(_, e)| e.clone()).collect();
-        let settled_additions = merge(&proposal, &[], &edits, MergeOptions::default()).settled;
+        let early = merge(&proposal, &[], &edits, MergeOptions::default());
+        let (settled_additions, settled_goal_changes) = (early.settled, early.settled_goal_changes);
         let additions = unsettled(&claude_additions, &settled_additions);
         let problems = check_additions(&additions, self.stores(&additions)?, &settled_ids(&settled_additions))?;
         if !problems.is_empty() {
@@ -828,12 +843,18 @@ impl NoteCompactor {
                 ..Default::default()
             });
         }
+        let through = walked.last().unwrap().day.now;
+        let notes: Vec<String> = walked.iter().flat_map(|w| w.day.notes.iter().map(|n| n.id())).collect();
+        // Claude's goal changes, at `through` unless timed; checked as the
+        // goals are now, less those for goals the user settled.
+        let claude_goal_changes: Vec<GoalChange> = goal_changes.iter().map(|c| c.resolved(through)).collect();
+        self.check_goal_changes(&goal_changes::unsettled(&claude_goal_changes, &settled_goal_changes), (walked[0].day.compaction_window_start, through), &notes)?;
+        let changed_goals: Vec<String> = goal_changes::effective(&claude_goal_changes, &settled_goal_changes).into_iter().map(|(c, _)| c.goal_id).collect();
         let recap = match recap {
             Some(recap) => {
                 let recap = recap.resolved(&refs);
                 let events: Vec<String> = proposal_events(&walked, &merged.decided_by).into_iter().map(|e| e.id).collect();
-                let notes: Vec<String> = walked.iter().flat_map(|w| w.day.notes.iter().map(|n| n.id())).collect();
-                let problems = recap.problems(&events, &notes);
+                let problems = recap.problems(&events, &notes, &changed_goals);
                 if !problems.is_empty() {
                     return Err(ce_of(&problems, "recap"));
                 }
@@ -879,6 +900,7 @@ impl NoteCompactor {
             claude_recap: recap.as_ref().map(Recap::to_json_dict),
             recap_revision: recap.as_ref().map(|_| revision_number),
             claude_fact_summaries: ProposedSummary::all_to_json(&fact_summaries),
+            claude_goal_changes: GoalChange::all_to_json(&claude_goal_changes),
         };
         self.write_revision(&walked, &new_meta, &additions, current, &[])?;
         let newer: Vec<(String, String)> = edit_rows
@@ -909,10 +931,11 @@ impl NoteCompactor {
         let days = if day_count > 1 { format!(" over {day_count} days") } else { String::new() };
         let answered_ids: Vec<&String> = answered.iter().map(|(_, i)| &i.id).collect();
         let still_open = feedback_rows.iter().filter(|(_, f)| f.status == "open" && !answered_ids.contains(&&f.id)).count();
+        let goal_count = if changed_goals.is_empty() { String::new() } else { format!(" and {} goal change(s)", changed_goals.len()) };
         let mut message = format!(
-            "proposal {proposal} revision {revision_number}: {} calendar change(s) for {note_count} note(s){days}, through {}; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. {APPROVAL_RULE}",
+            "proposal {proposal} revision {revision_number}: {} calendar change(s){goal_count} for {note_count} note(s){days}, through {}; nothing has been changed yet. In a conversation, show the user `timeline.text` in a code block (see the instructions from prepare_compaction) and the warnings. {APPROVAL_RULE}",
             changes.len(),
-            iso(&walked.last().unwrap().day.now)
+            iso(&through)
         );
         if superseded > 0 {
             message.push_str(&format!(" (Replaced {superseded} unapplied plan(s) from before proposals.)"));
@@ -1129,6 +1152,7 @@ impl NoteCompactor {
             }
         }
         let list = |key: &str| -> Vec<Value> { claude_additions.get(key).and_then(Value::as_array).cloned().unwrap_or_default() };
+        let settled = merge(&proposal, &[], &edits, MergeOptions::default());
         Ok(Some(ProposalContext {
             id: proposal.clone(),
             revision: meta.revision,
@@ -1143,11 +1167,13 @@ impl NoteCompactor {
             new_people: list("people"),
             new_locations: list("locations"),
             new_goals: list("goals"),
-            settled_additions: merge(&proposal, &[], &edits, MergeOptions::default()).settled.values().cloned().collect(),
+            settled_additions: settled.settled.values().cloned().collect(),
             user_edits: edits,
             feedback,
             recap: meta.claude_recap.as_ref().map(Recap::from_json_dict),
             fact_summaries: ProposedSummary::all_from(meta.claude_fact_summaries.as_ref()).iter().map(ProposedSummary::to_json).collect(),
+            goal_changes: GoalChange::all_from(meta.claude_goal_changes.as_ref()).iter().map(GoalChange::to_json).collect(),
+            settled_goal_changes: settled.settled_goal_changes.values().cloned().collect(),
         }))
     }
 
@@ -1211,6 +1237,8 @@ impl NoteCompactor {
             None => self.journal.feedback(&proposal)?.into_iter().map(|(_, f)| f).collect(),
         };
         let state = state_of(current, &feedback);
+        let settled_goal_changes = merge(&proposal, &[], &edits, MergeOptions::default()).settled_goal_changes;
+        let goal_changes = self.shown_goal_changes(&meta, &settled_goal_changes)?;
         let mut view = Proposal {
             id: proposal.clone(),
             revision: meta.revision,
@@ -1236,6 +1264,8 @@ impl NoteCompactor {
             changed_since: None,
             replaced,
             fact_summaries: self.proposed_summaries(&meta)?,
+            goal_changes,
+            settled_goal_changes: settled_goal_changes.values().cloned().collect(),
         };
         match walked {
             Replanned::Failed(problem) => {
@@ -1289,6 +1319,7 @@ impl NoteCompactor {
         as_planned: Vec<String>,
         notes: Vec<NoteEdit>,
         additions: Vec<AdditionChoice>,
+        goal_changes: Vec<GoalChangeChoice>,
         through: Option<Moment>,
     ) -> anyhow::Result<Proposal> {
         self.prefetch_tabs(true)?;
@@ -1302,8 +1333,18 @@ impl NoteCompactor {
         let claude_additions = Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&current))))?;
         let edit_rows = self.journal.user_edits(proposal_id)?;
         let all_edits: Vec<UserEdit> = edit_rows.iter().map(|(_, e)| e.clone()).collect();
-        let known_settled: Vec<String> = merge(proposal_id, &[], &all_edits, MergeOptions::default()).settled.keys().cloned().collect();
+        let settled_so_far = merge(proposal_id, &[], &all_edits, MergeOptions::default());
+        let known_settled: Vec<String> = settled_so_far.settled.keys().cloned().collect();
         let decisions = self.checked_facts(decisions, &claude_additions, &known_settled)?;
+        let before = current.last().unwrap().now;
+        // The goal changes settled here, at the through this amend leaves
+        // the proposal at unless timed; checked once that's known.
+        let goal_choices = goal_change_entries(
+            &GoalChange::all_from(meta.claude_goal_changes.as_ref()),
+            &settled_so_far.settled_goal_changes,
+            &goal_changes,
+            through.filter(|t| *t > before).unwrap_or(before),
+        )?;
         let mut seq = edit_rows.iter().map(|(_, e)| e.seq).max().unwrap_or(0);
         let now = self.clock();
         let mut new_edits: Vec<UserEdit> = Vec::new();
@@ -1336,6 +1377,9 @@ impl NoteCompactor {
             }
             add(&mut new_edits, &mut seq, Some(choice.ref_.clone()), edit);
         }
+        for settled in &goal_choices {
+            add(&mut new_edits, &mut seq, Some(settled.goal_id.clone()), settled.edit());
+        }
         // Which of them are notes, said in the edit: a note's own id looks
         // like any other.
         let notes_named = if as_planned.is_empty() { Vec::new() } else { self.uncompacted_notes(now)? };
@@ -1354,10 +1398,9 @@ impl NoteCompactor {
         let made_from: Vec<(Option<String>, Map<String, Value>)> =
             edit_rows.iter().filter(|(_, e)| e.base_revision == revision).map(|(_, e)| (e.event_id.clone(), e.edit.clone())).collect();
         let these: Vec<(Option<String>, Map<String, Value>)> = new_edits.iter().map(|e| (e.event_id.clone(), e.edit.clone())).collect();
-        if meta.revision == revision + 1 && meta.by == "user" && !these.is_empty() && made_from == these && through.is_none_or(|t| t <= current.last().unwrap().now) {
+        if meta.revision == revision + 1 && meta.by == "user" && !these.is_empty() && made_from == these && through.is_none_or(|t| t <= before) {
             return self.get_proposal(Some(proposal_id), None);
         }
-        let before = current.last().unwrap().now;
         if let Some(through) = through {
             if through < before {
                 return Err(ce(format!("proposal {proposal_id} runs to {}: it can only be extended, not cut short", iso(&before)), "not_extended"));
@@ -1387,6 +1430,9 @@ impl NoteCompactor {
         let through = if extended { through.unwrap() } else { before };
         let mut known_notes: Vec<String> = current.iter().flat_map(|d| d.note_ids.clone()).collect();
         known_notes.extend(taken_in.iter().cloned());
+        // The user's changes and applies, as the goals are now.
+        let user_changes: Vec<GoalChange> = goal_choices.iter().filter(|s| s.use_ != "drop").filter_map(|s| s.change(None)).collect();
+        self.check_goal_changes(&user_changes, (meta.window_start(), through), &known_notes)?;
         let ignore = claude_ignore(&current);
         let planned = |edits: &[UserEdit]| -> anyhow::Result<(Merged, Vec<Walked>)> {
             let mut all = all_edits.clone();
@@ -1433,9 +1479,24 @@ impl NoteCompactor {
             .filter(|e| e.action() == Some("addition") && e.edit.get("use").and_then(Value::as_str) == Some("create"))
             .filter_map(|e| e.event_id.clone())
             .collect();
-        if !creating.is_empty() {
+        let applying: Vec<&GoalChangeSettled> = goal_choices.iter().filter(|s| s.use_ == "apply").collect();
+        if !creating.is_empty() || !applying.is_empty() {
+            // Made only once the revision is known to plan.
             let without: Vec<UserEdit> = new_edits.iter().filter(|e| e.event_id.as_ref().is_none_or(|id| !creating.contains(id))).cloned().collect();
             planned(&without)?;
+            if !applying.is_empty() {
+                let Some(store) = &self.goals else { return Err(ce("this calendar has no goals to change", "goal_changes")) };
+                let zone = self.zone()?;
+                for settled in applying {
+                    let change = settled.change(None).expect("an apply has its status");
+                    if let Err(e) = goal_changes::apply(store, &change, &zone) {
+                        if google_status(&e).is_some() || crate::sheet::rows::conflicts_of(&e).is_some() {
+                            return Err(e);
+                        }
+                        return Err(ce(format!("goal_changes: {}: {e}", settled.goal_id), "goal_changes"));
+                    }
+                }
+            }
             // Goals last, so the people they name are made first.
             let mut ordered: Vec<&(AdditionChoice, Added)> = choices.iter().collect();
             ordered.sort_by_key(|(_, item)| matches!(item, Added::Goal(_)));
@@ -1858,6 +1919,12 @@ impl NoteCompactor {
         for day in current.iter_mut() {
             day.status = STAMPED.into();
         }
+        // What applying it added to the last day's warnings (a goal change
+        // the goals refused), beyond those these days were loaded with.
+        let known: usize = current.iter().map(|d| d.warnings.len()).sum();
+        if let (Some(last), Some(added)) = (current.last_mut(), result.warnings.get(known..)) {
+            last.warnings.extend(added.iter().cloned());
+        }
         let message = result.message.split(". The compaction isn't complete yet").next().unwrap_or_default().to_string() + "." + judging;
         Ok(ProposalResult {
             status: "applied".into(),
@@ -2111,6 +2178,12 @@ impl NoteCompactor {
                 self.journal.write_statuses(&statuses)?;
                 return Err(failure);
             }
+            // The goal changes, after the calendar writes: one the goals
+            // now refuse is left for the user, as a warning.
+            if last {
+                let not_made = self.apply_goal_changes(&days[0])?;
+                self.journal.add_warnings(&mut days[i], &not_made)?;
+            }
             statuses.push((days[i].row, APPLIED));
             self.journal.write_statuses(&statuses)?;
             days[i].status = APPLIED.into();
@@ -2325,6 +2398,69 @@ impl NoteCompactor {
     fn settled_of(&self, proposal: &str) -> anyhow::Result<Dict<AdditionSettled>> {
         let edits: Vec<UserEdit> = self.journal.user_edits(proposal)?.into_iter().map(|(_, e)| e).collect();
         Ok(merge(proposal, &[], &edits, MergeOptions::default()).settled)
+    }
+
+    /// `changes` checked as the goals are now (see goal_changes::problems):
+    /// a CompactionError ("goal_changes") listing everything wrong.
+    fn check_goal_changes(&self, changes: &[GoalChange], window: (Moment, Moment), notes: &[String]) -> anyhow::Result<()> {
+        if changes.is_empty() {
+            return Ok(());
+        }
+        let Some(store) = &self.goals else { return Err(ce("this calendar has no goals to change", "goal_changes")) };
+        let problems = goal_changes::problems(changes, &store.all()?, &self.zone()?, window, notes);
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "goal_changes"));
+        }
+        Ok(())
+    }
+
+    /// The goal changes a revision makes, as get_proposal shows them:
+    /// Claude's (`meta`'s), as the user settled them.
+    fn shown_goal_changes(&self, meta: &RevisionMeta, settled: &Dict<GoalChangeSettled>) -> anyhow::Result<Vec<Value>> {
+        let effective = goal_changes::effective(&GoalChange::all_from(meta.claude_goal_changes.as_ref()), settled);
+        if effective.is_empty() {
+            return Ok(Vec::new());
+        }
+        let all = match &self.goals {
+            Some(store) => store.all()?,
+            None => Vec::new(),
+        };
+        Ok(goal_changes::shown(&effective, &all))
+    }
+
+    /// Make the goal changes `first`'s revision has left (Claude's, as
+    /// the user settled them), each as one update of its goal. One the
+    /// goals refuse now -- the goal changed meanwhile -- is left for the
+    /// user: returned as a warning, the rest still made.
+    fn apply_goal_changes(&self, first: &JournalCompaction) -> anyhow::Result<Vec<String>> {
+        let Some(meta) = &first.meta else { return Ok(Vec::new()) };
+        let claude = GoalChange::all_from(meta.claude_goal_changes.as_ref());
+        let edits: Vec<UserEdit> = self.journal.user_edits(&meta.proposal)?.into_iter().map(|(_, e)| e).collect();
+        let effective = goal_changes::effective(&claude, &merge(&meta.proposal, &[], &edits, MergeOptions::default()).settled_goal_changes);
+        if effective.is_empty() {
+            return Ok(Vec::new());
+        }
+        let Some(store) = &self.goals else { return Ok(vec!["the goal changes weren't made: this calendar has no goals".into()]) };
+        let zone = self.zone()?;
+        // Sub-goals before their parents: each is one update, and a parent
+        // closes only once its open sub-goals have.
+        let all = store.all()?;
+        let depth = |id: &str| all.iter().find(|g| g.id.as_deref() == Some(id.trim())).map(|g| goals::path(g, &all).len()).unwrap_or(0);
+        let mut effective = effective;
+        effective.sort_by_key(|(change, _)| std::cmp::Reverse(depth(&change.goal_id)));
+        let mut warnings = Vec::new();
+        for (change, _) in &effective {
+            match goal_changes::apply(store, change, &zone) {
+                Ok(_) => {}
+                Err(e) if google_status(&e).is_some() => return Err(e),
+                Err(e) => warnings.push(format!(
+                    "the goal change to {} ({}) wasn't made: {e}. Make it with update_goals if it still applies.",
+                    change.goal_id,
+                    change.status.text()
+                )),
+            }
+        }
+        Ok(warnings)
     }
 
     /// Index the logs of `day`'s events, as applied (refs made into ids).
@@ -3676,8 +3812,15 @@ pub fn new_event_id(compaction_id: &str, step: i64) -> String {
 
 /// The open goals (inactive or active), as `prepare` lists them: those
 /// with attribution hints are the ones compaction may tag events with;
-/// all of them, the ones a new goal mustn't repeat.
-pub fn open_goals(all: &[goals::Goal]) -> Vec<Value> {
+/// all of them, the ones a new goal mustn't repeat. With `window` (the
+/// calendar's zone, the window's start and now), one whose deadline fell
+/// inside it has `due_in_window`: one to propose missed unless something
+/// shows it done.
+pub fn open_goals(all: &[goals::Goal], window: Option<(chrono_tz::Tz, Moment, Moment)>) -> Vec<Value> {
+    let due_in_window = |deadline: Option<&str>| -> bool {
+        let (Some((zone, start, now)), Some(due)) = (window, deadline.and_then(deadline_end)) else { return false };
+        start.with_timezone(&zone).naive_local() <= due && due <= now.with_timezone(&zone).naive_local()
+    };
     all.iter()
         .filter(|g| g.status.is_some_and(|s| !s.is_closed()))
         .filter(|g| g.id.as_deref().is_some_and(|i| !i.is_empty()))
@@ -3692,9 +3835,74 @@ pub fn open_goals(all: &[goals::Goal]) -> Vec<Value> {
                     out[key] = json!(ids);
                 }
             }
+            if due_in_window(g.deadline.as_deref()) {
+                out["due_in_window"] = json!(true);
+            }
             out
         })
         .collect()
+}
+
+/// The ledger entries amend_proposal's `goal_changes` make, each checked
+/// against `claude`'s changes and those `settled` already: `apply` and
+/// `drop` need a goal the proposal changes (Claude's, or one the user
+/// changed); `change` keeps the user's status, time (`through` unless
+/// given) and retry deadline over Claude's, or adds a change of a goal
+/// the proposal doesn't change, which then needs a status.
+fn goal_change_entries(
+    claude: &[GoalChange],
+    settled: &Dict<GoalChangeSettled>,
+    choices: &[GoalChangeChoice],
+    through: Moment,
+) -> anyhow::Result<Vec<GoalChangeSettled>> {
+    let mut problems: Vec<String> = Vec::new();
+    let mut out: Vec<GoalChangeSettled> = Vec::new();
+    for choice in choices {
+        let id = choice.goal_id.trim();
+        if id.is_empty() {
+            problems.push("goal_changes: a goal change needs its goal_id".into());
+            continue;
+        }
+        if !goal_changes::USES.contains(&choice.use_.as_str()) {
+            problems.push(format!("goal_changes: {id} -- use is one of {}, not {}", goal_changes::USES.join(", "), py::repr(&choice.use_)));
+            continue;
+        }
+        if out.iter().any(|s| s.goal_id == id) {
+            problems.push(format!("goal_changes: goal {} is given more than once", py::repr(id)));
+            continue;
+        }
+        // What the proposal changes it to now: Claude's change, under the
+        // user's if they changed it already.
+        let claudes = claude.iter().find(|c| c.goal_id.trim() == id);
+        let proposed = match settled.get(id) {
+            Some(theirs) if theirs.use_ == "change" => theirs.change(claudes),
+            Some(_) => None,
+            None => claudes.cloned(),
+        };
+        if choice.use_ == "drop" {
+            if proposed.is_none() {
+                problems.push(format!("goal_changes: {id} isn't a goal the proposal changes, so there's nothing to drop"));
+                continue;
+            }
+            out.push(GoalChangeSettled { goal_id: id.to_string(), use_: "drop".into(), status: None, at: None, retry_deadline: None });
+            continue;
+        }
+        let given = GoalChangeSettled { goal_id: id.to_string(), use_: choice.use_.clone(), status: choice.status, at: choice.at, retry_deadline: choice.retry_deadline.clone() };
+        let Some(change) = given.change(proposed.as_ref()) else {
+            problems.push(if choice.use_ == "apply" {
+                format!("goal_changes: {id} isn't a goal the proposal changes: give its status with use 'change' to add one, or change it with update_goals")
+            } else {
+                format!("goal_changes: {id} isn't a goal the proposal changes yet, so its change needs a status (done, missed or obsolete)")
+            });
+            continue;
+        };
+        let change = change.resolved(through);
+        out.push(GoalChangeSettled { goal_id: id.to_string(), use_: choice.use_.clone(), status: Some(change.status), at: change.at, retry_deadline: change.retry_deadline });
+    }
+    if !problems.is_empty() {
+        return Err(ce_of(&problems, "goal_changes"));
+    }
+    Ok(out)
 }
 
 /// Whether each field `step` changes is, `now`, as it was planned from or

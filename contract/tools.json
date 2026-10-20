@@ -15654,7 +15654,7 @@
     }
   },
   {
-    "description": "Step 1 of compacting notes into the calendar: proposing what\nhappened since the last compaction, for the user to confirm. Returns\nevery day from the last compaction up to now (at most a week), notes\nor not -- each uncompacted note with an id and the planned events\nnearest it (`remaining_note_count` says how many are left for another\nround) -- those days' planned events, a `timeline` showing the two\nside by side, day by day, and instructions. Compare the notes to the\nplan, decide which events the notes show happened differently, and\nthe facts of each past event -- its actions, where it was, who was\nthere, who it was for, and a note on each person there -- then call\ncompact_notes with those decisions. Also every action an event can be\ngiven (`actions`, their groups left out), every person (`people`, the\nuser as \"self\", each with their trait facts' summaries) and every\nlocation (`locations`), to settle the facts from; each trait fact,\ndescribed once (`trait_facts`), to keep people's summaries by; and the\nopen goals with attribution hints (`goals`), the only ones to tag\nevents with, by those hints. `proposal` is the open proposal, if there is one: revise or\nextend it (see the instructions). judgments_pending names the last\ncompaction if its judgments aren't all made: make them first\n(prepare_judgments, record_judgments). Read-only.",
+    "description": "Step 1 of compacting notes into the calendar: proposing what\nhappened since the last compaction, for the user to confirm. Returns\nevery day from the last compaction up to now (at most a week), notes\nor not -- each uncompacted note with an id and the planned events\nnearest it (`remaining_note_count` says how many are left for another\nround) -- those days' planned events, a `timeline` showing the two\nside by side, day by day, and instructions. Compare the notes to the\nplan, decide which events the notes show happened differently, and\nthe facts of each past event -- its actions, where it was, who was\nthere, who it was for, and a note on each person there -- then call\ncompact_notes with those decisions. Also every action an event can be\ngiven (`actions`, their groups left out), every person (`people`, the\nuser as \"self\", each with their trait facts' summaries) and every\nlocation (`locations`), to settle the facts from; each trait fact,\ndescribed once (`trait_facts`), to keep people's summaries by; and the\nopen goals (`goals`: those with attribution hints are the only ones to\ntag events with, by those hints; one with `due_in_window` had its\ndeadline pass inside the window, to propose missed with\ncompact_notes' `goal_changes` unless something shows it done).\n`proposal` is the open proposal, if there is one: revise or\nextend it (see the instructions). judgments_pending names the last\ncompaction if its judgments aren't all made: make them first\n(prepare_judgments, record_judgments). Read-only.",
     "inputSchema": {
       "properties": {},
       "type": "object",
@@ -16012,7 +16012,7 @@
           "type": "object"
         },
         "ContextGoal": {
-          "description": "An open goal (inactive or active). One with attribution hints is one\nan event can be tagged with, when it clearly matches them. `path` is\nits parents' titles, outermost first; `with_ids` the people it's done\nwith and `for_ids` those it's done for.",
+          "description": "An open goal (inactive or active). One with attribution hints is one\nan event can be tagged with, when it clearly matches them. `path` is\nits parents' titles, outermost first; `with_ids` the people it's done\nwith and `for_ids` those it's done for. `due_in_window` says its\ndeadline fell inside the window (its start to now): one to propose\nmissed (`goal_changes`) unless a note or event shows it done.",
           "properties": {
             "id": {
               "type": "string"
@@ -16075,6 +16075,9 @@
                 "array",
                 "null"
               ]
+            },
+            "due_in_window": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -16430,6 +16433,57 @@
           ],
           "type": "object"
         },
+        "GoalChangeSettled": {
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "apply",
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "missed",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id",
+            "use"
+          ],
+          "type": "object"
+        },
         "LocationSplit": {
           "additionalProperties": false,
           "description": "A location and how much of the event it takes: minutes (a fixed\nshare), or percent (of what the minutes leave).",
@@ -16626,6 +16680,19 @@
                 "$ref": "#/$defs/FactSummary"
               },
               "type": "array"
+            },
+            "goal_changes": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "settled_goal_changes": {
+              "items": {
+                "$ref": "#/$defs/GoalChangeSettled"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -16663,7 +16730,7 @@
           "type": "object"
         },
         "RecapPoint": {
-          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall) and notes (`note_ids`) it's about, for the user to go to.",
+          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall), notes (`note_ids`) and goal changes (`goal_ids`: goals the\ncall's `goal_changes` change) it's about, for the user to go to.",
           "properties": {
             "text": {
               "type": "string"
@@ -16675,6 +16742,12 @@
               "type": "array"
             },
             "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "goal_ids": {
               "items": {
                 "type": "string"
               },
@@ -16934,7 +17007,7 @@
     }
   },
   {
-    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` -- open goals with attribution hints -- when it clearly\nmatches a goal's hints; the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes that don't set an event edge are added\nto the event they fall within, except those in `ignore_notes` -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. new_goals propose\ngoals -- inactive -- from notes where the user says they want or mean\nto do something longer term that no open goal covers, or told someone\nthey would -- with the people it's with or for (ids, or new_people\nrefs) -- created when it's applied too. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`) and the notes\n(`note_ids`) it's about, so the user can go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given), and answer every open feedback item in\n`replies`. The user's own edits -- of events, and of what notes are\nfor -- are laid over your decisions by the server; never send them.\n\nNOTHING IS MOVED TO MAKE ROOM: every event you update or create must\nend after it starts and must not overlap any other event -- past or\nstill to come, the others you change included -- so move, shorten or\ncancel whatever's in the way in the same call. A call that breaks this\nchanges nothing, and the error lists every problem and the day as it\nwould leave it, to fix them all at once.\n\nAn update that moves a future event reschedules it. Moving the\nend-of-day sleep event moves where the day ends: an earlier bedtime\nneeds whatever runs past it shortened or cancelled too, a later one\nleaves the evening free. Its end is the wake-up time: a later one has\nto move, shorten or cancel the morning events it now runs over, even\nthose after now, in the same call. Otherwise compaction never adjusts\nwhat's past the last night -- so move only its start to change only\nthe bedtime, and if the wake-up time does change, the plan warns; tell\nthe user.\n\nfact_summaries rewrite people's trait facts (see prepare_compaction's\n`trait_facts`): each {person_id, fact: \"<trait id>/<fact id>\",\nsummary} -- the whole summary, as it stands after the proposal's\nevents -- only beside a log of what changed in the facts of the event\n(or events) whose notes showed it ({\"logs\": {person id: {fact: log}}}),\nand every log beside its summary. Change a fact only when the notes\nhave something relevant to it: most events say nothing new about most\nfacts.\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
+    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` -- open goals with attribution hints -- when it clearly\nmatches a goal's hints; the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes that don't set an event edge are added\nto the event they fall within, except those in `ignore_notes` -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. new_goals propose\ngoals -- inactive -- from notes where the user says they want or mean\nto do something longer term that no open goal covers, or told someone\nthey would -- with the people it's with or for (ids, or new_people\nrefs) -- created when it's applied too. goal_changes propose changes\nto goals there are, applied when it's applied: {goal_id, status: done\n| missed | obsolete, at?, note_ids?, retry_deadline?} -- `done` at\nthe note's time when a note says the goal's outcome was reached,\n`obsolete` when one says the user dropped it, and `missed` at its\ndeadline for every goal with `due_in_window` that nothing shows done\n(never with a retry_deadline: the user picks that in review). A\nchange naming a goal that isn't open, timed outside the window, or\nthat the goal rules refuse (open sub-goals, unless the call closes\nthem too) is refused, naming the goal. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block, then the additions, the goal changes and the warnings.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`), the notes\n(`note_ids`) and the goal changes (`goal_ids`) it's about, so the user\ncan go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given; your goal_changes too, less those the user settled\n-- `proposal.settled_goal_changes`), and answer every open feedback item in\n`replies`. The user's own edits -- of events, of what notes are\nfor, and of goal changes -- are laid over your decisions by the server; never send them.\n\nNOTHING IS MOVED TO MAKE ROOM: every event you update or create must\nend after it starts and must not overlap any other event -- past or\nstill to come, the others you change included -- so move, shorten or\ncancel whatever's in the way in the same call. A call that breaks this\nchanges nothing, and the error lists every problem and the day as it\nwould leave it, to fix them all at once.\n\nAn update that moves a future event reschedules it. Moving the\nend-of-day sleep event moves where the day ends: an earlier bedtime\nneeds whatever runs past it shortened or cancelled too, a later one\nleaves the evening free. Its end is the wake-up time: a later one has\nto move, shorten or cancel the morning events it now runs over, even\nthose after now, in the same call. Otherwise compaction never adjusts\nwhat's past the last night -- so move only its start to change only\nthe bedtime, and if the wake-up time does change, the plan warns; tell\nthe user.\n\nfact_summaries rewrite people's trait facts (see prepare_compaction's\n`trait_facts`): each {person_id, fact: \"<trait id>/<fact id>\",\nsummary} -- the whole summary, as it stands after the proposal's\nevents -- only beside a log of what changed in the facts of the event\n(or events) whose notes showed it ({\"logs\": {person id: {fact: log}}}),\nand every log beside its summary. Change a fact only when the notes\nhave something relevant to it: most events say nothing new about most\nfacts.\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
     "inputSchema": {
       "properties": {
         "recap": {
@@ -17045,6 +17118,15 @@
         "new_goals": {
           "items": {
             "$ref": "#/$defs/NewGoal"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "goal_changes": {
+          "items": {
+            "$ref": "#/$defs/GoalChange"
           },
           "type": [
             "array",
@@ -17405,6 +17487,50 @@
           "required": [
             "feedback_id",
             "reply"
+          ],
+          "type": "object"
+        },
+        "GoalChange": {
+          "additionalProperties": false,
+          "description": "A change to a goal there is, from what the notes say or a deadline\nthat passed in the window: `goal_id` (from prepare_compaction's\n`goals`) becomes `status` at `at` (a time in the window; the\nproposal's `through` if left out), from `note_ids`. With\n`retry_deadline` (status missed only) the goal is missed and tried\nagain by then: its history gains missed (the deadline it missed) then\nits prior status (the new one), both at `at`, and it stays open --\nnever Claude's to propose; the user picks it in review. Applied when\nthe proposal is, each as one update of the goal; the user settles each\nin review first.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "done",
+                "missed",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id",
+            "status"
           ],
           "type": "object"
         },
@@ -17787,7 +17913,7 @@
           "type": "object"
         },
         "RecapPoint": {
-          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall) and notes (`note_ids`) it's about, for the user to go to.",
+          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall), notes (`note_ids`) and goal changes (`goal_ids`: goals the\ncall's `goal_changes` change) it's about, for the user to go to.",
           "properties": {
             "text": {
               "type": "string"
@@ -17799,6 +17925,12 @@
               "type": "array"
             },
             "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "goal_ids": {
               "items": {
                 "type": "string"
               },
@@ -18480,7 +18612,7 @@
     }
   },
   {
-    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), `state`, every event of its days as it leaves them\n(`events`, each with its id -- or a new event's key -- its times, what\nit was planned as, and who decided it), the notes, the calendar writes\nit makes, its `timeline`, the user's edits and the feedback with any\nreplies. With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
+    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), `state`, every event of its days as it leaves them\n(`events`, each with its id -- or a new event's key -- its times, what\nit was planned as, and who decided it), the notes, the calendar writes\nit makes, its `timeline`, the goal changes it makes when applied\n(`goal_changes`, each with who decided it) and those the user settled\n(`settled_goal_changes`), the user's edits and the feedback with any\nreplies. With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -18659,6 +18791,18 @@
         "fact_summaries": {
           "items": {
             "$ref": "#/$defs/ProposedSummary"
+          },
+          "type": "array"
+        },
+        "goal_changes": {
+          "items": {
+            "$ref": "#/$defs/ProposalGoalChange"
+          },
+          "type": "array"
+        },
+        "settled_goal_changes": {
+          "items": {
+            "$ref": "#/$defs/GoalChangeSettled"
           },
           "type": "array"
         }
@@ -19040,6 +19184,57 @@
           ],
           "type": "object"
         },
+        "GoalChangeSettled": {
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "apply",
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "missed",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id",
+            "use"
+          ],
+          "type": "object"
+        },
         "GoalShare": {
           "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
@@ -19285,6 +19480,67 @@
           ],
           "type": "object"
         },
+        "ProposalGoalChange": {
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "missed",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "goal_id",
+            "path",
+            "status",
+            "at",
+            "decided_by"
+          ],
+          "type": "object"
+        },
         "ProposalNote": {
           "properties": {
             "id": {
@@ -19396,7 +19652,7 @@
           "type": "object"
         },
         "RecapPoint": {
-          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall) and notes (`note_ids`) it's about, for the user to go to.",
+          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall), notes (`note_ids`) and goal changes (`goal_ids`: goals the\ncall's `goal_changes` change) it's about, for the user to go to.",
           "properties": {
             "text": {
               "type": "string"
@@ -19408,6 +19664,12 @@
               "type": "array"
             },
             "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "goal_ids": {
               "items": {
                 "type": "string"
               },
@@ -19667,7 +19929,7 @@
     }
   },
   {
-    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; and `as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.",
+    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; `goal_changes`, settling a goal change\nthe proposal makes (by its goal's id) now -- `apply` it (an update of\nthe goal, refused as update_goals would refuse it), `drop` it, or\n`change` it, the user's status, `at` and retry_deadline over Claude's,\nkept in the proposal (a `change` of a goal the proposal doesn't change\nadds one, with a status); and `as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created or applied stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -19740,6 +20002,15 @@
         "allow_compacted_changes": {
           "default": false,
           "type": "boolean"
+        },
+        "goal_changes": {
+          "items": {
+            "$ref": "#/$defs/GoalChangeChoice"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
         }
       },
       "required": [
@@ -19950,6 +20221,55 @@
               ]
             }
           },
+          "type": "object"
+        },
+        "GoalChangeChoice": {
+          "description": "The user's say on a goal change (by its goal's id): `apply` it now\n(as update_goals would, with the change's `at` as the history time;\nrefused as it would refuse it), `drop` it (the goal is left alone), or\n`change` it -- their `status`, `at` and `retry_deadline` over Claude's,\nkept in the proposal; a `change` of a goal the proposal doesn't change\nadds one (then with a status). Any of the three may give `status`,\n`at` and `retry_deadline` over the proposal's.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "apply",
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "done",
+                    "missed",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id",
+            "use"
+          ],
           "type": "object"
         },
         "GoalShare": {
@@ -20743,6 +21063,18 @@
             "$ref": "#/$defs/ProposedSummary"
           },
           "type": "array"
+        },
+        "goal_changes": {
+          "items": {
+            "$ref": "#/$defs/ProposalGoalChange"
+          },
+          "type": "array"
+        },
+        "settled_goal_changes": {
+          "items": {
+            "$ref": "#/$defs/GoalChangeSettled"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -21122,6 +21454,57 @@
           ],
           "type": "object"
         },
+        "GoalChangeSettled": {
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "apply",
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "missed",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id",
+            "use"
+          ],
+          "type": "object"
+        },
         "GoalShare": {
           "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
@@ -21367,6 +21750,67 @@
           ],
           "type": "object"
         },
+        "ProposalGoalChange": {
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "missed",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "goal_id",
+            "path",
+            "status",
+            "at",
+            "decided_by"
+          ],
+          "type": "object"
+        },
         "ProposalNote": {
           "properties": {
             "id": {
@@ -21478,7 +21922,7 @@
           "type": "object"
         },
         "RecapPoint": {
-          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall) and notes (`note_ids`) it's about, for the user to go to.",
+          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall), notes (`note_ids`) and goal changes (`goal_ids`: goals the\ncall's `goal_changes` change) it's about, for the user to go to.",
           "properties": {
             "text": {
               "type": "string"
@@ -21490,6 +21934,12 @@
               "type": "array"
             },
             "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "goal_ids": {
               "items": {
                 "type": "string"
               },
@@ -22381,6 +22831,57 @@
           ],
           "type": "object"
         },
+        "GoalChangeSettled": {
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "apply",
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "missed",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id",
+            "use"
+          ],
+          "type": "object"
+        },
         "GoalShare": {
           "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
@@ -22632,6 +23133,18 @@
                 "$ref": "#/$defs/ProposedSummary"
               },
               "type": "array"
+            },
+            "goal_changes": {
+              "items": {
+                "$ref": "#/$defs/ProposalGoalChange"
+              },
+              "type": "array"
+            },
+            "settled_goal_changes": {
+              "items": {
+                "$ref": "#/$defs/GoalChangeSettled"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -22802,6 +23315,67 @@
           ],
           "type": "object"
         },
+        "ProposalGoalChange": {
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "missed",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "goal_id",
+            "path",
+            "status",
+            "at",
+            "decided_by"
+          ],
+          "type": "object"
+        },
         "ProposalNote": {
           "properties": {
             "id": {
@@ -22913,7 +23487,7 @@
           "type": "object"
         },
         "RecapPoint": {
-          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall) and notes (`note_ids`) it's about, for the user to go to.",
+          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall), notes (`note_ids`) and goal changes (`goal_ids`: goals the\ncall's `goal_changes` change) it's about, for the user to go to.",
           "properties": {
             "text": {
               "type": "string"
@@ -22925,6 +23499,12 @@
               "type": "array"
             },
             "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "goal_ids": {
               "items": {
                 "type": "string"
               },
@@ -23595,6 +24175,57 @@
           ],
           "type": "object"
         },
+        "GoalChangeSettled": {
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "apply",
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inactive",
+                    "active",
+                    "done",
+                    "missed",
+                    "obsolete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "goal_id",
+            "use"
+          ],
+          "type": "object"
+        },
         "GoalShare": {
           "description": "One goal an event is tagged with, and how much of the event it takes:\nminutes (a fixed share), percent (of what the fixed shares leave), or\nneither -- the remaining time, what the minutes and percents leave.",
           "properties": {
@@ -23846,6 +24477,18 @@
                 "$ref": "#/$defs/ProposedSummary"
               },
               "type": "array"
+            },
+            "goal_changes": {
+              "items": {
+                "$ref": "#/$defs/ProposalGoalChange"
+              },
+              "type": "array"
+            },
+            "settled_goal_changes": {
+              "items": {
+                "$ref": "#/$defs/GoalChangeSettled"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -24016,6 +24659,67 @@
           ],
           "type": "object"
         },
+        "ProposalGoalChange": {
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "properties": {
+            "goal_id": {
+              "type": "string"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "status": {
+              "enum": [
+                "inactive",
+                "active",
+                "done",
+                "missed",
+                "obsolete"
+              ],
+              "type": "string"
+            },
+            "at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "retry_deadline": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "goal_id",
+            "path",
+            "status",
+            "at",
+            "decided_by"
+          ],
+          "type": "object"
+        },
         "ProposalNote": {
           "properties": {
             "id": {
@@ -24127,7 +24831,7 @@
           "type": "object"
         },
         "RecapPoint": {
-          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall) and notes (`note_ids`) it's about, for the user to go to.",
+          "description": "One point of Claude's recap: `text` in Markdown (bold, italics,\ncode, bullet and numbered lists -- no headings, tables or images), and\nthe events (`event_ids`: ids, keys, or a create's `ref` from the same\ncall), notes (`note_ids`) and goal changes (`goal_ids`: goals the\ncall's `goal_changes` change) it's about, for the user to go to.",
           "properties": {
             "text": {
               "type": "string"
@@ -24139,6 +24843,12 @@
               "type": "array"
             },
             "note_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "goal_ids": {
               "items": {
                 "type": "string"
               },

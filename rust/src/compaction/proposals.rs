@@ -3,6 +3,7 @@
 //! Claude's and the user's (`merge`).
 
 use super::additions::REF_PREFIX;
+use super::goal_changes::GoalChangeSettled;
 use super::plan::{CompactionChange, EventDecision};
 use crate::stores::actions::ActionShare;
 use crate::event::Moment;
@@ -224,11 +225,13 @@ pub struct FeedbackReply {
     pub reply: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct RecapPoint {
     pub text: String,
     pub event_ids: Vec<String>,
     pub note_ids: Vec<String>,
+    /// The goals whose changes it's about (see goal_changes).
+    pub goal_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -253,6 +256,9 @@ impl Recap {
             if !p.note_ids.is_empty() {
                 out.insert("note_ids".into(), json!(p.note_ids));
             }
+            if !p.goal_ids.is_empty() {
+                out.insert("goal_ids".into(), json!(p.goal_ids));
+            }
             Value::Object(out)
         };
         let mut out = Map::new();
@@ -264,7 +270,7 @@ impl Recap {
 
     /// As pydantic gives it: every field.
     pub fn to_json(&self) -> Value {
-        let point = |p: &RecapPoint| json!({"text": p.text, "event_ids": p.event_ids, "note_ids": p.note_ids});
+        let point = |p: &RecapPoint| json!({"text": p.text, "event_ids": p.event_ids, "note_ids": p.note_ids, "goal_ids": p.goal_ids});
         json!({
             "overview": self.overview,
             "did": self.did.iter().map(point).collect::<Vec<_>>(),
@@ -283,6 +289,7 @@ impl Recap {
                             text: p["text"].as_str().unwrap_or_default().into(),
                             event_ids: strings(p.get("event_ids")),
                             note_ids: strings(p.get("note_ids")),
+                            goal_ids: strings(p.get("goal_ids")),
                         })
                         .collect()
                 })
@@ -299,7 +306,10 @@ impl Recap {
         Recap { overview: self.overview.clone(), did: self.did.iter().map(point).collect(), unsure: self.unsure.iter().map(point).collect() }
     }
 
-    pub fn problems(&self, events: &[String], notes: &[String]) -> Vec<String> {
+    /// What's wrong with it: an empty overview or `did`, an empty point,
+    /// or a point citing an event, note or goal change (`goals`: the
+    /// goals the proposal changes) that isn't the proposal's.
+    pub fn problems(&self, events: &[String], notes: &[String], goals: &[String]) -> Vec<String> {
         let mut problems = Vec::new();
         if self.overview.trim().is_empty() {
             problems.push("recap: the overview is empty".to_string());
@@ -321,6 +331,11 @@ impl Recap {
                 for n in &p.note_ids {
                     if !notes.contains(n) {
                         problems.push(format!("{place}: {} isn't one of the proposal's notes", py::repr(n)));
+                    }
+                }
+                for g in &p.goal_ids {
+                    if !goals.contains(g) {
+                        problems.push(format!("{place}: {} isn't a goal the proposal changes (goal_ids cite its goal_changes)", py::repr(g)));
                     }
                 }
             }
@@ -466,6 +481,10 @@ pub struct Proposal {
     /// The trait fact summaries it rewrites, each {person_id, fact,
     /// summary, previous}.
     pub fact_summaries: Vec<Value>,
+    /// The goal changes it makes when applied (see goal_changes::shown),
+    /// and those the user settled.
+    pub goal_changes: Vec<Value>,
+    pub settled_goal_changes: Vec<GoalChangeSettled>,
 }
 
 impl Proposal {
@@ -498,6 +517,8 @@ impl Proposal {
         out.insert("changed_since".into(), json!(self.changed_since));
         out.insert("replaced".into(), json!(self.replaced));
         out.insert("fact_summaries".into(), json!(self.fact_summaries));
+        out.insert("goal_changes".into(), json!(self.goal_changes));
+        out.insert("settled_goal_changes".into(), Value::Array(self.settled_goal_changes.iter().map(GoalChangeSettled::to_json).collect()));
         Value::Object(out)
     }
 }
@@ -559,6 +580,10 @@ pub struct ProposalContext {
     pub feedback: Vec<Feedback>,
     pub recap: Option<Recap>,
     pub fact_summaries: Vec<Value>,
+    /// Claude's own goal changes, to send again, and those the user
+    /// settled.
+    pub goal_changes: Vec<Value>,
+    pub settled_goal_changes: Vec<GoalChangeSettled>,
 }
 
 impl ProposalContext {
@@ -582,6 +607,8 @@ impl ProposalContext {
         out.insert("feedback".into(), Value::Array(self.feedback.iter().map(Feedback::to_json).collect()));
         out.insert("recap".into(), self.recap.as_ref().map(Recap::to_json).unwrap_or(Value::Null));
         out.insert("fact_summaries".into(), json!(self.fact_summaries));
+        out.insert("goal_changes".into(), json!(self.goal_changes));
+        out.insert("settled_goal_changes".into(), Value::Array(self.settled_goal_changes.iter().map(GoalChangeSettled::to_json).collect()));
         Value::Object(out)
     }
 }
@@ -644,6 +671,9 @@ pub struct Merged {
     pub note_targets: Dict<Option<String>>,
     pub notes_decided_by: Dict<String>,
     pub settled: Dict<AdditionSettled>,
+    /// The goal changes the user settled, by goal id (the last entry for
+    /// a goal wins).
+    pub settled_goal_changes: Dict<GoalChangeSettled>,
 }
 
 /// `edit` as a decision (its `as_planned` as a bare keep).
@@ -708,6 +738,7 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
     let mut unknown: Vec<UserEdit> = Vec::new();
     let mut note_edits: Vec<UserEdit> = Vec::new();
     let mut settled_refs: Dict<AdditionSettled> = Dict::new();
+    let mut settled_goals: Dict<GoalChangeSettled> = Dict::new();
     let mut described: Dict<i64> = Dict::new();
     let unknown_target = |keyed: &Dict<EventDecision>, target: Option<&str>| -> bool {
         let creating = target.and_then(|t| keyed.get(t)).is_some_and(|d| d.action == "create");
@@ -732,6 +763,11 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
                     id: edit.edit.get("id").and_then(Value::as_str).map(str::to_string),
                 },
             );
+            continue;
+        }
+        if action == "goal_change" {
+            let goal_id = edit.event_id.clone().unwrap_or_default();
+            settled_goals.set(&goal_id, GoalChangeSettled::from_edit(&goal_id, &edit.edit));
             continue;
         }
         if action == "as_planned" && is_ref(edit.event_id.as_deref()) {
@@ -848,6 +884,7 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
         note_targets: targets,
         notes_decided_by: notes_by,
         settled: settled_refs,
+        settled_goal_changes: settled_goals,
     }
 }
 
