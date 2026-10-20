@@ -52,6 +52,9 @@ fn prepare_lists_every_open_goal_with_its_people() {
         ])
     );
     assert!(DECISION_GUIDE.contains("NEW GOALS: when a note says the user wants"));
+    assert!(DECISION_GUIDE.contains("FOR SOMEONE, IT'S A GOAL HOWEVER SMALL"));
+    assert!(DECISION_GUIDE.contains("PREFIXED NOTES ARE DEFINITE GOALS"));
+    assert!(DECISION_GUIDE.contains("a goal with for_ids or with_ids always gets one"));
 }
 
 #[test]

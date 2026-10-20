@@ -119,10 +119,22 @@ unless the notes say otherwise.
 Compaction also proposes new goals: when a note says the user wants or
 means to do something, or told someone they would, `compact_notes`'
 `new_goals` adds one (with a `new:` ref, like a new action or person),
-naming the people it's with or for -- new people by their refs. Only
-for something longer term that no open goal covers: most "I want to"
-notes are done right away. It's inactive, its deadline only one the notes
-give, and is created when the proposal is applied (an open goal with the
-same title is reused), or sooner if the user settles it -- made active
-then, with a deadline, if they like; see
+naming the people it's with or for -- new people by their refs. Never
+one an open goal already covers. For the user alone, only something
+longer term: most "I want to" notes are done right away. For someone
+else, however small: a promise, offer, favor or plan for a person
+("send Kopal a bread-bowl recipe") is a goal for them, or with them if
+they'll do it together, unless the notes show it done; so is an idea of
+the user's for helping someone with a goal of theirs or something
+they're struggling with, but not a friend's own goal with no idea of
+the user's attached. A note prefixed `todo:`, `for <person>:`,
+`with <person>:` or `idea for <person>:` is a definite goal: the person
+named is who it's for or with, and the rest is its title, phrased as an
+outcome. It's inactive. A goal for the user alone has a deadline only
+when the notes give one; a goal with or for someone always has one --
+the notes' or, failing that, about a week after the note, which the
+recap's `unsure` says was assumed -- so it shows on the goals-due strip.
+It's created when the proposal is applied (an open goal with the same
+title is reused), or sooner if the user settles it -- made active then,
+with a deadline, if they like; see
 [compaction proposals](compaction-proposals.md).
