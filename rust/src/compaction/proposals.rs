@@ -349,7 +349,7 @@ pub struct ProposalEvent {
     pub is_end_of_day_sleep: bool,
     pub counts_against_follow_through: Option<bool>,
     pub follow_through: Vec<String>,
-    /// Settled by an earlier compaction, and revisited for a late note.
+    /// Settled by an earlier compaction, and revisited for a historical note.
     pub revisited: bool,
 }
 

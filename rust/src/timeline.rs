@@ -138,7 +138,7 @@ pub fn build_timeline(
     timeline
 }
 
-/// What heads a day revisited for late notes, after its date.
+/// What heads a day revisited for historical notes, after its date.
 pub const REVISITED_LABEL: &str = "revisited";
 
 /// Several days' timelines as one, each under a heading with its date.

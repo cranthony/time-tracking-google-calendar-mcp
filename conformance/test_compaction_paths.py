@@ -1,6 +1,6 @@
 """Compaction's less-traveled paths, beyond test_compaction.py's: a
 backlog longer than a week (two compactions, the second over history the
-first settled), a late note revisiting what the first settled, the
+first settled), a historical note revisiting what the first settled, the
 calendar or notes changing under a proposal (a
 recheck, a proposal handed back to Claude), writes failing partway
 through applying one (rebuilt, or finished later), the user's edits of
@@ -79,7 +79,7 @@ async def test_backlog_over_a_week(session, google, calendar_id):
     await session.call("prepare_compaction")
 
 
-async def test_late_note_revisits_history(session, google, calendar_id):
+async def test_historical_note_revisits_history(session, google, calendar_id):
     # The first compaction takes a week of the backlog and judges it; then a
     # note comes in for a breakfast it settled, which the second revisits.
     days = seed.planned_days(google, calendar_id, date(2026, 9, 26), 12)
