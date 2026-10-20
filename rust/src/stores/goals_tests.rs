@@ -73,7 +73,7 @@ fn creates_an_active_goal_with_its_history_and_finds_it_by_id_or_title() {
 
     let made = f.get(&id);
     assert_eq!((made["status"].clone(), made["version"].clone()), (json!("active"), json!(1)));
-    assert_eq!(made["history"], json!([{"status": "active", "at": "2026-10-17T09:00:00-04:00"}]));
+    assert_eq!(made["history"], json!([{"status": "active", "at": "2026-10-17T09:00:00-04:00", "deadline": "2026-11-01"}]));
     assert_eq!(made["started_at"], json!("2026-10-17T09:00:00-04:00"));
     assert_eq!(made["closed_at"], Value::Null);
     assert_eq!(f.get("ship THE app")["id"], json!(id));
@@ -284,6 +284,61 @@ fn history_is_checked_and_can_be_edited_whole() {
     let backdated = json!([{"status": "active", "at": "2026-10-01T09:00:00-04:00"}]);
     f.change(&[], vec![edit(json!({"id": id, "history": backdated}))], vec![]).unwrap();
     assert_eq!(f.get(&id)["started_at"], json!("2026-10-01T09:00:00-04:00"));
+}
+
+#[test]
+fn history_entries_carry_the_deadline_in_force_at_each_change() {
+    let f = fixture();
+    let now = "2026-10-17T09:00:00-04:00";
+
+    // A create stamps the deadline it's made with; an inactive goal
+    // without one is stamped without one, and reads back so.
+    let id = f.create(json!({"title": "Top", "deadline": "2026-12-01"})).unwrap();
+    assert_eq!(f.get(&id)["history"], json!([{"status": "active", "at": now, "deadline": "2026-12-01"}]));
+    let someday = f.create(json!({"title": "Someday", "status": "inactive"})).unwrap();
+    assert_eq!(f.get(&someday)["history"], json!([{"status": "inactive", "at": now, "deadline": null}]));
+
+    // A status change stamps the deadline after the change, even one set
+    // in the same update, or one that follows the parent's.
+    f.change(&[], vec![edit(json!({"id": someday, "status": "active", "deadline": "2026-11-15"}))], vec![]).unwrap();
+    assert_eq!(f.get(&someday)["history"][1], json!({"status": "active", "at": now, "deadline": "2026-11-15"}));
+    let sub = f.create(json!({"title": "Sub", "parent_id": id, "deadline_offset_minutes": 1440})).unwrap();
+    assert_eq!(f.get(&sub)["history"][0]["deadline"], json!("2026-11-30"));
+    f.change(&[], vec![edit(json!({"id": sub, "status": "done"}))], vec![]).unwrap();
+    assert_eq!(f.get(&sub)["history"][1], json!({"status": "done", "at": now, "deadline": "2026-11-30"}));
+
+    // A history given whole keeps its entries' deadlines, with or without.
+    let given = json!([
+        {"status": "inactive", "at": "2026-10-01T09:00:00-04:00"},
+        {"status": "active", "at": "2026-10-02T09:00:00-04:00", "deadline": "2026-10-15"},
+        {"status": "active", "at": "2026-10-02T09:00:00-04:00", "deadline": "2026-10-16"}
+    ]);
+    refused(f.change(&[], vec![edit(json!({"id": id, "history": given}))], vec![]), "entry 3 repeats the status before it");
+    let given = json!([
+        {"status": "inactive", "at": "2026-10-01T09:00:00-04:00"},
+        {"status": "active", "at": "2026-10-02T09:00:00-04:00", "deadline": "2026-10-15"}
+    ]);
+    f.change(&[], vec![edit(json!({"id": id, "deadline": "2026-10-15", "history": given.clone()}))], vec![]).unwrap();
+    assert_eq!(f.get(&id)["history"], json!([{"status": "inactive", "at": "2026-10-01T09:00:00-04:00", "deadline": null}, given[1]]));
+
+    // Missed, then retried: a new deadline and a history ending missed
+    // (the deadline it missed) then active (the new one) at one moment.
+    f.change(&[], vec![edit(json!({"id": id, "status": "missed"}))], vec![]).unwrap();
+    let missed = f.get(&id);
+    assert_eq!((missed["status"].clone(), missed["closed_at"].clone()), (json!("missed"), json!(now)));
+    assert_eq!(missed["history"][2], json!({"status": "missed", "at": now, "deadline": "2026-10-15"}));
+    let retried = json!([
+        given[0], given[1],
+        {"status": "missed", "at": "2026-10-16T00:00:00-04:00", "deadline": "2026-10-15"},
+        {"status": "active", "at": "2026-10-16T00:00:00-04:00", "deadline": "2026-12-01"}
+    ]);
+    f.change(&[], vec![edit(json!({"id": id, "status": "active", "deadline": "2026-12-01", "history": retried.clone()}))], vec![]).unwrap();
+    let again = f.get(&id);
+    assert_eq!((again["status"].clone(), again["deadline"].clone(), again["closed_at"].clone()), (json!("active"), json!("2026-12-01"), Value::Null));
+    assert_eq!(again["history"].as_array().unwrap()[2..], retried.as_array().unwrap()[2..]);
+    // And missed again, for another go.
+    f.change(&[], vec![edit(json!({"id": id, "status": "missed"}))], vec![]).unwrap();
+    assert_eq!(f.get(&id)["history"][4], json!({"status": "missed", "at": now, "deadline": "2026-12-01"}));
 }
 
 #[test]

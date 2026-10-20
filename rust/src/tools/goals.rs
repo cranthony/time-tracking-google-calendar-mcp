@@ -71,10 +71,14 @@ pub struct GoalDelete {
 /// active) -- a sub-goal's can follow its parent's: with
 /// deadline_offset_minutes (0 for the same; 1440 a day before) it's kept
 /// that far before the parent's while it's open, and setting a deadline
-/// without it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- not reached,
-/// and no longer pursued -- or obsolete) and its history (each change of
-/// status and when, oldest first; started_at is when it first became
-/// active, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and
+/// without it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- its
+/// deadline passed without it -- or obsolete) and its history (each change of
+/// status and when, oldest first, each with the deadline in force at
+/// that change, if it had one; started_at is when it first became
+/// active, closed_at when it was done, missed or made obsolete). A missed
+/// goal can be reopened with a new deadline, and its history keeps each
+/// deadline it missed, so a goal can be missed and retried any number
+/// of times. Then a description and definition_of_done (HTML), and
 /// attribution_hints (a guide for telling which events are for it).
 /// with_ids are the people it's done with (who the user works on it
 /// alongside) and for_ids those it's done for, who aren't part of doing
@@ -123,9 +127,13 @@ pub fn create_goal(app: &App, goal: Goal) -> Result<CreatedGoal, ToolError> {
 /// that update's clear_fields to remove it instead), `creates` (new goals,
 /// as create_goal takes them; an update can name one by an id given
 /// here) and `deletes`. A status set without a history adds the change,
-/// now, to the goal's history; a history given replaces it whole (to
-/// backdate a change, or remove a mistaken one), and must end with the
-/// goal's status.
+/// now, with the goal's deadline after the change, to the goal's history;
+/// a history given replaces it whole (to backdate a change, or remove a
+/// mistaken one), its entries' deadlines as given, and must end with the
+/// goal's status. To retry a missed goal, set its new deadline and give
+/// its history ending missed (with the deadline it missed) then active or
+/// inactive (with the new one), both at the same moment -- how the app
+/// records a retry.
 ///
 /// The rules (see get_goals and create_goal) hold for the result, not
 /// for each step: to mark a goal done, missed or obsolete, close or move its

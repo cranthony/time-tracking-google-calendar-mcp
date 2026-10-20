@@ -16,8 +16,8 @@ events have none.
 | `required` | Whether its parent needs it done to be done. |
 | `expected_minutes` | Optional. How long it's expected to take, compared with the time spent purely as a guide for estimating; never enforced. |
 | `deadline` | A date ("2026-11-01", due at the end of that day) or a date and time ("2026-11-01T17:00"), in the calendar's time zone. Needed while active; optional, and empty by default, while inactive. |
-| `status` | `inactive`, `active`, `done`, `missed` (not reached, and no longer pursued) or `obsolete` (no longer wanted). New goals are active unless made inactive. |
-| `history` | Every change of status and when, oldest first, starting with the status it was made in. Entries can be backdated or removed; the history must stay in order and end with the status. A goal started when it first became active, and was finished when it last became done, missed or obsolete. |
+| `status` | `inactive`, `active`, `done`, `missed` (its deadline passed without it) or `obsolete` (no longer wanted). New goals are active unless made inactive. A missed goal can be reopened with a new deadline; its history keeps each deadline it missed, so a goal can be missed and retried any number of times. |
+| `history` | Every change of status and when, oldest first, starting with the status it was made in, each with the `deadline` in force at that change (if it had one; older entries may have none). A change the server records itself -- a status set without a history, a create without one -- carries the goal's deadline after the change; a history given whole keeps its entries' deadlines as given. Entries can be backdated or removed; the history must stay in order and end with the status. A goal started when it first became active, and was finished when it last became done, missed or obsolete. |
 | `description`, `definition_of_done` | HTML. |
 | `attribution_hints` | A guide, for a model, to telling which events are for the goal. |
 | `with_ids` | The people the user does it with (person ids). |
@@ -45,6 +45,11 @@ moves or changes another goal to make things fit.
   The app doesn't offer to mark a goal done while a required sub-goal is
   open; a missed or obsolete required sub-goal doesn't hold it up.
 - A done, missed or obsolete goal can be reopened, unless its parent is closed.
+  Reopening a missed goal is a retry: one update sets its new deadline and
+  gives its history ending `missed` (with the deadline it missed) then
+  `active` or `inactive` (whichever it was before, with the new deadline),
+  both at the same moment. That's how the app records a retry, and the
+  history keeps every deadline missed along the way.
 - A goal can be deleted even when events are tagged with it (the app
   warns that it can't be undone). Its sub-goals are deleted or moved in
   the same change.
