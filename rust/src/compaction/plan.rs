@@ -326,7 +326,7 @@ pub struct PlanOptions<'a> {
     pub note_targets: Option<&'a [(String, Option<String>)]>,
     pub closing_id: Option<&'a str>,
     pub nights: Option<&'a [String]>,
-    /// Events an earlier compaction settled whole, offered again for late
+    /// Events an earlier compaction settled whole, offered again for historical
     /// notes: what happened at them can change, but not when, nor whether.
     pub revisits: Option<&'a [String]>,
 }
@@ -345,7 +345,7 @@ fn strip(text: Option<&str>) -> String {
 }
 
 /// Why a revisited event's times stay as they are.
-const REVISITED: &str = "an earlier compaction settled it, and a late note can change what happened at it (its actions, facts, goals, summary and notes) but not when. Change those with update_event, if the user says to.";
+const REVISITED: &str = "an earlier compaction settled it, and a historical note can change what happened at it (its actions, facts, goals, summary and notes) but not when. Change those with update_event, if the user says to.";
 
 /// `plan_compaction`.
 pub fn plan_compaction(
@@ -615,7 +615,7 @@ fn resolve(
             }
             let revisited = [&event_id, &into].into_iter().find(|i| revisits.contains(i)).cloned();
             if let Some(revisited) = revisited {
-                problems.push(Issue::tagged("compacted", format!("{label}: {revisited} is revisited for a late note, so it can't be merged: {REVISITED}")));
+                problems.push(Issue::tagged("compacted", format!("{label}: {revisited} is revisited for a historical note, so it can't be merged: {REVISITED}")));
                 continue;
             }
         } else if decision.into.is_some() {
@@ -663,7 +663,7 @@ fn resolve(
         if decision.action == "cancel" && revisits.contains(event_id) {
             problems.push(Issue::tagged(
                 "compacted",
-                format!("{} ({event_id}) is revisited for a late note, so it can't be cancelled: {REVISITED}", repr_opt(base.summary.as_deref())),
+                format!("{} ({event_id}) is revisited for a historical note, so it can't be cancelled: {REVISITED}", repr_opt(base.summary.as_deref())),
             ));
             continue;
         }
@@ -731,7 +731,7 @@ fn resolve(
             problems.push(Issue::tagged(
                 "compacted",
                 format!(
-                    "{label}: {} ({} to {}) is revisited for a late note, so its times can't move: {REVISITED}",
+                    "{label}: {} ({} to {}) is revisited for a historical note, so its times can't move: {REVISITED}",
                     repr_opt(base.summary.as_deref()),
                     py::isoformat(&base.start()),
                     py::isoformat(&base.end())

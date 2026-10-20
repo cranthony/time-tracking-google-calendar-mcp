@@ -92,7 +92,7 @@ rules below say what happens then. A refused call writes nothing.
 - Returns the window from the last applied `through` to now, with or
   without notes, and its events and timeline as today. At most a week:
   a longer gap takes more than one proposal.
-- A *late note* -- one timestamped before the last applied `through` --
+- A *historical note* -- one timestamped before the last applied `through` --
   doesn't move the window. It's one of the window's notes, and the
   settled event it falls within is offered too, first, `revisited`:
   decisions can change what happened at it (actions, facts, goals,
@@ -155,7 +155,7 @@ as it is now:
   `cancelled`, `merged`, `planned` -- the future, untouched),
   `planned_start`/`planned_end`, `decided_by` (`claude`, `user` or
   none), `history_until`, `is_end_of_day_sleep`, `revisited` (only
-  when true: a settled event revisited for a late note), and for a cancelled
+  when true: a settled event revisited for a historical note), and for a cancelled
   one `counts_against_follow_through` and `follow_through` (who it
   counts against; to flip it, cancel it again). `None`, with `problem`
   saying why, when it no longer plans (confirming then hands it to
@@ -337,7 +337,7 @@ compaction_id | step | kind | event_id | before | after | status | detail
 
 | `kind` | `compaction_id` | `step` | Other columns |
 |---|---|---|---|
-| `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `note_targets` (note -> event), `batch`/`day`, `additions`, `revisits`: the events late notes revisit) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision), `claude_ignore_notes`, `claude_note_targets` and `claude_additions` (Claude's own, before the user's note edits and settled additions; the first day's `additions` are those left to create) |
+| `compaction` | revision-day id: `<proposal>r<n>`, then `<proposal>r<n>d2`… for later days | 0 | `status` (below); `detail`: today's (`now` = `through`, `note_ids`, `warnings`, `ignore_notes`, `note_targets` (note -> event), `batch`/`day`, `additions`, `revisits`: the events historical notes revisit) plus `proposal`, `revision`, `from`, `created`, `base` (starting revision), `user_seq`, `by` (`claude`/`user`/`server`), `reason` (`proposed`, `extended`, `revised for notes`, `user edit`, `recheck`, `apply failed`), `changed` (event ids whose outcome changed from the previous revision), `claude_ignore_notes`, `claude_note_targets` and `claude_additions` (Claude's own, before the user's note edits and settled additions; the first day's `additions` are those left to create) |
 | `decision` | revision-day id | 0 | A decision the day was planned with -- Claude's and the user's merged -- as JSON in `before`; `event_id` repeats its event |
 | `claude_decision` | revision's first day | 0 | One of Claude's own decisions, as JSON in `before`: what the next revision starts from |
 | `update`/`create`/`cancel` | revision-day id | 1… | One calendar write: `event_id` (a create's key, for a create), the event's state `before` and `after`, `pending`/`done`, reason in `detail` |

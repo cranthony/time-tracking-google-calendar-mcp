@@ -18,7 +18,7 @@ mod dry_run;
 mod facts;
 mod goals;
 mod judging;
-mod late_notes;
+mod historical_notes;
 mod mornings;
 mod new_goals;
 mod prepare;

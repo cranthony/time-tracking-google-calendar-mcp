@@ -251,7 +251,7 @@ pub struct PlannedDay<'a> {
     pub ignore_notes: Vec<String>,
     pub additions: Map<String, Value>,
     pub note_targets: Vec<(String, Option<String>)>,
-    /// The settled events it revisits for late notes, judged again once
+    /// The settled events it revisits for historical notes, judged again once
     /// it's applied.
     pub revisits: Vec<String>,
 }

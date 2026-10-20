@@ -1,4 +1,4 @@
-//! Late notes: a note written for a time an earlier compaction already
+//! Historical notes: a note written for a time an earlier compaction already
 //! settled revisits the event it falls within -- what happened at it, not
 //! when -- and that event is judged again.
 
@@ -22,7 +22,7 @@ fn judgment(request_id: &str, rating: i64) -> Judgment {
 
 /// The morning compacted at 11:30 -- the email was with Sam -- and judged.
 /// Then, at 13:00, a note for 09:30, during the email.
-fn late_note_on_the_email() -> Setup {
+fn historical_note_on_the_email() -> Setup {
     let setup = Setup::with(&[("09:05", "email")], None, "11:30", Stores { people: sam(), traits: Some(vec![heard()]), ..Default::default() });
     let id = setup.dry_run(vec![EventDecision { facts: Some(facts(json!({"with": ["sam"]}))), ..keep("e1") }]).compaction_id.unwrap();
     setup.commit(&id);
@@ -34,7 +34,7 @@ fn late_note_on_the_email() -> Setup {
     setup
 }
 
-fn late_note_id(setup: &Setup) -> String {
+fn historical_note_id(setup: &Setup) -> String {
     setup.notes(false).into_iter().find(|n| n.note.timestamp == time_at("09:30")).unwrap().id()
 }
 
@@ -43,8 +43,8 @@ fn worried() -> Vec<EventDecision> {
 }
 
 #[test]
-fn a_late_note_revisits_the_settled_event_it_falls_within() {
-    let setup = late_note_on_the_email();
+fn a_historical_note_revisits_the_settled_event_it_falls_within() {
+    let setup = historical_note_on_the_email();
 
     let context = setup.prepare();
 
@@ -56,7 +56,7 @@ fn a_late_note_revisits_the_settled_event_it_falls_within() {
     assert!(email.revisited);
     assert_eq!(email.history_until, Some(time_at("10:00")));
     assert!(!context.events[1].revisited);
-    assert_eq!(ids(&context.notes, |n| n.id.as_str()), vec![late_note_id(&setup)]);
+    assert_eq!(ids(&context.notes, |n| n.id.as_str()), vec![historical_note_id(&setup)]);
     assert_eq!(context.notes[0].candidates[0], "e1");
     assert_eq!(context.to_json()["events"][0]["revisited"], json!(true));
     assert!(context.to_json()["events"][1].get("revisited").is_none());
@@ -64,7 +64,7 @@ fn a_late_note_revisits_the_settled_event_it_falls_within() {
 
 #[test]
 fn the_timeline_shows_what_it_revisits_first_under_its_date() {
-    let setup = late_note_on_the_email();
+    let setup = historical_note_on_the_email();
 
     let text = setup.prepare().timeline.unwrap().text;
 
@@ -81,7 +81,7 @@ fn the_timeline_shows_what_it_revisits_first_under_its_date() {
 fn a_note_long_after_the_fact_doesnt_move_the_span() {
     // Before, the span started at the oldest note, so one from ten days
     // back took the round there.
-    let setup = late_note_on_the_email();
+    let setup = historical_note_on_the_email();
     let long_ago = time_at("09:30") - Duration::days(10);
     let mut old = event_at("09:00-10:00").id("old1").summary("Walk").build();
     old.start = Some(time_at("09:00") - Duration::days(10));
@@ -100,7 +100,7 @@ fn a_note_long_after_the_fact_doesnt_move_the_span() {
 
 #[test]
 fn what_happened_at_it_changes_and_the_note_is_added_to_it() {
-    let setup = late_note_on_the_email();
+    let setup = historical_note_on_the_email();
 
     let planned = setup.dry_run(worried());
 
@@ -118,28 +118,28 @@ fn what_happened_at_it_changes_and_the_note_is_added_to_it() {
 
 #[test]
 fn its_times_dont_move_nor_is_it_cancelled_or_merged() {
-    let setup = late_note_on_the_email();
-    let note = late_note_id(&setup);
+    let setup = historical_note_on_the_email();
+    let note = historical_note_id(&setup);
 
-    refused(setup.try_dry_run(vec![EventDecision { end: Some(time_at("10:15")), ..keep("e1") }], DryRun::default()), "revisited for a late note, so its times can't move");
+    refused(setup.try_dry_run(vec![EventDecision { end: Some(time_at("10:15")), ..keep("e1") }], DryRun::default()), "revisited for a historical note, so its times can't move");
     refused(setup.try_dry_run(vec![EventDecision { end_note: Some(note), ..keep("e1") }], DryRun::default()), "its times can't move");
     refused(
         setup.try_dry_run(
             vec![EventDecision { event_id: Some("e1".into()), counts_against_follow_through: Some(false), ..EventDecision::new("cancel") }],
             DryRun::default(),
         ),
-        "revisited for a late note, so it can't be cancelled",
+        "revisited for a historical note, so it can't be cancelled",
     );
     refused(
         setup.try_dry_run(vec![EventDecision { event_id: Some("e3".into()), into: Some("e1".into()), ..EventDecision::new("merge") }], DryRun::default()),
-        "e1 is revisited for a late note, so it can't be merged",
+        "e1 is revisited for a historical note, so it can't be merged",
     );
 }
 
 #[test]
 fn applying_it_stamps_the_note_and_judges_the_event_again() {
-    let setup = late_note_on_the_email();
-    let note = late_note_id(&setup);
+    let setup = historical_note_on_the_email();
+    let note = historical_note_id(&setup);
     let proposed = setup.dry_run(worried());
     let id = proposed.compaction_id.unwrap();
 
@@ -159,7 +159,7 @@ fn applying_it_stamps_the_note_and_judges_the_event_again() {
 fn only_the_revisited_events_judgments_go() {
     // Lunch, in this round's window, is judged as it always was: it had no
     // judgments to keep.
-    let setup = late_note_on_the_email();
+    let setup = historical_note_on_the_email();
     let decisions = vec![worried().remove(0), EventDecision { facts: Some(facts(json!({"with": ["sam"]}))), ..keep("e3") }];
     let id = setup.dry_run(decisions).compaction_id.unwrap();
 
@@ -175,9 +175,9 @@ fn only_the_revisited_events_judgments_go() {
 }
 
 #[test]
-fn a_late_note_that_falls_within_no_event_is_just_stamped() {
+fn a_historical_note_that_falls_within_no_event_is_just_stamped() {
     // 11:00 to 12:00 has nothing planned, and the morning's settled.
-    let setup = late_note_on_the_email();
+    let setup = historical_note_on_the_email();
     setup.append_note("11:10", Some("stretched"));
 
     let planned = setup.dry_run(worried());
