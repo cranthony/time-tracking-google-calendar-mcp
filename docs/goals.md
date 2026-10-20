@@ -133,9 +133,12 @@ named is who it's for or with, and the rest is its title, phrased as
 what the user will do. A title is always that: the active voice, from
 the user's side ("Fix the fence", "Send Mom the photos", "Encourage
 Gary to make a project with AI"), never the outcome as a state ("Fence
-fixed", "Photos sent to Mom"). The goal is inactive. A goal for the
-user alone has a deadline only when the notes give one; a goal with or
-for someone always has one --
+fixed", "Photos sent to Mom"). Its description says where it came
+from -- the note's date and words -- and why, when the notes say why,
+never a reason they don't; its definition of done says how anyone
+would know it happened ("Mom has the photos"). The goal is inactive.
+A goal for the user alone has a deadline only when the notes give
+one; a goal with or for someone always has one --
 the notes' or, failing that, about a week after the note, which the
 recap's `unsure` says was assumed -- so it shows on the goals-due strip.
 It's created when the proposal is applied (an open goal with the same

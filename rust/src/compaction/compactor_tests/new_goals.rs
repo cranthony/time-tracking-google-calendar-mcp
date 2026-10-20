@@ -75,6 +75,22 @@ fn a_new_goal_is_created_inactive_with_its_people_when_the_proposal_is() {
 }
 
 #[test]
+fn a_new_goal_keeps_its_description_and_definition_of_done() {
+    let setup = new_goals_setup();
+    let goal = json!({"ref": "new:help-sam", "title": "Help Sam move", "deadline": "2099-06-01", "for_ids": ["sam"],
+        "description": "From a note on 5 Oct: 'told Sam I'd help him move'.", "definition_of_done": "Sam is moved in."});
+
+    let p = proposed(&setup, json!({"goals": [goal]})).unwrap().proposal_id.unwrap();
+    assert_eq!(setup.call(|c| c.confirm(&p, 1)).unwrap().status, "applied");
+
+    let made = goal_titled(&setup, "Help Sam move");
+    assert_eq!(made.description.as_deref(), Some("From a note on 5 Oct: 'told Sam I'd help him move'."));
+    assert_eq!(made.definition_of_done.as_deref(), Some("Sam is moved in."));
+    assert!(DECISION_GUIDE.contains("Its description says where it came from and why"));
+    assert!(DECISION_GUIDE.contains("Its definition_of_done says how anyone would know it happened"));
+}
+
+#[test]
 fn a_new_goal_with_the_title_of_an_open_one_is_that_one() {
     let setup = new_goals_setup();
 
