@@ -13221,7 +13221,7 @@
     }
   },
   {
-    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nA priority (0 the most, as actions'; optional) says how much it\nmatters: without one, a goal takes its nearest parent's that has one,\nand with none up its tree it's treated as 3. sort_order (optional)\nis the user's own order among goals that otherwise list alike (the\nsame priority, due the same day): the lowest first, those without one\nafter them; leave it as it is unless asked to reorder goals.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline (\"2026-11-01\", due at the end of that day, or\n\"2026-11-01T17:00\", in the calendar's time zone; needed while\nactive) -- a sub-goal's can follow its parent's: with\ndeadline_offset_minutes (0 for the same; 1440 a day before) it's kept\nthat far before the parent's while it's open, and setting a deadline\nwithout it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- not reached,\nand no longer pursued -- or obsolete) and its history (each change of\nstatus and when, oldest first; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete), a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nwith_ids are the people it's done with (who the user works on it\nalongside) and for_ids those it's done for, who aren't part of doing\nit (a promise to them, a gift, a favor): person ids from get_people,\nnever \"self\", and no one in both.\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal is\nopen (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
+    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nA priority (0 the most, as actions'; optional) says how much it\nmatters: without one, a goal takes its nearest parent's that has one,\nand with none up its tree it's treated as 3. sort_order (optional)\nis the user's own order among goals that otherwise list alike (the\nsame priority, due the same day): the lowest first, those without one\nafter them; leave it as it is unless asked to reorder goals.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline (\"2026-11-01\", due at the end of that day, or\n\"2026-11-01T17:00\", in the calendar's time zone; needed while\nactive) -- a sub-goal's can follow its parent's: with\ndeadline_offset_minutes (0 for the same; 1440 a day before) it's kept\nthat far before the parent's while it's open, and setting a deadline\nwithout it, or moving it to the top level, unties it -- a status (inactive, active, done, missed -- its\ndeadline passed without it -- or obsolete) and its history (each change of\nstatus and when, oldest first, each with the deadline in force at\nthat change, if it had one; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete). A missed\ngoal can be reopened with a new deadline, and its history keeps each\ndeadline it missed, so a goal can be missed and retried any number\nof times. Then a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nwith_ids are the people it's done with (who the user works on it\nalongside) and for_ids those it's done for, who aren't part of doing\nit (a promise to them, a gift, a favor): person ids from get_people,\nnever \"self\", and no one in both.\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal is\nopen (inactive or active), has attribution_hints, and the event\nclearly matches them -- never guess for a goal without hints -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -13411,7 +13411,7 @@
           "type": "object"
         },
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -13426,6 +13426,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -13604,7 +13611,7 @@
       "type": "object",
       "$defs": {
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -13619,6 +13626,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -13725,7 +13739,7 @@
               ]
             },
             "history": {
-              "description": "Every change of its status, oldest first, the last its status now.",
+              "description": "Every change of its status, oldest first, the last its status now,\neach with the deadline in force at that change. A missed goal\nretried has a new deadline and a history ending missed (with the\ndeadline it missed) then active or inactive (with the new one),\nboth at the moment of the retry.",
               "items": {
                 "$ref": "#/$defs/StatusChange"
               },
@@ -13786,7 +13800,7 @@
           "type": "object"
         },
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -13801,6 +13815,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -13980,7 +14001,7 @@
           "type": "object"
         },
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -13995,6 +14016,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14124,7 +14152,7 @@
               ]
             },
             "history": {
-              "description": "Every change of its status, oldest first, the last its status now.",
+              "description": "Every change of its status, oldest first, the last its status now,\neach with the deadline in force at that change. A missed goal\nretried has a new deadline and a history ending missed (with the\ndeadline it missed) then active or inactive (with the new one),\nboth at the moment of the retry.",
               "items": {
                 "$ref": "#/$defs/StatusChange"
               },
@@ -14185,7 +14213,7 @@
           "type": "object"
         },
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -14200,6 +14228,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14363,7 +14398,7 @@
       "type": "object",
       "$defs": {
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -14378,6 +14413,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14583,7 +14625,7 @@
           "type": "object"
         },
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -14598,6 +14640,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -14610,7 +14659,7 @@
     }
   },
   {
-    "description": "Change goals, all at once, checked whole: `updates` (each a goal's id\nand the fields to set -- left out, a field keeps its value; list it in\nthat update's clear_fields to remove it instead), `creates` (new goals,\nas create_goal takes them; an update can name one by an id given\nhere) and `deletes`. A status set without a history adds the change,\nnow, to the goal's history; a history given replaces it whole (to\nbackdate a change, or remove a mistaken one), and must end with the\ngoal's status.\n\nThe rules (see get_goals and create_goal) hold for the result, not\nfor each step: to mark a goal done, missed or obsolete, close or move its\nopen sub-goals in the same call; to delete one, delete or move its\nsub-goals too; to make an earlier deadline fit, change its sub-goals'\nin the same call. Nothing is moved or changed to make things fit: a\ncall that breaks a rule changes nothing, and the error names the goals\nin the way. Deleting a goal can't be undone; events tagged with it\nstop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, it's refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns each goal made or\nchanged, as it is now, and the ids deleted.",
+    "description": "Change goals, all at once, checked whole: `updates` (each a goal's id\nand the fields to set -- left out, a field keeps its value; list it in\nthat update's clear_fields to remove it instead), `creates` (new goals,\nas create_goal takes them; an update can name one by an id given\nhere) and `deletes`. A status set without a history adds the change,\nnow, with the goal's deadline after the change, to the goal's history;\na history given replaces it whole (to backdate a change, or remove a\nmistaken one), its entries' deadlines as given, and must end with the\ngoal's status. To retry a missed goal, set its new deadline and give\nits history ending missed (with the deadline it missed) then active or\ninactive (with the new one), both at the same moment -- how the app\nrecords a retry.\n\nThe rules (see get_goals and create_goal) hold for the result, not\nfor each step: to mark a goal done, missed or obsolete, close or move its\nopen sub-goals in the same call; to delete one, delete or move its\nsub-goals too; to make an earlier deadline fit, change its sub-goals'\nin the same call. Nothing is moved or changed to make things fit: a\ncall that breaks a rule changes nothing, and the error names the goals\nin the way. Deleting a goal can't be undone; events tagged with it\nstop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, it's refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns each goal made or\nchanged, as it is now, and the ids deleted.",
     "inputSchema": {
       "properties": {
         "updates": {
@@ -14725,7 +14774,7 @@
               ]
             },
             "history": {
-              "description": "Every change of its status, oldest first, the last its status now.",
+              "description": "Every change of its status, oldest first, the last its status now,\neach with the deadline in force at that change. A missed goal\nretried has a new deadline and a history ending missed (with the\ndeadline it missed) then active or inactive (with the new one),\nboth at the moment of the retry.",
               "items": {
                 "$ref": "#/$defs/StatusChange"
               },
@@ -14839,7 +14888,7 @@
           "type": "object"
         },
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -14854,6 +14903,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -15039,7 +15095,7 @@
           "type": "object"
         },
         "StatusChange": {
-          "description": "One change of a goal's status: what it became, and when.",
+          "description": "One change of a goal's status: what it became, when, and the deadline\nit had then.",
           "properties": {
             "status": {
               "enum": [
@@ -15054,6 +15110,13 @@
             "at": {
               "format": "date-time",
               "type": "string"
+            },
+            "deadline": {
+              "description": "The goal's deadline in force at this change, if it had one: the\none a missed entry missed, the new one a reopening entry starts\ntoward. The server fills it in for a change it records itself\n(a status set without a history); a history given whole keeps\nits entries' as given.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [

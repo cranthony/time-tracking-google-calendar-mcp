@@ -45,8 +45,10 @@ pub const CLEARABLE_FIELDS: [&str; 12] = [
 // -- the types -------------------------------------------------------------------
 
 /// Where a goal stands: inactive (not started, or set aside), active
-/// (being worked on), done (reached), missed (not reached, and no longer
-/// pursued) or obsolete (no longer wanted).
+/// (being worked on), done (reached), missed (its deadline passed without
+/// it) or obsolete (no longer wanted). A missed goal can be reopened with
+/// a new deadline: its history keeps each deadline it missed, so a goal
+/// can be missed and retried any number of times.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub enum GoalStatus {
     #[serde(rename = "inactive")]
@@ -78,11 +80,18 @@ impl GoalStatus {
     }
 }
 
-/// One change of a goal's status: what it became, and when.
+/// One change of a goal's status: what it became, when, and the deadline
+/// it had then.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub struct StatusChange {
     pub status: GoalStatus,
     pub at: DateTimeText,
+    /// The goal's deadline in force at this change, if it had one: the
+    /// one a missed entry missed, the new one a reopening entry starts
+    /// toward. The server fills it in for a change it records itself
+    /// (a status set without a history); a history given whole keeps
+    /// its entries' as given.
+    pub deadline: Option<String>,
 }
 
 /// One goal: an outcome the user means to reach (see get_goals).
@@ -116,7 +125,11 @@ pub struct Goal {
     pub deadline_offset_minutes: Option<i64>,
     #[row(text)]
     pub status: Option<GoalStatus>,
-    /// Every change of its status, oldest first, the last its status now.
+    /// Every change of its status, oldest first, the last its status now,
+    /// each with the deadline in force at that change. A missed goal
+    /// retried has a new deadline and a history ending missed (with the
+    /// deadline it missed) then active or inactive (with the new one),
+    /// both at the moment of the retry.
     pub history: Option<Vec<StatusChange>>,
     /// What it is, as HTML.
     pub description: Option<String>,
@@ -342,6 +355,9 @@ impl Goals {
         let now = DateTimeText(py::pydantic_datetime(&crate::determinism::now()));
         let mut touched: Vec<String> = Vec::new();
         let mut deleted: Vec<String> = Vec::new();
+        // The goals whose history this change appends to itself: their
+        // new entry takes the goal's deadline once every deadline is set.
+        let mut stamped: Vec<String> = Vec::new();
         // Every goal changed since it was read, not just the first.
         let mut stale: Vec<rows::Conflict> = Vec::new();
         let gather = |result: anyhow::Result<bool>, stale: &mut Vec<rows::Conflict>| -> anyhow::Result<Option<bool>> {
@@ -393,7 +409,8 @@ impl Goals {
             }
             if edit.goal.history.is_none() && after.status != before.status {
                 if let Some(status) = after.status {
-                    after.history.get_or_insert_with(Vec::new).push(StatusChange { status, at: now.clone() });
+                    after.history.get_or_insert_with(Vec::new).push(StatusChange { status, at: now.clone(), deadline: None });
+                    stamped.push(id.clone());
                 }
             }
             goals[index] = after;
@@ -408,11 +425,22 @@ impl Goals {
                 }
             };
             let status = given.status.unwrap_or(GoalStatus::Active);
-            let history = given.history.clone().unwrap_or_else(|| vec![StatusChange { status, at: now.clone() }]);
+            let history = given.history.clone().unwrap_or_else(|| {
+                stamped.push(id.clone());
+                vec![StatusChange { status, at: now.clone(), deadline: None }]
+            });
             goals.push(Goal { id: Some(id.clone()), status: Some(status), history: Some(history), version: None, ..given.clone() });
             touched.push(id);
         }
         touched.extend(follow_parents(&mut goals));
+        // A change the server records itself carries the goal's deadline
+        // after the change, once a sub-goal's has followed its parent's.
+        for goal in goals.iter_mut().filter(|g| g.id.as_ref().is_some_and(|id| stamped.contains(id))) {
+            let deadline = goal.deadline.clone();
+            if let Some(change) = goal.history.as_mut().and_then(|h| h.last_mut()) {
+                change.deadline = deadline;
+            }
+        }
         let mut involved = touched.clone();
         involved.extend(deleted.iter().cloned());
         let mut problems: Vec<String> =
