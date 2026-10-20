@@ -677,13 +677,16 @@ pub struct NewPerson {
     pub r#ref: String,
 }
 
-/// A goal to propose, from what the notes say the user means to do or
-/// told someone they'd do: `ref`, a `title`, and any of a goal's other
-/// fields (see get_goals). It's inactive -- the user activates it, with a
-/// deadline, as they review it -- so a `deadline` is only for one the
-/// notes give. `parent_id` is an open goal's id; `with_ids` (the people the user means to do it with)
-/// and `for_ids` (those it's for, who aren't part of doing it: a promise
-/// to them, a favor) are people's ids or new_people refs. id is assigned
+/// A goal to propose, from what the notes say the user means to do, told
+/// someone they'd do, or means to do for someone (however small): `ref`,
+/// a `title`, and any of a goal's other fields (see get_goals). It's
+/// inactive -- the user activates it as they review it. A `deadline` is
+/// one the notes give, except that a goal with `with_ids` or `for_ids`
+/// always has one (about a week after the note when the notes give none,
+/// said to be assumed in the recap's `unsure`). `parent_id` is an open
+/// goal's id; `with_ids` (the people the user means to do it with) and
+/// `for_ids` (those it's for, who aren't part of doing it: a promise to
+/// them, a favor) are people's ids or new_people refs. id is assigned
 /// when it's created.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 #[schema(deny_unknown)]
