@@ -480,6 +480,24 @@ fn facts_already_recorded_show_as_had_and_are_kept() {
 }
 
 #[test]
+fn a_person_taking_part_of_an_event_has_their_share_after_their_name() {
+    // A passing thought of someone: judged on its part of the event alone.
+    let given = facts(json!({"with": ["sam"], "for": [{"person_id": "mom", "minutes": 3}]}));
+    let plan = plan_with(
+        &[],
+        &[EventDecision { facts: Some(given), ..keep("e2") }],
+        &day(),
+        "11:30",
+        Extra { names: names(&[("sam", "Sam"), ("mom", "Mom")]), ..Default::default() },
+    )
+    .unwrap();
+    let text = timeline_text(&plan);
+    assert!(text.contains("├ Report\n          ▹ with Sam · for Mom (3m)\n"), "{text}");
+    assert!(crate::compaction::guide::DECISION_GUIDE.contains("PEOPLE IN PASSING: a note can say the user thought of someone"));
+    assert!(crate::compaction::guide::JUDGMENT_INSTRUCTIONS.contains("is judged on that part alone"));
+}
+
+#[test]
 fn create_needs_both_edges() {
     refused_with(
         plan_with(&[note(1, "11:05", None)], &[EventDecision { start_note: Some("n1".into()), ..create(Some("Coffee")) }], &day(), "11:30", Extra::default()),

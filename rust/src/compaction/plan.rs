@@ -1228,9 +1228,20 @@ fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(Strin
 }
 
 /// `facts_lines`: where, who with and who for in one, then each person's note.
+/// A person who takes only part of the event has it after their name:
+/// "for Sam (3m)".
 pub fn facts_lines(facts: Option<&Facts>, names: &[(String, String)]) -> Vec<String> {
     let Some(facts) = facts.filter(|f| !f.is_empty()) else { return Vec::new() };
-    let named = |ids: &[String]| ids.iter().map(|i| name_of(names, i)).collect::<Vec<_>>().join(", ");
+    let named = |shares: &[crate::facts::PersonShare]| {
+        shares
+            .iter()
+            .map(|s| match crate::stores::shares::amount_text(s) {
+                Some(amount) => format!("{} ({amount})", name_of(names, &s.person_id)),
+                None => name_of(names, &s.person_id),
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
     let mut parts: Vec<String> = Vec::new();
     if facts.is_commute() {
         parts.push("commute".into());
@@ -1240,10 +1251,10 @@ pub fn facts_lines(facts: Option<&Facts>, names: &[(String, String)]) -> Vec<Str
         parts.push(format!("@ {}", locations.iter().map(|l| name_of(names, l)).collect::<Vec<_>>().join(", ")));
     }
     if crate::stores::groups::truthy(facts.with_ids.as_ref()) {
-        parts.push(format!("with {}", named(&facts.with())));
+        parts.push(format!("with {}", named(&facts.with_shares())));
     }
     if crate::stores::groups::truthy(facts.for_ids.as_ref()) {
-        parts.push(format!("for {}", named(&facts.for_())));
+        parts.push(format!("for {}", named(&facts.for_shares())));
     }
     let mut lines: Vec<String> = if parts.is_empty() { Vec::new() } else { vec![parts.join(" · ")] };
     if let Some(Value::Object(notes)) = &facts.notes {
