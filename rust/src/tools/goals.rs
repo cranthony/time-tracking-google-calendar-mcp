@@ -85,9 +85,10 @@ pub struct GoalDelete {
 /// it (a promise to them, a gift, a favor): person ids from get_people,
 /// never "self", and no one in both.
 /// Events are tagged with goals, apart from their actions (see
-/// list_events' goals): tag an event with a goal only when the goal is
-/// open (inactive or active), has attribution_hints, and the event
-/// clearly matches them -- never guess for a goal without hints -- and
+/// list_events' goals): tag an event with a goal only when the goal was
+/// open (inactive or active) when the event started -- open now, or
+/// closed_at after it started -- and the event clearly matches its
+/// attribution_hints, or with none its title -- never guess -- and
 /// with the most specific goal that fits (a sub-goal rather than its
 /// parent). Read-only.
 #[tool]

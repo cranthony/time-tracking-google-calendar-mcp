@@ -96,23 +96,27 @@ The goal tools are `get_goals`, `get_goal`, `create_goal` and
 `update_goals`; events' goals are set with `update_event`, `create_event`
 and `update_recurrence`.
 
-The assistant tags an event with a goal only when that goal is open
-(inactive or active), has attribution hints, and the event clearly
-matches them; it never guesses for a goal without hints, and leaves an
-event untagged when it's unclear (the user can still ask it to tag one
+The assistant tags an event with a goal only when that goal was open
+(inactive or active) when the event started -- open now, or closed
+after the event started, since the user often makes a goal and closes
+it the same day -- and the event clearly matches it: its attribution
+hints, or with none its title. It never guesses, and leaves an event
+untagged when it's unclear (the user can still ask it to tag one
 by hand). It tags the most specific goal that fits -- a sub-goal rather
 than its parent -- and gives minutes or a percent when only part of the
 event was for the goal. The tool docs say so where events' goals are
 set (`update_event`, `create_event`, `get_goals`).
 
 Compaction is where it does this, as it settles each past event's
-facts: `prepare_compaction` lists the open goals (`goals`: each one's
-id, title, path, status, deadline, and its hints and people if it has
-them) beside the actions, people and locations, and `compact_notes`
-takes goal shares (`goals`) on its updates and creates -- only for goals
-with hints. A proposal keeps them through its revisions, shows them on
-its events and changes, and writes them when it's applied; a share that
-names no goal, or doesn't fit its event, is refused. Tagging an event
+facts: `prepare_compaction` lists the open goals, and those closed since
+the earliest event it offers started (`goals`: each one's id, title,
+path, status, deadline, `closed_at` if it's closed, and its hints and
+people if it has them) beside the actions, people and locations, and
+`compact_notes` takes goal shares (`goals`) on its updates and creates.
+A proposal keeps them through its revisions, shows them on its events
+and changes, and writes them when it's applied; a share that names no
+goal, doesn't fit its event, or newly tags an event with a goal that
+closed before the event started, is refused. Tagging an event
 with a goal, Claude adds the goal's `with_ids` to the event's people
 unless the notes say otherwise.
 

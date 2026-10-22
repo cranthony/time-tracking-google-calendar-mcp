@@ -104,8 +104,9 @@ pub struct Facts {
 /// minutes are cut to fit an event shortened since, and goals deleted
 /// since are left out. Set them to replace them whole ([] for none).
 /// Most events have none: tag an event with a goal only when that goal
-/// is open (inactive or active), has attribution_hints, and the event
-/// clearly matches them -- never guess for a goal without hints. Tag the
+/// was open (inactive or active) when the event started -- open now, or
+/// closed after it started -- and the event clearly matches its
+/// attribution_hints, or with none its title -- never guess. Tag the
 /// most specific goal that fits (a sub-goal rather than its parent), and
 /// give minutes or percent when only part of the event was for it.
 ///
@@ -608,10 +609,11 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// location_ids.
 ///
 /// GOALS an event is for (goals), when you set them: only goals that
-/// are open (inactive or active) and have attribution_hints (see
-/// get_goals), and only when the event clearly matches a goal's hints --
-/// never guess for a goal without hints, and leave an event untagged
-/// when it's unclear (or when the user asks, tag it as they say). Tag
+/// were open (inactive or active) when the event started -- open now, or
+/// closed (closed_at, see get_goals) after it started -- and only when
+/// the event clearly matches a goal's attribution_hints, or with none
+/// its title -- never guess, and leave an event untagged when it's
+/// unclear (or when the user asks, tag it as they say). Tag
 /// the most specific goal that fits, a sub-goal rather than its parent,
 /// and when only part of the event was for it, give minutes or percent.
 ///
@@ -708,10 +710,11 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
 /// location_ids.
 ///
 /// GOALS an event is for (goals), when you set them: only goals that
-/// are open (inactive or active) and have attribution_hints (see
-/// get_goals), and only when the event clearly matches a goal's hints --
-/// never guess for a goal without hints, and leave an event untagged
-/// when it's unclear (or when the user asks, tag it as they say). Tag
+/// were open (inactive or active) when the event started -- open now, or
+/// closed (closed_at, see get_goals) after it started -- and only when
+/// the event clearly matches a goal's attribution_hints, or with none
+/// its title -- never guess, and leave an event untagged when it's
+/// unclear (or when the user asks, tag it as they say). Tag
 /// the most specific goal that fits, a sub-goal rather than its parent,
 /// and when only part of the event was for it, give minutes or percent.
 ///

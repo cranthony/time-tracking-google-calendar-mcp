@@ -621,7 +621,10 @@ impl NoteCompactor {
                     // placed in the window.
                     let dated = all.iter().any(|g| g.status.is_some_and(|s| !s.is_closed()) && g.deadline.as_deref().is_some_and(|d| !d.trim().is_empty()));
                     let window = if dated { Some((self.zone()?, day.compaction_window_start, day.now)) } else { None };
-                    Some(open_goals(&all, window))
+                    // A goal closed since the earliest event offered started can
+                    // still be tagged on the events before it closed.
+                    let since = day.events.iter().map(|e| e.start()).fold(day.compaction_window_start, Moment::min);
+                    Some(context_goals(&all, since, window))
                 }
                 None => None,
             },
@@ -2976,7 +2979,8 @@ impl NoteCompactor {
     }
 
     /// The goal shares `plan` gives events must name goals there are
-    /// (read only if it gives any), and fit in their events.
+    /// (read only if it gives any), and fit in their events; a closed goal
+    /// an event is newly tagged with must have closed after it started.
     fn check_goals(&self, plan: &CompactionPlan) -> anyhow::Result<()> {
         let tagged: Vec<&CompactionChange> = plan
             .changes
@@ -2989,8 +2993,9 @@ impl NoteCompactor {
         if tagged.is_empty() {
             return Ok(());
         }
-        let known = match &self.goals {
-            Some(g) => Some(g.ids()?),
+        // Each goal there is, by its id, with when it closed if it has.
+        let known: Option<std::collections::HashMap<String, Option<Moment>>> = match &self.goals {
+            Some(g) => Some(g.all()?.iter().filter_map(|g| Some((g.id.clone().filter(|i| !i.is_empty())?, goals::closed_moment(g)))).collect()),
             None => None,
         };
         let mut problems: Vec<String> = Vec::new();
@@ -3004,10 +3009,21 @@ impl NoteCompactor {
             };
             problems.extend(share_problems(shares, minutes).into_iter().map(|p| format!("{who}: {p}")));
             if let Some(known) = &known {
-                let unknown: Vec<String> =
-                    shares.iter().map(|s| s.goal_id.trim().to_string()).filter(|id| !id.is_empty() && !known.contains(id)).collect();
+                let ids: Vec<String> = shares.iter().map(|s| s.goal_id.trim().to_string()).filter(|id| !id.is_empty()).collect();
+                let unknown: Vec<String> = ids.iter().filter(|id| !known.contains_key(*id)).cloned().collect();
                 if !unknown.is_empty() {
                     problems.push(format!("{who}: its goals name {}, which aren't goals (`goals` lists those to tag events with)", py::repr_list(&unknown)));
+                }
+                // The goals it was tagged with already stay as they are.
+                let had: Vec<&str> = change.before.as_ref().and_then(|b| b.goals.as_deref()).unwrap_or_default().iter().map(|s| s.goal_id.trim()).collect();
+                let late: Vec<String> = ids
+                    .iter()
+                    .filter(|id| !had.contains(&id.as_str()))
+                    .filter(|id| matches!((known.get(*id), after.start), (Some(Some(closed)), Some(start)) if start >= *closed))
+                    .cloned()
+                    .collect();
+                if !late.is_empty() {
+                    problems.push(format!("{who}: its goals name {}, which closed before it started", py::repr_list(&late)));
                 }
             }
         }
@@ -3847,19 +3863,26 @@ pub fn new_event_id(compaction_id: &str, step: i64) -> String {
     format!("cmp{compaction_id}s{step:03}")
 }
 
-/// The open goals (inactive or active), as `prepare` lists them: those
-/// with attribution hints are the ones compaction may tag events with;
-/// all of them, the ones a new goal mustn't repeat. With `window` (the
-/// calendar's zone, the window's start and now), one whose deadline fell
-/// inside it has `due_in_window`: one to propose missed unless something
-/// shows it done.
-pub fn open_goals(all: &[goals::Goal], window: Option<(chrono_tz::Tz, Moment, Moment)>) -> Vec<Value> {
+/// The goals as `prepare` lists them: the open ones (inactive or active)
+/// and those closed (done, missed or obsolete) at or after `since`, each
+/// with its `closed_at`. Compaction may tag an event with any of them
+/// that it clearly matches, a closed one only on events that started
+/// before it closed; none of them is one a new goal may repeat. With
+/// `window` (the calendar's zone, the window's start and now), an open
+/// one whose deadline fell inside it has `due_in_window`: one to propose
+/// missed unless something shows it done.
+pub fn context_goals(all: &[goals::Goal], since: Moment, window: Option<(chrono_tz::Tz, Moment, Moment)>) -> Vec<Value> {
     let due_in_window = |deadline: Option<&str>| -> bool {
         let (Some((zone, start, now)), Some(due)) = (window, deadline.and_then(deadline_end)) else { return false };
         start.with_timezone(&zone).naive_local() <= due && due <= now.with_timezone(&zone).naive_local()
     };
+    let listed = |g: &goals::Goal| match g.status {
+        Some(s) if s.is_closed() => goals::closed_moment(g).is_some_and(|at| at >= since),
+        Some(_) => true,
+        None => false,
+    };
     all.iter()
-        .filter(|g| g.status.is_some_and(|s| !s.is_closed()))
+        .filter(|g| listed(g))
         .filter(|g| g.id.as_deref().is_some_and(|i| !i.is_empty()))
         .map(|g| {
             let hints = g.attribution_hints.as_deref().map(str::trim).filter(|h| !h.is_empty());
@@ -3872,7 +3895,9 @@ pub fn open_goals(all: &[goals::Goal], window: Option<(chrono_tz::Tz, Moment, Mo
                     out[key] = json!(ids);
                 }
             }
-            if due_in_window(g.deadline.as_deref()) {
+            if let Some(at) = goals::closed_at(g) {
+                out["closed_at"] = json!(at);
+            } else if due_in_window(g.deadline.as_deref()) {
                 out["due_in_window"] = json!(true);
             }
             out
