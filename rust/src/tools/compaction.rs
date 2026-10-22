@@ -332,12 +332,15 @@ pub struct ContextEvent {
     pub revisited: bool,
 }
 
-/// An open goal (inactive or active). One with attribution hints is one
-/// an event can be tagged with, when it clearly matches them. `path` is
-/// its parents' titles, outermost first; `with_ids` the people it's done
-/// with and `for_ids` those it's done for. `due_in_window` says its
-/// deadline fell inside the window (its start to now): one to propose
-/// missed (`goal_changes`) unless a note or event shows it done.
+/// An open goal (inactive or active), or one closed (done, missed or
+/// obsolete) since the earliest event offered started, at `closed_at`.
+/// An event can be tagged with it when it clearly matches its attribution
+/// hints, or with none its title and path -- a closed one only if the
+/// event started before it closed. `path` is its parents' titles,
+/// outermost first; `with_ids` the people it's done with and `for_ids`
+/// those it's done for. `due_in_window` says an open one's deadline fell
+/// inside the window (its start to now): one to propose missed
+/// (`goal_changes`) unless a note or event shows it done.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ContextGoal {
     pub id: String,
@@ -351,6 +354,9 @@ pub struct ContextGoal {
     #[schema(optional)]
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub due_in_window: bool,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub closed_at: Option<DateTimeText>,
 }
 
 /// A change to a goal there is, from what the notes say or a deadline
@@ -1483,10 +1489,13 @@ pub struct DeletedNote {
 /// user as "self", each with their trait facts' summaries) and every
 /// location (`locations`), to settle the facts from; each trait fact,
 /// described once (`trait_facts`), to keep people's summaries by; and the
-/// open goals (`goals`: those with attribution hints are the only ones to
-/// tag events with, by those hints; one with `due_in_window` had its
-/// deadline pass inside the window, to propose missed with
-/// compact_notes' `goal_changes` unless something shows it done).
+/// goals to tag events with (`goals`: the open ones, and those closed
+/// since the earliest event started, with `closed_at` -- each to tag an
+/// event with when it clearly matches its hints, or with none its title,
+/// a closed one only on events that started before it closed; one with
+/// `due_in_window` had its deadline pass inside the window, to propose
+/// missed with compact_notes' `goal_changes` unless something shows it
+/// done).
 /// `proposal` is the open proposal, if there is one: revise or
 /// extend it (see the instructions). judgments_pending names the last
 /// compaction if its judgments aren't all made: make them first
@@ -1512,8 +1521,9 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// the user dropped it, or the plan changed). Any past event you don't
 /// mention is recorded as on schedule. Tag an event with goals (`goals`,
 /// goal shares as update_event takes them) only from prepare_compaction's
-/// `goals` -- open goals with attribution hints -- when it clearly
-/// matches a goal's hints; the most specific goal, with minutes or
+/// `goals` when it clearly matches a goal's hints, or with none its
+/// title -- a closed goal only if the event started before it closed
+/// (refused otherwise); the most specific goal, with minutes or
 /// percent when only part of it was for the goal. Notes that don't set an event edge are added
 /// to the event they fall within, except those in `ignore_notes` -- and
 /// those in `annotate_notes`, added to the event they name (an event's

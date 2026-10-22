@@ -287,6 +287,11 @@ pub fn closed_at(goal: &Goal) -> Option<&DateTimeText> {
     goal.history.as_deref().unwrap_or_default().last().map(|c| &c.at)
 }
 
+/// The moment `goal` was done, missed or made obsolete, if it is now.
+pub fn closed_moment(goal: &Goal) -> Option<Moment> {
+    closed_at(goal).and_then(moment)
+}
+
 fn moment(text: &DateTimeText) -> Option<Moment> {
     parse_iso(&text.0, None).ok()
 }

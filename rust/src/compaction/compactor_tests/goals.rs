@@ -87,3 +87,41 @@ fn proposals_keep_the_goal_shares_through_a_revision() {
 
     assert_eq!(back, decision);
 }
+
+/// A goal made and closed (`status`) at `closed`, a time today, or the
+/// day before when it's none.
+fn closed_goal(id: &str, title: &str, status: &str, closed: Option<&str>) -> Value {
+    let at = closed.map_or_else(|| (time_at("09:00") - chrono::Duration::days(1)).to_rfc3339(), |c| time_at(c).to_rfc3339());
+    json!({"id": id, "title": title, "status": status, "history": [{"status": "active", "at": at}, {"status": status, "at": at}]})
+}
+
+fn closed_setup() -> Setup {
+    let mut goals = goals();
+    goals.push(closed_goal("c1", "Answer Sam's email", "done", Some("09:30")));
+    goals.push(closed_goal("c2", "Fix the fence", "obsolete", Some("10:30")));
+    goals.push(closed_goal("c3", "Old thing", "done", None));
+    Setup::with(&[("09:05", "email"), ("10:20", "report")], None, "11:30", Stores { goals, ..Default::default() })
+}
+
+#[test]
+fn prepare_lists_the_goals_closed_since_the_earliest_event_started_with_when() {
+    let context = closed_setup().prepare().to_json();
+
+    let listed: Vec<&str> = context["goals"].as_array().unwrap().iter().map(|g| g["id"].as_str().unwrap()).collect();
+    assert_eq!(listed, vec!["g1", "g2", "g3", "g6", "c1", "c2"]);
+    let c1 = context["goals"].as_array().unwrap().iter().find(|g| g["id"] == "c1").unwrap();
+    assert_eq!(c1["closed_at"].as_str().map(|t| crate::event::parse_iso(t, None).unwrap()), Some(time_at("09:30")));
+    assert_eq!(c1["status"], json!("done"));
+    assert!(context["goals"][0].get("closed_at").is_none());
+    assert!(DECISION_GUIDE.contains("A closed goal can be tagged only on events that started before its `closed_at`"));
+}
+
+#[test]
+fn a_closed_goal_tags_only_events_that_started_before_it_closed() {
+    let tag = |event: &str, id: &str| EventDecision { goals: Some(vec![share(id, None, None)]), ..keep(event) };
+
+    // e1 started at 9:00, before both closed; e2 at 10:00, after c1 closed.
+    let planned = closed_setup().dry_run(vec![tag("e1", "c1"), tag("e2", "c2")]);
+    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().goals, Some(vec![share("c1", None, None)]));
+    refused(closed_setup().try_dry_run(vec![tag("e2", "c1")], DryRun::default()), r"its goals name \['c1'\], which closed before it started");
+}
