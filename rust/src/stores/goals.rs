@@ -27,14 +27,15 @@ use std::sync::Arc;
 pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
-pub const CLEARABLE_FIELDS: [&str; 12] = [
+pub const CLEARABLE_FIELDS: [&str; 13] = [
     "parent_id",
     "required",
     "priority",
     "sort_order",
     "expected_minutes",
     "deadline",
-    "deadline_offset_minutes",
+    "deadline_rule",
+    "activate_when",
     "description",
     "definition_of_done",
     "attribution_hints",
@@ -94,7 +95,154 @@ pub struct StatusChange {
     pub deadline: Option<String>,
 }
 
-/// One goal: an outcome the user means to reach (see get_goals).
+/// How far a deadline is from what it's measured from: whole days (a
+/// date stays a date; from a start, the end of that many days after the
+/// day it started) or minutes (giving a date and time). One of them, 0 or
+/// more.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
+pub struct Offset {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub days: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minutes: Option<i64>,
+}
+
+/// How far after another goal's deadline: that goal's id, and days or
+/// minutes (one of them, 0 or more), as an Offset.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
+pub struct GoalOffset {
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub days: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minutes: Option<i64>,
+}
+
+/// A goal's deadline as set: exactly one of at (a date, "2026-11-01", due
+/// at the end of that day, or a date and time, "2026-11-01T17:00", in the
+/// calendar's time zone), before_parent (that far before its parent's
+/// deadline), after_start (that far after it becomes active) or
+/// after_goal (that far after another goal's deadline). One measured from
+/// something is kept so while the goal is open: its due follows what it's
+/// measured from. One measured from its start has no due until the goal
+/// starts, and keeps the one it gets then.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
+pub struct Deadline {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_parent: Option<Offset>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_start: Option<Offset>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after_goal: Option<GoalOffset>,
+}
+
+impl Deadline {
+    /// How many of its kinds it gives.
+    fn kinds(&self) -> usize {
+        [self.at.is_some(), self.before_parent.is_some(), self.after_start.is_some(), self.after_goal.is_some()].iter().filter(|k| **k).count()
+    }
+}
+
+/// One thing a goal waits for before it's activated: another goal closed
+/// (goal_closed, its id: done, missed or obsolete), or a time come (at: a
+/// date, from the start of that day, or a date and time). One of them.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
+pub struct Trigger {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal_closed: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at: Option<String>,
+}
+
+/// A wait of this many minutes.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct DelayMinutes {
+    pub minutes: i64,
+}
+
+/// The literal "next_day".
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum NextDay {
+    #[serde(rename = "next_day")]
+    NextDay,
+}
+
+/// How long after the last of a goal's triggers it's activated:
+/// "next_day" (at the start of the day after) or {"minutes": n}.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Delay {
+    NextDay(NextDay),
+    Minutes(DelayMinutes),
+}
+
+impl Schema for Delay {
+    fn schema(defs: &mut crate::contract::Defs) -> serde_json::Value {
+        serde_json::json!({"anyOf": [crate::contract::literal(&["next_day"]), DelayMinutes::schema(defs)]})
+    }
+}
+
+/// The literal "own".
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Own {
+    #[serde(rename = "own")]
+    Own,
+}
+
+/// A priority (0 the most), or "own": the goal's own, as it is when it
+/// would be activated.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PriorityRef {
+    Level(i64),
+    Own(Own),
+}
+
+impl Schema for PriorityRef {
+    fn schema(_: &mut crate::contract::Defs) -> serde_json::Value {
+        serde_json::json!({"anyOf": [{"type": "integer"}, crate::contract::literal(&["own"])]})
+    }
+}
+
+/// Which goals a hold counts, by the priority that applies to each (its
+/// own or its nearest parent's, else 3): at_or_above a priority (that one
+/// or more important) or exactly one. One of them.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
+pub struct PriorityFilter {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub at_or_above: Option<PriorityRef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exactly: Option<PriorityRef>,
+}
+
+/// A goal is held back -- not activated, though its triggers have come
+/// -- while at least active_at_least other goals are active: those of the
+/// priority given, or any. Its own parents and sub-goals aren't counted.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub struct Hold {
+    pub active_at_least: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority: Option<PriorityFilter>,
+}
+
+/// What an inactive goal waits for before the server activates it: every
+/// trigger in after (none, it's ready now), then the delay, if any; and
+/// while any of hold_while holds, it waits on. Activated, by the server or
+/// by hand (which ignores it), it's cleared.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
+pub struct ActivateWhen {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub after: Option<Vec<Trigger>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delay: Option<Delay>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold_while: Option<Vec<Hold>>,
+}
+
+/// One goal: an outcome the user means to reach (see get_goals), as the
+/// tab keeps it.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema, RowItem)]
 pub struct Goal {
     pub id: Option<String>,
@@ -116,12 +264,11 @@ pub struct Goal {
     pub expected_minutes: Option<i64>,
     /// When it's due: a date ("2026-11-01", due at the end of that day)
     /// or a date and time ("2026-11-01T17:00"), in the calendar's time
-    /// zone. Needed while it's active.
+    /// zone -- given, or worked out from deadline_rule. Needed while it's
+    /// active (see goal_problems for an inactive one).
     pub deadline: Option<String>,
-    /// Set, its deadline follows its parent's: this many minutes before
-    /// it (0, the same), kept so whenever the parent's changes, while
-    /// it's open. A deadline set without it unties it; so does moving it
-    /// to the top level, keeping the deadline it had.
+    /// From before deadline_rule: a deadline this many minutes before its
+    /// parent's. Read as deadline_rule's before_parent, and cleared.
     pub deadline_offset_minutes: Option<i64>,
     #[row(text)]
     pub status: Option<GoalStatus>,
@@ -144,13 +291,28 @@ pub struct Goal {
     /// to them, a gift, a favor (person ids; never "self", and never also
     /// in with_ids).
     pub for_ids: Option<Vec<String>>,
+    /// What its deadline is measured from, when it isn't a date given (see
+    /// Deadline; never `at`): kept so while it's open, deadline following
+    /// it. A deadline given without it unties it; so does moving a goal
+    /// measured from its parent's to the top level, keeping the deadline
+    /// it had.
+    pub deadline_rule: Option<Deadline>,
+    /// What it waits for before it's activated, while it's inactive (see
+    /// ActivateWhen).
+    pub activate_when: Option<ActivateWhen>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
 
-/// A goal as the goal tools return it: plus its parents' titles (path,
-/// outermost first), when it first became active (started_at) and, done,
-/// missed or obsolete, when it became so (closed_at).
+/// A goal as the goal tools return it: its deadline as set and when that
+/// falls due (due: a date or a date and time; none, if it can't be worked
+/// out yet -- one measured from a start that hasn't come), what it waits
+/// for (activate_when) and, waiting, when it's expected to be activated
+/// (expected_start: a date, from its start, or a date and time; none
+/// while it's held, or what it waits for has no deadline yet); plus its
+/// parents' titles (path, outermost first), when it first became active
+/// (started_at) and, done, missed or obsolete, when it became so
+/// (closed_at).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub struct ListedGoal {
     pub id: Option<String>,
@@ -160,8 +322,10 @@ pub struct ListedGoal {
     pub priority: Option<i64>,
     pub sort_order: Option<i64>,
     pub expected_minutes: Option<i64>,
-    pub deadline: Option<String>,
-    pub deadline_offset_minutes: Option<i64>,
+    pub deadline: Option<Deadline>,
+    pub due: Option<String>,
+    pub activate_when: Option<ActivateWhen>,
+    pub expected_start: Option<String>,
     pub status: Option<GoalStatus>,
     pub history: Option<Vec<StatusChange>>,
     pub description: Option<String>,
@@ -215,48 +379,86 @@ pub fn deadline_end(deadline: &str) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(text, "%Y-%m-%dT%H:%M").or_else(|_| NaiveDateTime::parse_from_str(text, "%Y-%m-%dT%H:%M:%S")).ok()
 }
 
-/// The deadline `minutes` before `parent`'s: a date, if `parent`'s is
-/// one and it's whole days before; else a date and time.
-pub fn deadline_before(parent: &str, minutes: i64) -> Option<String> {
-    let text = parent.trim();
-    if minutes == 0 {
-        return Some(text.to_string());
-    }
-    if let Ok(date) = NaiveDate::parse_from_str(text, "%Y-%m-%d") {
-        if minutes % (24 * 60) == 0 {
-            return Some((date - Duration::days(minutes / (24 * 60))).format("%Y-%m-%d").to_string());
+const DATE: &str = "%Y-%m-%d";
+const DATE_TIME: &str = "%Y-%m-%dT%H:%M";
+
+/// The deadline `days` or `minutes` after `base` (a deadline), or before
+/// it if `sign` is -1: days keep a date a date, and minutes give a date
+/// and time (0 minutes, `base` itself).
+pub fn shifted(base: &str, days: Option<i64>, minutes: Option<i64>, sign: i64) -> Option<String> {
+    let text = base.trim();
+    if let Some(days) = days {
+        if let Ok(date) = NaiveDate::parse_from_str(text, DATE) {
+            return Some((date + Duration::days(sign * days)).format(DATE).to_string());
         }
+        return Some((deadline_end(text)? + Duration::days(sign * days)).format(DATE_TIME).to_string());
     }
-    Some((deadline_end(text)? - Duration::minutes(minutes)).format("%Y-%m-%dT%H:%M").to_string())
+    match minutes? {
+        0 => Some(text.to_string()),
+        minutes => Some((deadline_end(text)? + Duration::minutes(sign * minutes)).format(DATE_TIME).to_string()),
+    }
 }
 
-/// Each open goal whose deadline follows its parent's (see
-/// `Goal::deadline_offset_minutes`) given the deadline that follows from
-/// it, parents first -- and one at the top level untied. The ids of those
-/// changed.
-fn follow_parents(goals: &mut [Goal]) -> Vec<String> {
+/// The deadline `offset` after a start at `start`: days, the end of that
+/// many days after its day; minutes, that many minutes after it.
+fn after_start(start: NaiveDateTime, offset: &Offset) -> Option<String> {
+    if let Some(days) = offset.days {
+        return Some((start.date() + Duration::days(days)).format(DATE).to_string());
+    }
+    Some((start + Duration::minutes(offset.minutes?)).format(DATE_TIME).to_string())
+}
+
+/// When `goal` last became active, local; none if it never has.
+fn last_started(goal: &Goal, zone: &Tz) -> Option<NaiveDateTime> {
+    let change = goal.history.as_deref().unwrap_or_default().iter().rev().find(|c| c.status == GoalStatus::Active)?;
+    Some(local(&moment(&change.at)?, zone))
+}
+
+/// The goal `id` names, if there is one.
+fn by_id<'a>(goals: &'a [Goal], id: &str) -> Option<&'a Goal> {
+    goals.iter().find(|g| g.id.as_deref() == Some(id))
+}
+
+/// Each open goal whose deadline is measured from something (its
+/// deadline_rule) given the deadline that follows from it, those it's
+/// measured from first -- one measured from its start, once it's active,
+/// and none until then -- and one measured from its parent's at the top
+/// level untied. The ids of those changed.
+fn resolve_deadlines(goals: &mut [Goal], zone: &Tz) -> Vec<String> {
     let mut changed: Vec<String> = Vec::new();
-    // A pass for each level, at most; a cycle is refused anyway.
+    // A pass for each goal, at most; a cycle is refused anyway.
     for _ in 0..goals.len() {
         let mut again = false;
         for i in 0..goals.len() {
             let goal = &goals[i];
-            let Some(minutes) = goal.deadline_offset_minutes else { continue };
-            if goal.status.is_some_and(GoalStatus::is_closed) || minutes < 0 {
+            let Some(rule) = &goal.deadline_rule else { continue };
+            if goal.status.is_some_and(GoalStatus::is_closed) {
                 continue;
             }
-            let next = if set(goal.parent_id.as_deref()).is_none() {
-                None
+            // None: untie it; Some(due): its deadline.
+            let next: Option<Option<String>> = if let Some(offset) = &rule.before_parent {
+                if set(goal.parent_id.as_deref()).is_none() {
+                    None
+                } else {
+                    let Some(parent) = parent_of(goals, goal) else { continue };
+                    Some(set(parent.deadline.as_deref()).and_then(|d| shifted(d, offset.days, offset.minutes, -1)))
+                }
+            } else if let Some(offset) = &rule.after_goal {
+                let Some(other) = by_id(goals, &offset.id) else { continue };
+                Some(set(other.deadline.as_deref()).and_then(|d| shifted(d, offset.days, offset.minutes, 1)))
+            } else if let Some(offset) = &rule.after_start {
+                match goal.status {
+                    Some(GoalStatus::Active) => Some(last_started(goal, zone).and_then(|s| after_start(s, offset))),
+                    _ => Some(None),
+                }
             } else {
-                let Some(parent) = parent_of(goals, goal) else { continue };
-                let Some(deadline) = set(parent.deadline.as_deref()).and_then(|d| deadline_before(d, minutes)) else { continue };
-                Some(deadline)
+                continue;
             };
             let goal = &mut goals[i];
             match next {
-                None => goal.deadline_offset_minutes = None,
-                Some(deadline) if goal.deadline.as_deref() != Some(deadline.as_str()) => {
-                    goal.deadline = Some(deadline);
+                None => goal.deadline_rule = None,
+                Some(deadline) if goal.deadline != deadline => {
+                    goal.deadline = deadline;
                     again = true;
                 }
                 Some(_) => continue,
@@ -268,6 +470,19 @@ fn follow_parents(goals: &mut [Goal]) -> Vec<String> {
         }
     }
     changed
+}
+
+/// `goals` with any deadline_offset_minutes from before deadline_rule
+/// read as a deadline_rule's before_parent: whole days as days.
+fn upgraded(mut goals: Vec<Goal>) -> Vec<Goal> {
+    for goal in &mut goals {
+        let Some(minutes) = goal.deadline_offset_minutes.take() else { continue };
+        if goal.deadline_rule.is_none() && minutes >= 0 {
+            let offset = if minutes % (24 * 60) == 0 { Offset { days: Some(minutes / (24 * 60)), minutes: None } } else { Offset { days: None, minutes: Some(minutes) } };
+            goal.deadline_rule = Some(Deadline { before_parent: Some(offset), ..Deadline::default() });
+        }
+    }
+    goals
 }
 
 fn local(moment: &Moment, zone: &Tz) -> NaiveDateTime {
@@ -294,6 +509,269 @@ pub fn closed_moment(goal: &Goal) -> Option<Moment> {
 
 fn moment(text: &DateTimeText) -> Option<Moment> {
     parse_iso(&text.0, None).ok()
+}
+
+/// `at` (local) as a history entry's time, in `zone`.
+fn stamp_of(at: NaiveDateTime, zone: &Tz) -> DateTimeText {
+    use chrono::TimeZone;
+    let moment = zone.from_local_datetime(&at).earliest().map(|m| m.fixed_offset()).unwrap_or_else(crate::determinism::now);
+    DateTimeText(py::pydantic_datetime(&moment))
+}
+
+// -- activation ------------------------------------------------------------------
+
+/// When a trigger's time comes, local: a date's at its start.
+fn start_of(at: &str) -> Option<NaiveDateTime> {
+    let text = at.trim();
+    if let Ok(date) = NaiveDate::parse_from_str(text, DATE) {
+        return date.and_hms_opt(0, 0, 0);
+    }
+    deadline_end(text)
+}
+
+/// The priority that applies to `goal`: its own, or its nearest parent's
+/// that has one, or 3.
+pub fn priority_of(goal: &Goal, goals: &[Goal]) -> i64 {
+    let mut seen: Vec<&str> = Vec::new();
+    let mut at = Some(goal);
+    while let Some(g) = at {
+        if let Some(p) = g.priority {
+            return p;
+        }
+        match g.id.as_deref() {
+            Some(id) if !seen.contains(&id) => seen.push(id),
+            _ => break,
+        }
+        at = parent_of(goals, g);
+    }
+    3
+}
+
+/// The ids of `goal`'s parents, nearest first (stopping at a cycle).
+fn ancestor_ids(goal: &Goal, goals: &[Goal]) -> Vec<String> {
+    let mut ids: Vec<String> = Vec::new();
+    let mut at = parent_of(goals, goal);
+    while let Some(parent) = at {
+        let Some(id) = parent.id.clone() else { break };
+        if ids.contains(&id) || goal.id.as_ref() == Some(&id) {
+            break;
+        }
+        ids.push(id);
+        at = parent_of(goals, parent);
+    }
+    ids
+}
+
+/// When the last of `when`'s triggers came, then its delay, local: when
+/// it's ready, if every trigger has come; none if one hasn't (or names
+/// no goal: deleting one takes it out of what waits for it). With no triggers, from `since`.
+fn ready_at(when: &ActivateWhen, goals: &[Goal], zone: &Tz, since: NaiveDateTime) -> Option<NaiveDateTime> {
+    let mut last: Option<NaiveDateTime> = None;
+    for trigger in when.after.as_deref().unwrap_or_default() {
+        let came = if let Some(id) = set(trigger.goal_closed.as_deref()) {
+            local(&closed_moment(by_id(goals, id)?)?, zone)
+        } else if let Some(at) = set(trigger.at.as_deref()) {
+            start_of(at)?
+        } else {
+            continue;
+        };
+        last = Some(last.map_or(came, |l| l.max(came)));
+    }
+    Some(delayed(last.unwrap_or(since), when.delay.as_ref()))
+}
+
+fn delayed(at: NaiveDateTime, delay: Option<&Delay>) -> NaiveDateTime {
+    match delay {
+        None => at,
+        Some(Delay::NextDay(_)) => (at.date() + Duration::days(1)).and_hms_opt(0, 0, 0).unwrap_or(at),
+        Some(Delay::Minutes(d)) => at + Duration::minutes(d.minutes),
+    }
+}
+
+/// Whether one of `goal`'s holds (in `when`) holds it back: enough other
+/// goals of the priority it names are active, not counting its parents
+/// or sub-goals.
+fn held(goal: &Goal, when: &ActivateWhen, goals: &[Goal]) -> bool {
+    let holds = when.hold_while.as_deref().unwrap_or_default();
+    if holds.is_empty() {
+        return false;
+    }
+    let own = priority_of(goal, goals);
+    let level = |r: &PriorityRef| match r {
+        PriorityRef::Level(p) => *p,
+        PriorityRef::Own(_) => own,
+    };
+    let kin = |g: &Goal| {
+        g.id == goal.id || ancestor_ids(goal, goals).contains(g.id.as_ref().unwrap_or(&String::new())) || ancestor_ids(g, goals).iter().any(|a| Some(a) == goal.id.as_ref())
+    };
+    holds.iter().any(|hold| {
+        let fits = |g: &Goal| {
+            let p = priority_of(g, goals);
+            match &hold.priority {
+                None => true,
+                Some(f) => match (&f.at_or_above, &f.exactly) {
+                    (Some(r), _) => p <= level(r),
+                    (None, Some(r)) => p == level(r),
+                    (None, None) => true,
+                },
+            }
+        };
+        let active = goals.iter().filter(|g| g.status == Some(GoalStatus::Active) && !kin(g) && fits(g)).count();
+        active as i64 >= hold.active_at_least
+    })
+}
+
+/// The last time, by `now`, a goal stopped being active, local: when a
+/// hold may have let go.
+fn last_freed(goals: &[Goal], zone: &Tz, now: NaiveDateTime) -> Option<NaiveDateTime> {
+    goals
+        .iter()
+        .flat_map(|g| g.history.as_deref().unwrap_or_default().windows(2))
+        .filter(|w| w[0].status == GoalStatus::Active && w[1].status != GoalStatus::Active)
+        .filter_map(|w| moment(&w[1].at).map(|m| local(&m, zone)))
+        .filter(|at| *at <= now)
+        .max()
+}
+
+/// Whether `goal` and its inactive parents can start at `at`: each with
+/// a deadline after it, or one measured from its start or another's --
+/// not one it's already past, or none at all.
+fn can_start(goal: &Goal, goals: &[Goal], at: NaiveDateTime) -> bool {
+    let parents = ancestor_ids(goal, goals);
+    std::iter::once(goal).chain(parents.iter().filter_map(|id| by_id(goals, id)).filter(|g| g.status == Some(GoalStatus::Inactive))).all(|g| {
+        match (set(g.deadline.as_deref()).and_then(deadline_end), &g.deadline_rule) {
+            (Some(due), _) => due > at,
+            (None, rule) => rule.is_some(),
+        }
+    })
+}
+
+/// Activates the goal at `index` at `at` -- and its inactive parents --
+/// clearing what each waited for. The ids of those activated.
+fn activate(goals: &mut [Goal], index: usize, at: &DateTimeText) -> Vec<String> {
+    let mut ids: Vec<String> = goals[index].id.clone().into_iter().collect();
+    ids.extend(ancestor_ids(&goals[index], goals));
+    let mut activated = Vec::new();
+    for id in ids {
+        let Some(goal) = goals.iter_mut().find(|g| g.id.as_deref() == Some(id.as_str())) else { continue };
+        goal.activate_when = None;
+        if goal.status != Some(GoalStatus::Inactive) {
+            continue;
+        }
+        goal.status = Some(GoalStatus::Active);
+        goal.history.get_or_insert_with(Vec::new).push(StatusChange { status: GoalStatus::Active, at: at.clone(), deadline: None });
+        activated.push(id);
+    }
+    activated
+}
+
+/// Activates each inactive goal whose activate_when is ready by `now`
+/// and isn't held -- the highest priority first, then the soonest due,
+/// counting those activated before it -- each at the moment it became
+/// ready (or, held, at the latest a hold may have let go), and its
+/// inactive parents with it. The ids of those activated.
+fn sweep(goals: &mut [Goal], zone: &Tz, now: &Moment) -> Vec<String> {
+    let now_local = local(now, zone);
+    let mut activated: Vec<String> = Vec::new();
+    // Once for each goal, at most: each round activates one.
+    for _ in 0..goals.len() {
+        let freed = last_freed(goals, zone, now_local);
+        let mut ready: Vec<(usize, NaiveDateTime)> = goals
+            .iter()
+            .enumerate()
+            .filter(|(_, g)| g.status == Some(GoalStatus::Inactive))
+            .filter_map(|(i, g)| {
+                let when = g.activate_when.as_ref()?;
+                // One that isn't right waits to be put right.
+                if !trigger_problems(g, goals, GoalStatus::Inactive).is_empty() {
+                    return None;
+                }
+                let last = g.history.as_deref().unwrap_or_default().last().and_then(|c| moment(&c.at)).map(|m| local(&m, zone));
+                let mut at = ready_at(when, goals, zone, last.unwrap_or(now_local))?;
+                if at > now_local || held(g, when, goals) {
+                    return None;
+                }
+                if when.hold_while.as_deref().is_some_and(|h| !h.is_empty()) {
+                    at = at.max(freed.unwrap_or(at));
+                }
+                // Never before its last change, or after now.
+                let at = at.max(last.unwrap_or(at)).min(now_local);
+                can_start(g, goals, at).then_some((i, at))
+            })
+            .collect();
+        ready.sort_by_key(|(i, _)| (priority_of(&goals[*i], goals), goals[*i].deadline.as_deref().and_then(deadline_end)));
+        let Some((index, at)) = ready.first().copied() else { break };
+        activated.extend(activate(goals, index, &stamp_of(at, zone)));
+    }
+    activated
+}
+
+/// When `goal`, waiting to be activated, is expected to be, local: when
+/// its triggers are expected to come -- each goal it waits for at the
+/// deadline it's due by -- then its delay; none if one has no deadline to
+/// go by, or it's ready already (so held back).
+fn expected_start_at(goal: &Goal, goals: &[Goal], zone: &Tz, now: NaiveDateTime, depth: usize) -> Option<NaiveDateTime> {
+    if goal.status != Some(GoalStatus::Inactive) || depth > goals.len() {
+        return None;
+    }
+    let when = goal.activate_when.as_ref()?;
+    let mut last: Option<NaiveDateTime> = None;
+    // A goal expected to close by its deadline closes within its day, not
+    // at the midnight after: so the day after is the one after that.
+    let mut last_day: Option<NaiveDateTime> = None;
+    for trigger in when.after.as_deref().unwrap_or_default() {
+        let (comes, day) = if let Some(id) = set(trigger.goal_closed.as_deref()) {
+            let other = by_id(goals, id)?;
+            match closed_moment(other) {
+                Some(closed) => (local(&closed, zone), local(&closed, zone)),
+                None => {
+                    let end = deadline_end(&expected_deadline(other, goals, zone, now, depth + 1)?)?;
+                    (end, end - Duration::minutes(1))
+                }
+            }
+        } else if let Some(at) = set(trigger.at.as_deref()) {
+            (start_of(at)?, start_of(at)?)
+        } else {
+            continue;
+        };
+        last = Some(last.map_or(comes, |l| l.max(comes)));
+        last_day = Some(last_day.map_or(day, |l| l.max(day)));
+    }
+    let at = match when.delay {
+        Some(Delay::NextDay(_)) => delayed(last_day.unwrap_or(now), when.delay.as_ref()),
+        _ => delayed(last.unwrap_or(now), when.delay.as_ref()),
+    };
+    (at > now).then_some(at)
+}
+
+/// `goal`'s deadline, or, waiting for one, the one it's expected to have.
+fn expected_deadline(goal: &Goal, goals: &[Goal], zone: &Tz, now: NaiveDateTime, depth: usize) -> Option<String> {
+    if let Some(deadline) = set(goal.deadline.as_deref()) {
+        return Some(deadline.to_string());
+    }
+    if depth > goals.len() {
+        return None;
+    }
+    let rule = goal.deadline_rule.as_ref()?;
+    if let Some(offset) = &rule.after_start {
+        return after_start(expected_start_at(goal, goals, zone, now, depth + 1)?, offset);
+    }
+    if let Some(offset) = &rule.before_parent {
+        let parent = parent_of(goals, goal)?;
+        return shifted(&expected_deadline(parent, goals, zone, now, depth + 1)?, offset.days, offset.minutes, -1);
+    }
+    let offset = rule.after_goal.as_ref()?;
+    shifted(&expected_deadline(by_id(goals, &offset.id)?, goals, zone, now, depth + 1)?, offset.days, offset.minutes, 1)
+}
+
+/// A local time as a goal shows it: a date, at a day's start; else a
+/// date and time.
+fn shown(at: NaiveDateTime) -> String {
+    if at.time() == chrono::NaiveTime::MIN {
+        at.format(DATE).to_string()
+    } else {
+        at.format(DATE_TIME).to_string()
+    }
 }
 
 // -- the store -------------------------------------------------------------------
@@ -326,8 +804,23 @@ impl Goals {
         self.sheet.prefetch(ranges)
     }
 
+    /// Every goal, as the tab keeps it.
     pub fn all(&self) -> anyhow::Result<Vec<Goal>> {
-        self.sheet.read_items::<Goal>()
+        Ok(upgraded(self.sheet.read_items::<Goal>()?))
+    }
+
+    /// Every goal as it stands now: those whose activate_when is ready
+    /// activated (see `sweep`), with the deadlines that follow. A read
+    /// doesn't write them; the next change of goals does, as they are
+    /// here. With the ids of those it activated.
+    pub fn current(&self, zone: &Tz) -> anyhow::Result<(Vec<Goal>, Vec<String>)> {
+        let mut goals = self.all()?;
+        let activated = sweep(&mut goals, zone, &crate::determinism::now());
+        if !activated.is_empty() {
+            resolve_deadlines(&mut goals, zone);
+            stamp_deadlines(&mut goals, &activated);
+        }
+        Ok((goals, activated))
     }
 
     /// Every id there is a goal by.
@@ -335,15 +828,15 @@ impl Goals {
         Ok(self.all()?.into_iter().filter_map(|g| g.id).collect())
     }
 
-    pub fn get_goals(&self, statuses: Option<&[String]>) -> anyhow::Result<Vec<ListedGoal>> {
+    pub fn get_goals(&self, statuses: Option<&[String]>, zone: &Tz) -> anyhow::Result<Vec<ListedGoal>> {
         let statuses = check_statuses(statuses)?;
-        let goals = self.all()?;
-        Ok(goals.iter().filter(|g| g.status.is_some_and(|s| statuses.iter().any(|t| t == s.text()))).map(|g| listed(g, &goals)).collect())
+        let (goals, _) = self.current(zone)?;
+        Ok(goals.iter().filter(|g| g.status.is_some_and(|s| statuses.iter().any(|t| t == s.text()))).map(|g| listed(g, &goals, zone)).collect())
     }
 
-    pub fn get_goal(&self, id_or_title: &str) -> anyhow::Result<ListedGoal> {
-        let goals = self.all()?;
-        Ok(listed(&find(&goals, id_or_title)?, &goals))
+    pub fn get_goal(&self, id_or_title: &str, zone: &Tz) -> anyhow::Result<ListedGoal> {
+        let (goals, _) = self.current(zone)?;
+        Ok(listed(&find(&goals, id_or_title)?, &goals, zone))
     }
 
     pub fn create_goal(&self, goal: &Goal, zone: &Tz) -> anyhow::Result<CreatedGoal> {
@@ -356,13 +849,17 @@ impl Goals {
     /// checked whole, so a goal can be marked done while its sub-goals
     /// are closed or moved, and a new parent made for them, in one change.
     pub fn change_goals(&self, creates: &[Goal], updates: &[GoalEdit], removals: &[GoalRemoval], zone: &Tz) -> anyhow::Result<ChangedGoals> {
-        let mut goals = self.all()?;
-        let now = DateTimeText(py::pydantic_datetime(&crate::determinism::now()));
-        let mut touched: Vec<String> = Vec::new();
+        // Those ready activated first, as a read shows them.
+        let (mut goals, swept) = self.current(zone)?;
+        let instant = crate::determinism::now();
+        let now = DateTimeText(py::pydantic_datetime(&instant));
+        let mut touched: Vec<String> = swept.clone();
         let mut deleted: Vec<String> = Vec::new();
         // The goals whose history this change appends to itself: their
         // new entry takes the goal's deadline once every deadline is set.
-        let mut stamped: Vec<String> = Vec::new();
+        let mut stamped: Vec<String> = swept;
+        // Those activated by hand: their inactive parents are too.
+        let mut started: Vec<String> = Vec::new();
         // Every goal changed since it was read, not just the first.
         let mut stale: Vec<rows::Conflict> = Vec::new();
         let gather = |result: anyhow::Result<bool>, stale: &mut Vec<rows::Conflict>| -> anyhow::Result<Option<bool>> {
@@ -389,6 +886,25 @@ impl Goals {
             }
             deleted.push(id.to_string());
         }
+        // What waited for a goal deleted doesn't; a deadline measured from
+        // one keeps the date it had.
+        for goal in goals.iter_mut() {
+            let mut changed = false;
+            if let Some(when) = goal.activate_when.as_mut() {
+                if let Some(after) = when.after.as_mut() {
+                    let before = after.len();
+                    after.retain(|t| !t.goal_closed.as_ref().is_some_and(|id| deleted.iter().any(|d| d == id.trim())));
+                    changed |= after.len() != before;
+                }
+            }
+            if goal.deadline_rule.as_ref().and_then(|r| r.after_goal.as_ref()).is_some_and(|o| deleted.iter().any(|d| d == o.id.trim())) {
+                goal.deadline_rule = None;
+                changed = true;
+            }
+            if changed {
+                touched.extend(goal.id.clone());
+            }
+        }
         for edit in updates {
             let Some(id) = set(edit.goal.id.as_deref()).map(str::to_string) else {
                 bail!("a goal update needs the goal's id");
@@ -408,15 +924,22 @@ impl Goals {
             let before = goals[index].clone();
             let mut after = rows::updated_item(&before, &edit.goal, &edit.clear_fields, &["id"])?;
             let cleared = |field: &str| edit.clear_fields.iter().any(|f| f == field);
-            // A deadline of its own unties it from its parent's.
-            if (edit.goal.deadline.is_some() || cleared("deadline")) && edit.goal.deadline_offset_minutes.is_none() && !cleared("deadline_offset_minutes") {
-                after.deadline_offset_minutes = None;
+            // A deadline of its own unties it from what it was measured
+            // from.
+            if (edit.goal.deadline.is_some() || cleared("deadline")) && edit.goal.deadline_rule.is_none() && !cleared("deadline_rule") {
+                after.deadline_rule = None;
             }
+            after.deadline_offset_minutes = None;
             if edit.goal.history.is_none() && after.status != before.status {
                 if let Some(status) = after.status {
                     after.history.get_or_insert_with(Vec::new).push(StatusChange { status, at: now.clone(), deadline: None });
                     stamped.push(id.clone());
                 }
+            }
+            // Activated by hand: what it waited for no longer matters.
+            if after.status == Some(GoalStatus::Active) && before.status != Some(GoalStatus::Active) {
+                after.activate_when = None;
+                started.push(id.clone());
             }
             goals[index] = after;
             touched.push(id);
@@ -435,17 +958,29 @@ impl Goals {
                 vec![StatusChange { status, at: now.clone(), deadline: None }]
             });
             goals.push(Goal { id: Some(id.clone()), status: Some(status), history: Some(history), version: None, ..given.clone() });
+            if status == GoalStatus::Active {
+                started.push(id.clone());
+            }
             touched.push(id);
         }
-        touched.extend(follow_parents(&mut goals));
-        // A change the server records itself carries the goal's deadline
-        // after the change, once a sub-goal's has followed its parent's.
-        for goal in goals.iter_mut().filter(|g| g.id.as_ref().is_some_and(|id| stamped.contains(id))) {
-            let deadline = goal.deadline.clone();
-            if let Some(change) = goal.history.as_mut().and_then(|h| h.last_mut()) {
-                change.deadline = deadline;
-            }
+        for id in &started {
+            let Some(index) = goals.iter().position(|g| g.id.as_deref() == Some(id.as_str())) else { continue };
+            let parents = activate(&mut goals, index, &now);
+            touched.extend(parents.iter().cloned());
+            stamped.extend(parents);
         }
+        touched.extend(resolve_deadlines(&mut goals, zone));
+        // What this change closed may let others start.
+        let ready = sweep(&mut goals, zone, &instant);
+        if !ready.is_empty() {
+            touched.extend(ready.iter().cloned());
+            stamped.extend(ready);
+            touched.extend(resolve_deadlines(&mut goals, zone));
+        }
+        // A change the server records itself carries the goal's deadline
+        // after the change, once every deadline has followed what it's
+        // measured from.
+        stamp_deadlines(&mut goals, &stamped);
         let mut involved = touched.clone();
         involved.extend(deleted.iter().cloned());
         let mut problems: Vec<String> =
@@ -469,9 +1004,19 @@ impl Goals {
         let shown = touched
             .iter()
             .filter_map(|id| goals.iter().find(|g| g.id.as_deref() == Some(id.as_str())))
-            .map(|g| listed(g, &goals))
+            .map(|g| listed(g, &goals, zone))
             .collect();
         Ok(ChangedGoals { goals: dedup_listed(shown), deleted_ids: deleted })
+    }
+}
+
+/// Each of `ids`' goals' last history entry given the goal's deadline.
+fn stamp_deadlines(goals: &mut [Goal], ids: &[String]) {
+    for goal in goals.iter_mut().filter(|g| g.id.as_ref().is_some_and(|id| ids.contains(id))) {
+        let deadline = goal.deadline.clone();
+        if let Some(change) = goal.history.as_mut().and_then(|h| h.last_mut()) {
+            change.deadline = deadline;
+        }
     }
 }
 
@@ -628,11 +1173,16 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
             problems.push((me.clone(), format!("{name}'s status must be one of {}", GOAL_STATUSES.join(", "))));
             continue;
         };
-        if let Some(minutes) = goal.deadline_offset_minutes.filter(|m| *m < 0) {
-            problems.push((me.clone(), format!("{name}'s deadline_offset_minutes must be 0 or more, not {minutes}")));
-        }
+        problems.extend(rule_problems(goal, goals).into_iter().map(|p| (me.clone(), format!("{name}'s deadline {p}"))));
+        problems.extend(trigger_problems(goal, goals, status).into_iter().map(|p| (me.clone(), format!("{name}'s activate_when {p}"))));
         if status == GoalStatus::Active && set(goal.deadline.as_deref()).is_none() {
             problems.push((me.clone(), format!("{name} is active, so it needs a deadline")));
+        }
+        if status == GoalStatus::Inactive && set(goal.deadline.as_deref()).is_none() && goal.deadline_rule.is_none() {
+            problems.push((
+                me.clone(),
+                format!("{name} needs a deadline, to have when it starts: a date, or one measured from its start, its parent's deadline or another goal's"),
+            ));
         }
         problems.extend(history_problems(goal, status).into_iter().map(|p| (me.clone(), format!("{name}'s history {p}"))));
         if let (Some(due), Some(started)) = (due, started_at(goal).and_then(moment)) {
@@ -668,8 +1218,6 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
                         parent_status.text()
                     ),
                 ));
-            } else if status == GoalStatus::Active && parent_status == GoalStatus::Inactive {
-                problems.push((both.clone(), format!("{name} is active, but its parent {parent_name} is inactive: activate the parent too, or deactivate it")));
             }
             if let (Some(due), Some(parent_due)) = (due, set(parent.deadline.as_deref()).and_then(deadline_end)) {
                 if due > parent_due {
@@ -694,6 +1242,147 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
         }
     }
     problems
+}
+
+/// What's wrong with how `offset` (days or minutes) is given.
+fn offset_problems(days: Option<i64>, minutes: Option<i64>) -> Vec<String> {
+    match (days, minutes) {
+        (Some(_), Some(_)) | (None, None) => vec!["gives days or minutes, one of them".into()],
+        (Some(n), None) | (None, Some(n)) if n < 0 => vec![format!("can't be {n}: give 0 or more")],
+        _ => Vec::new(),
+    }
+}
+
+/// What's wrong with what `goal`'s deadline is measured from.
+fn rule_problems(goal: &Goal, goals: &[Goal]) -> Vec<String> {
+    let Some(rule) = &goal.deadline_rule else { return Vec::new() };
+    let mut problems = Vec::new();
+    if rule.kinds() != 1 || rule.at.is_some() {
+        problems.push("is measured from one thing: before_parent, after_start or after_goal".into());
+        return problems;
+    }
+    let offset = rule.before_parent.as_ref().or(rule.after_start.as_ref()).map(|o| (o.days, o.minutes));
+    let (days, minutes) = offset.or(rule.after_goal.as_ref().map(|o| (o.days, o.minutes))).unwrap_or_default();
+    problems.extend(offset_problems(days, minutes));
+    if let Some(after) = &rule.after_goal {
+        let id = after.id.trim();
+        if Some(id) == goal.id.as_deref() {
+            problems.push("can't be measured from its own".into());
+        } else if by_id(goals, id).is_none() {
+            problems.push(format!("is after goal {}, which isn't a goal (get_goals lists them)", py::repr(id)));
+        }
+    }
+    if problems.is_empty() && measured_from_itself(goal, goals) {
+        problems.push("is measured, through others, from its own".into());
+    }
+    problems
+}
+
+/// The goal `goal`'s deadline is measured from, if it's another's.
+fn measured_from<'a>(goal: &Goal, goals: &'a [Goal]) -> Option<&'a Goal> {
+    let rule = goal.deadline_rule.as_ref()?;
+    if rule.before_parent.is_some() {
+        return parent_of(goals, goal);
+    }
+    by_id(goals, rule.after_goal.as_ref()?.id.trim())
+}
+
+/// Whether following what `goal`'s deadline is measured from comes back
+/// to it.
+fn measured_from_itself(goal: &Goal, goals: &[Goal]) -> bool {
+    let mut seen: Vec<&str> = Vec::new();
+    let mut at = measured_from(goal, goals);
+    while let Some(g) = at {
+        let Some(id) = g.id.as_deref() else { return false };
+        if Some(id) == goal.id.as_deref() {
+            return true;
+        }
+        if seen.contains(&id) {
+            return false;
+        }
+        seen.push(id);
+        at = measured_from(g, goals);
+    }
+    false
+}
+
+/// What's wrong with what `goal`, `status`, waits for.
+fn trigger_problems(goal: &Goal, goals: &[Goal], status: GoalStatus) -> Vec<String> {
+    let Some(when) = &goal.activate_when else { return Vec::new() };
+    let mut problems = Vec::new();
+    if status != GoalStatus::Inactive {
+        problems.push(format!("is only for an inactive goal: this one is {}", status.text()));
+    }
+    let parents = ancestor_ids(goal, goals);
+    for trigger in when.after.as_deref().unwrap_or_default() {
+        match (set(trigger.goal_closed.as_deref()), set(trigger.at.as_deref())) {
+            (Some(id), None) => {
+                if Some(id) == goal.id.as_deref() {
+                    problems.push("can't wait for the goal itself".into());
+                } else if by_id(goals, id).is_none() {
+                    problems.push(format!("waits for goal {}, which isn't a goal (get_goals lists them)", py::repr(id)));
+                } else if parents.iter().any(|p| p == id) {
+                    problems.push(format!("waits for goal {} to close, but it's one of its parents, which can't close while it's open", py::repr(id)));
+                }
+            }
+            (None, Some(at)) => {
+                if start_of(at).is_none() {
+                    problems.push(format!("waits for {}, which isn't a date (\"2026-11-01\") or a date and time (\"2026-11-01T17:00\")", py::repr(at)));
+                }
+            }
+            _ => problems.push("has a trigger that isn't one: give goal_closed or at, one of them".into()),
+        }
+    }
+    if let Some(Delay::Minutes(d)) = &when.delay {
+        if d.minutes < 0 {
+            problems.push(format!("delay can't be {} minutes: give 0 or more", d.minutes));
+        }
+    }
+    for hold in when.hold_while.as_deref().unwrap_or_default() {
+        if hold.active_at_least < 1 {
+            problems.push(format!("holds while at least {} goals are active: give 1 or more", hold.active_at_least));
+        }
+        if let Some(filter) = &hold.priority {
+            match (&filter.at_or_above, &filter.exactly) {
+                (Some(r), None) | (None, Some(r)) => {
+                    if let PriorityRef::Level(p) = r {
+                        if *p < 0 {
+                            problems.push(format!("holds for priority {p}: give 0 or more, or \"own\""));
+                        }
+                    }
+                }
+                _ => problems.push("holds for a priority given as at_or_above or exactly, one of them".into()),
+            }
+        }
+    }
+    if problems.is_empty() && waits_on_itself(goal, goals) {
+        problems.push("waits, through others, for the goal itself".into());
+    }
+    problems
+}
+
+/// The goals `goal` waits to close.
+fn waits_for<'a>(goal: &Goal, goals: &'a [Goal]) -> Vec<&'a Goal> {
+    let Some(when) = &goal.activate_when else { return Vec::new() };
+    when.after.as_deref().unwrap_or_default().iter().filter_map(|t| set(t.goal_closed.as_deref())).filter_map(|id| by_id(goals, id)).collect()
+}
+
+/// Whether following what `goal` waits for comes back to it.
+fn waits_on_itself(goal: &Goal, goals: &[Goal]) -> bool {
+    let mut seen: Vec<&str> = Vec::new();
+    let mut next: Vec<&Goal> = waits_for(goal, goals);
+    while let Some(g) = next.pop() {
+        let Some(id) = g.id.as_deref() else { continue };
+        if Some(id) == goal.id.as_deref() {
+            return true;
+        }
+        if seen.contains(&id) {
+            continue;
+        }
+        seen.push(id);
+        next.extend(waits_for(g, goals));
+    }
+    false
 }
 
 /// Whether `goal` is among its own parents.
@@ -743,7 +1432,13 @@ fn history_problems(goal: &Goal, status: GoalStatus) -> Vec<String> {
     problems
 }
 
-pub fn listed(goal: &Goal, goals: &[Goal]) -> ListedGoal {
+/// `goal`'s deadline as set: what it's measured from, or the date given.
+pub fn deadline_of(goal: &Goal) -> Option<Deadline> {
+    goal.deadline_rule.clone().or_else(|| set(goal.deadline.as_deref()).map(|d| Deadline { at: Some(d.to_string()), ..Deadline::default() }))
+}
+
+pub fn listed(goal: &Goal, goals: &[Goal], zone: &Tz) -> ListedGoal {
+    let now = local(&crate::determinism::now(), zone);
     ListedGoal {
         id: goal.id.clone(),
         title: goal.title.clone(),
@@ -752,8 +1447,10 @@ pub fn listed(goal: &Goal, goals: &[Goal]) -> ListedGoal {
         priority: goal.priority,
         sort_order: goal.sort_order,
         expected_minutes: goal.expected_minutes,
-        deadline: goal.deadline.clone(),
-        deadline_offset_minutes: goal.deadline_offset_minutes,
+        deadline: deadline_of(goal),
+        due: set(goal.deadline.as_deref()).map(str::to_string),
+        activate_when: goal.activate_when.clone(),
+        expected_start: expected_start_at(goal, goals, zone, now, 0).map(shown),
         status: goal.status,
         history: goal.history.clone(),
         description: goal.description.clone(),

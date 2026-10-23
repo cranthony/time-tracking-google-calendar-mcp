@@ -5,12 +5,12 @@ from __future__ import annotations
 
 
 async def test_goals(session):
-    top = (await session.call("create_goal", goal={"title": "Ship the app", "deadline": "2026-12-01", "expected_minutes": 3000}))["created_id"]
+    top = (await session.call("create_goal", goal={"title": "Ship the app", "deadline": {"at": "2026-12-01"}, "expected_minutes": 3000}))["created_id"]
     await session.call_error("create_goal", goal={"title": "No deadline"})
-    sub = (await session.call("create_goal", goal={"title": "Write the pane", "parent_id": top, "deadline": "2026-11-15", "required": True}))["created_id"]
-    later = (await session.call("create_goal", goal={"title": "Polish", "parent_id": top, "status": "inactive"}))["created_id"]
-    await session.call_error("create_goal", goal={"title": "Too late", "parent_id": top, "deadline": "2026-12-02"})
-    await session.call_error("create_goal", goal={"title": "Too long", "parent_id": top, "deadline": "2026-11-01", "expected_minutes": 3001})
+    sub = (await session.call("create_goal", goal={"title": "Write the pane", "parent_id": top, "deadline": {"at": "2026-11-15"}, "required": True}))["created_id"]
+    later = (await session.call("create_goal", goal={"title": "Polish", "parent_id": top, "status": "inactive", "deadline": {"after_start": {"days": 7}}}))["created_id"]
+    await session.call_error("create_goal", goal={"title": "Too late", "parent_id": top, "deadline": {"at": "2026-12-02"}})
+    await session.call_error("create_goal", goal={"title": "Too long", "parent_id": top, "deadline": {"at": "2026-11-01"}, "expected_minutes": 3001})
 
     listed = await session.call("get_goals")
     assert [g["title"] for g in listed] == ["Ship the app", "Write the pane", "Polish"]
@@ -20,7 +20,7 @@ async def test_goals(session):
     await session.call_error("update_goals", updates=[{"goal": {"id": top, "status": "done"}}])
     changed = await session.call(
         "update_goals",
-        creates=[{"id": "inbox1", "title": "Prioritize unstructured goals", "status": "inactive"}],
+        creates=[{"id": "inbox1", "title": "Prioritize unstructured goals", "status": "inactive", "deadline": {"at": "2026-12-31"}}],
         updates=[
             {"goal": {"id": top, "status": "done"}},
             {"goal": {"id": sub, "status": "done"}},
@@ -37,8 +37,8 @@ async def test_goals(session):
 
 
 async def test_missed_goals(session):
-    top = (await session.call("create_goal", goal={"title": "Run a marathon", "deadline": "2026-12-01"}))["created_id"]
-    sub = (await session.call("create_goal", goal={"title": "Run a half first", "parent_id": top, "deadline": "2026-11-01", "required": True}))["created_id"]
+    top = (await session.call("create_goal", goal={"title": "Run a marathon", "deadline": {"at": "2026-12-01"}}))["created_id"]
+    sub = (await session.call("create_goal", goal={"title": "Run a half first", "parent_id": top, "deadline": {"at": "2026-11-01"}, "required": True}))["created_id"]
 
     await session.call_error("update_goals", updates=[{"goal": {"id": top, "status": "missed"}}])
     # A required sub-goal missed doesn't keep its parent from being done.
@@ -50,7 +50,7 @@ async def test_missed_goals(session):
 
 
 async def test_events_tagged_with_goals(session):
-    goal = (await session.call("create_goal", goal={"title": "Learn Rust", "deadline": "2026-12-01"}))["created_id"]
+    goal = (await session.call("create_goal", goal={"title": "Learn Rust", "deadline": {"at": "2026-12-01"}}))["created_id"]
     made = await session.call(
         "create_event",
         events=[{"summary": "Read the book", "start": "2026-10-17T09:00:00+00:00", "end": "2026-10-17T10:00:00+00:00", "goals": [{"goal_id": goal, "minutes": 45}]}],
@@ -61,3 +61,13 @@ async def test_events_tagged_with_goals(session):
     await session.call_error("update_event", updates=[{"event": {"id": event["id"], "goals": [{"goal_id": "nosuch"}]}}])
     await session.call("update_event", updates=[{"event": {"id": event["id"], "goals": [{"goal_id": goal, "percent": 50}]}}])
     assert (await session.call("get_event", id=event["id"]))["goals"] == [{"goal_id": goal, "minutes": None, "percent": 50}]
+
+
+async def test_a_goal_waits_for_another_to_close(session):
+    first = (await session.call("create_goal", goal={"title": "Draft the plan", "deadline": {"at": "2099-11-01"}}))["created_id"]
+    waiting = {"after": [{"goal_closed": first}], "delay": "next_day", "hold_while": [{"active_at_least": 5, "priority": {"at_or_above": "own"}}]}
+    then = (await session.call("create_goal", goal={"title": "Send the plan", "status": "inactive", "deadline": {"after_start": {"days": 2}}, "activate_when": waiting}))["goal"]
+    assert (then["status"], then["due"], then["expected_start"]) == ("inactive", None, "2099-11-02")
+    await session.call_error("update_goal", goal={"id": first, "activate_when": {"after": [{"goal_closed": first}]}})
+    after = (await session.call("create_goal", goal={"title": "Follow up", "deadline": {"after_goal": {"id": first, "days": 3}}}))["goal"]
+    assert (after["deadline"], after["due"]) == ({"after_goal": {"id": first, "days": 3}}, "2099-11-04")

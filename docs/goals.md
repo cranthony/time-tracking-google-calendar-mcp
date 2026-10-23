@@ -15,7 +15,10 @@ events have none.
 | `parent_id` | The goal it's a piece of, to any depth; none for a top-level goal. |
 | `required` | Whether its parent needs it done to be done. |
 | `expected_minutes` | Optional. How long it's expected to take, compared with the time spent purely as a guide for estimating; never enforced. |
-| `deadline` | A date ("2026-11-01", due at the end of that day) or a date and time ("2026-11-01T17:00"), in the calendar's time zone. Needed while active; optional, and empty by default, while inactive. |
+| `deadline` | As set: `{at}` -- a date ("2026-11-01", due at the end of that day) or a date and time ("2026-11-01T17:00"), in the calendar's time zone -- or measured from something, and kept so while the goal is open: `{before_parent: {days \| minutes}}`, `{after_start: {days \| minutes}}` (from when it becomes active: days, the end of that many days after the day it started) or `{after_goal: {id, days \| minutes}}`. Days keep a date a date; minutes give a date and time. Setting a date unties it; so does moving a goal measured from its parent's to the top level. |
+| `due` | Read-only: when the deadline falls, worked out; none until a goal measured from its start starts. Kept in the tab's `deadline` column, with what it's measured from in `deadline_rule`. |
+| `activate_when` | Optional, for an inactive goal: what it waits for before it's activated -- `after` (every one of `{goal_closed: id}`, done, missed or obsolete, and `{at: date or date and time}`), then `delay` (`"next_day"`, the start of the day after, or `{minutes}`), and `hold_while` (`[{active_at_least: n, priority?: {at_or_above \| exactly: a priority or "own"}}]`: held back while that many other goals of that priority are active, its own parents and sub-goals not counted). Cleared once it's activated, by the server or by hand. |
+| `expected_start` | Read-only, for a goal waiting: when it's expected to be activated -- what it waits for at its due (a goal measured from a start that hasn't come, from when that's expected), then its delay. None while it's held, or something it waits for has no due yet. |
 | `status` | `inactive`, `active`, `done`, `missed` (its deadline passed without it) or `obsolete` (no longer wanted). New goals are active unless made inactive. A missed goal can be reopened with a new deadline; its history keeps each deadline it missed, so a goal can be missed and retried any number of times. |
 | `history` | Every change of status and when, oldest first, starting with the status it was made in, each with the `deadline` in force at that change (if it had one; older entries may have none). A change the server records itself -- a status set without a history, a create without one -- carries the goal's deadline after the change; a history given whole keeps its entries' deadlines as given. Entries can be backdated or removed; the history must stay in order and end with the status. A goal started when it first became active, and was finished when it last became done, missed or obsolete. |
 | `description`, `definition_of_done` | HTML. |
@@ -30,15 +33,20 @@ The server keeps these for the whole set of goals after each change, and
 refuses a change that breaks one, naming the goals in the way. It never
 moves or changes another goal to make things fit.
 
-- An active goal has a deadline.
+- An open goal has a deadline: an active one, a due; an inactive one may
+  be measured from its start. (Goals made before this rule may have none
+  until they're next changed.)
+- A deadline isn't measured, through others, from its own, and a goal
+  doesn't wait, through others, for itself, or for one of its parents to
+  close (it can't close while the goal is open).
 - A goal starts (first becomes active) before its deadline. A sub-goal may
   start before its parent: groundwork often comes first.
 - An open sub-goal (inactive or active) is due no later than its parent,
   and expected to take no longer (each sub-goal on its own, not their
   total). A parent with no expected time puts no limit on its sub-goals.
-- An inactive goal has no active sub-goals: deactivating a goal means
-  deactivating (or moving) its active sub-goals in the same change, and
-  activating a sub-goal means activating its parents.
+- An inactive goal may have active sub-goals, but activating a goal --
+  by hand or as it waited to be -- activates its inactive parents too,
+  each dated then, and clears what each waited for.
 - A done, missed or obsolete goal has no open sub-goals: closing a goal
   means marking each of its open sub-goals done, missed or obsolete, or
   moving it under another goal (or the top level), in the same change.
@@ -53,6 +61,20 @@ moves or changes another goal to make things fit.
 - A goal can be deleted even when events are tagged with it (the app
   warns that it can't be undone). Its sub-goals are deleted or moved in
   the same change.
+
+## Waiting to be activated
+
+The server activates an inactive goal whose `activate_when` is ready --
+every trigger come, then the delay -- and not held, whenever goals are
+read or changed: dated when it became ready (held, the latest a goal
+stopped being active since, if later), never before its last change.
+Of those ready, the highest priority goes first, then the soonest due,
+each counted in the holds of the next. A read shows the goals so; the
+next change of goals writes them. One that would start past its own
+deadline, or with a parent that has none, keeps waiting. A missed goal
+tried again stays open, so what waits for it waits on. Deleting a goal
+takes it out of what waits for it, and a deadline measured from it keeps
+the date it had.
 
 `update_goals` takes creates, updates and deletes together, so any of
 these -- closing a goal while moving its sub-goals under a new top-level
@@ -141,10 +163,9 @@ fixed", "Photos sent to Mom"). Its description says where it came
 from -- the note's date and words -- and why, when the notes say why,
 never a reason they don't; its definition of done says how anyone
 would know it happened ("Mom has the photos"). The goal is inactive.
-A goal for the user alone has a deadline only when the notes give
-one; a goal with or for someone always has one --
-the notes' or, failing that, about a week after the note, which the
-recap's `unsure` says was assumed -- so it shows on the goals-due strip.
+Every goal has a deadline -- the notes' or, failing that, about a week
+after the note, which the recap's `unsure` says was assumed -- so it
+shows on the goals-due strip.
 It's created when the proposal is applied (an open goal with the same
 title is reused), or sooner if the user settles it -- made active then,
 with a deadline, if they like; see

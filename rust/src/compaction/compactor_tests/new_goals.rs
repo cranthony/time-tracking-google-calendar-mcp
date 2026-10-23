@@ -54,7 +54,7 @@ fn prepare_lists_every_open_goal_with_its_people() {
     assert!(DECISION_GUIDE.contains("NEW GOALS: when a note says the user wants"));
     assert!(DECISION_GUIDE.contains("FOR SOMEONE, IT'S A GOAL HOWEVER SMALL"));
     assert!(DECISION_GUIDE.contains("PREFIXED NOTES ARE DEFINITE GOALS"));
-    assert!(DECISION_GUIDE.contains("a goal with for_ids or with_ids always gets one"));
+    assert!(DECISION_GUIDE.contains("DEADLINES: every goal gets one"));
 }
 
 #[test]
@@ -110,8 +110,9 @@ fn new_goals_naming_strangers_or_breaking_the_goal_rules_are_refused() {
         r"names \['sam'\] both with",
     );
     refused(proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Late", "deadline": "2100-06-01", "parent_id": "g1"}]})), "is after its parent");
-    // Inactive, it needs no deadline.
-    proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Someday"}]})).unwrap();
+    // Inactive, it needs a deadline too, to have once it starts.
+    refused(proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Someday"}]})), "needs a deadline, to have when it starts");
+    proposed(&setup, json!({"goals": [{"ref": "new:x", "title": "Someday", "deadline": "2099-06-01"}]})).unwrap();
 }
 
 #[test]

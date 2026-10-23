@@ -1,0 +1,651 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "goal": {
+     "deadline": {
+      "at": "2099-11-01"
+     },
+     "title": "Draft the plan"
+    }
+   },
+   "content": {
+    "created_id": "co2yzn",
+    "goal": {
+     "activate_when": null,
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": {
+      "at": "2099-11-01"
+     },
+     "definition_of_done": null,
+     "description": null,
+     "due": "2099-11-01",
+     "expected_minutes": null,
+     "expected_start": null,
+     "for_ids": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "deadline": "2099-11-01",
+       "status": "active"
+      }
+     ],
+     "id": "co2yzn",
+     "parent_id": null,
+     "path": [],
+     "priority": null,
+     "required": null,
+     "sort_order": null,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Draft the plan",
+     "version": 1,
+     "with_ids": null
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Draft the plan\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2099-11-01\"\n    },\n    \"due\": \"2099-11-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2099-11-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "activate_when": {
+      "after": [
+       {
+        "goal_closed": "co2yzn"
+       }
+      ],
+      "delay": "next_day",
+      "hold_while": [
+       {
+        "active_at_least": 5,
+        "priority": {
+         "at_or_above": "own"
+        }
+       }
+      ]
+     },
+     "deadline": {
+      "after_start": {
+       "days": 2
+      }
+     },
+     "status": "inactive",
+     "title": "Send the plan"
+    }
+   },
+   "content": {
+    "created_id": "3dnjav",
+    "goal": {
+     "activate_when": {
+      "after": [
+       {
+        "goal_closed": "co2yzn"
+       }
+      ],
+      "delay": "next_day",
+      "hold_while": [
+       {
+        "active_at_least": 5,
+        "priority": {
+         "at_or_above": "own"
+        }
+       }
+      ]
+     },
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": {
+      "after_start": {
+       "days": 2
+      }
+     },
+     "definition_of_done": null,
+     "description": null,
+     "due": null,
+     "expected_minutes": null,
+     "expected_start": "2099-11-02",
+     "for_ids": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "deadline": null,
+       "status": "inactive"
+      }
+     ],
+     "id": "3dnjav",
+     "parent_id": null,
+     "path": [],
+     "priority": null,
+     "required": null,
+     "sort_order": null,
+     "started_at": null,
+     "status": "inactive",
+     "title": "Send the plan",
+     "version": 1,
+     "with_ids": null
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Send the plan\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_start\": {\n        \"days\": 2\n      }\n    },\n    \"due\": null,\n    \"activate_when\": {\n      \"after\": [\n        {\n          \"goal_closed\": \"co2yzn\"\n        }\n      ],\n      \"delay\": \"next_day\",\n      \"hold_while\": [\n        {\n          \"active_at_least\": 5,\n          \"priority\": {\n            \"at_or_above\": \"own\"\n          }\n        }\n      ]\n    },\n    \"expected_start\": \"2099-11-02\",\n    \"status\": \"inactive\",\n    \"history\": [\n      {\n        \"status\": \"inactive\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": null\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"started_at\": null,\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "tool": "create_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "activate_when": {
+      "after": [
+       {
+        "goal_closed": "co2yzn"
+       }
+      ]
+     },
+     "id": "co2yzn",
+     "version": 1
+    }
+   },
+   "content": "Error executing tool update_goal: goal co2yzn ('Draft the plan')'s activate_when is only for an inactive goal: this one is active; goal co2yzn ('Draft the plan')'s activate_when can't wait for the goal itself",
+   "is_error": true,
+   "text": "Error executing tool update_goal: goal co2yzn ('Draft the plan')'s activate_when is only for an inactive goal: this one is active; goal co2yzn ('Draft the plan')'s activate_when can't wait for the goal itself",
+   "tool": "update_goal"
+  },
+  {
+   "arguments": {
+    "goal": {
+     "deadline": {
+      "after_goal": {
+       "days": 3,
+       "id": "co2yzn"
+      }
+     },
+     "title": "Follow up"
+    }
+   },
+   "content": {
+    "created_id": "a0g0jc",
+    "goal": {
+     "activate_when": null,
+     "attribution_hints": null,
+     "closed_at": null,
+     "deadline": {
+      "after_goal": {
+       "days": 3,
+       "id": "co2yzn"
+      }
+     },
+     "definition_of_done": null,
+     "description": null,
+     "due": "2099-11-04",
+     "expected_minutes": null,
+     "expected_start": null,
+     "for_ids": null,
+     "history": [
+      {
+       "at": "2026-10-07T15:30:00-04:00",
+       "deadline": "2099-11-04",
+       "status": "active"
+      }
+     ],
+     "id": "a0g0jc",
+     "parent_id": null,
+     "path": [],
+     "priority": null,
+     "required": null,
+     "sort_order": null,
+     "started_at": "2026-10-07T15:30:00-04:00",
+     "status": "active",
+     "title": "Follow up",
+     "version": 1,
+     "with_ids": null
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"goal\": {\n    \"id\": \"a0g0jc\",\n    \"title\": \"Follow up\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_goal\": {\n        \"id\": \"co2yzn\",\n        \"days\": 3\n      }\n    },\n    \"due\": \"2099-11-04\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2099-11-04\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "tool": "create_goal"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata (do not edit by hand)"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "outcome-goals"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Outcome Goals"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "priority",
+        "sort_order",
+        "expected_minutes",
+        "deadline",
+        "deadline_offset_minutes",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "with_ids",
+        "for_ids",
+        "deadline_rule",
+        "activate_when",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "outcome-goals",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "Draft the plan",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "2099-11-01",
+        "",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2099-11-01\"}]",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 2
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "3dnjav",
+        "Send the plan",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":null}]",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "{\"after_start\":{\"days\":2}}",
+        "{\"after\":[{\"goal_closed\":\"co2yzn\"}],\"delay\":\"next_day\",\"hold_while\":[{\"active_at_least\":5,\"priority\":{\"at_or_above\":\"own\"}}]}",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 4,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 3
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "a0g0jc",
+        "Follow up",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "2099-11-04",
+        "",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2099-11-04\"}]",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "{\"after_goal\":{\"id\":\"co2yzn\",\"days\":3}}",
+        "",
+        "1"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {},
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "outcome-goals",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata (do not edit by hand)"
+    },
+    "tabs": {
+     "Outcome Goals": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Outcome Goals"
+      },
+      "rows": [
+       [
+        "id",
+        "title",
+        "parent_id",
+        "required",
+        "priority",
+        "sort_order",
+        "expected_minutes",
+        "deadline",
+        "deadline_offset_minutes",
+        "status",
+        "history",
+        "description",
+        "definition_of_done",
+        "attribution_hints",
+        "with_ids",
+        "for_ids",
+        "deadline_rule",
+        "activate_when",
+        "version"
+       ],
+       [
+        "co2yzn",
+        "Draft the plan",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "2099-11-01",
+        "",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2099-11-01\"}]",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "1"
+       ],
+       [
+        "3dnjav",
+        "Send the plan",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "inactive",
+        "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":null}]",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "{\"after_start\":{\"days\":2}}",
+        "{\"after\":[{\"goal_closed\":\"co2yzn\"}],\"delay\":\"next_day\",\"hold_while\":[{\"active_at_least\":5,\"priority\":{\"at_or_above\":\"own\"}}]}",
+        "1"
+       ],
+       [
+        "a0g0jc",
+        "Follow up",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "2099-11-04",
+        "",
+        "active",
+        "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2099-11-04\"}]",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "{\"after_goal\":{\"id\":\"co2yzn\",\"days\":3}}",
+        "",
+        "1"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}

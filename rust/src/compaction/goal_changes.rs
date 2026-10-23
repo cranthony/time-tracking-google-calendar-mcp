@@ -237,8 +237,9 @@ fn changed(goal: &Goal, change: &GoalChange) -> Goal {
             history.push(StatusChange { status: GoalStatus::Missed, at: at.clone(), deadline: goal.deadline.clone() });
             history.push(StatusChange { status: prior, at, deadline: Some(deadline.clone()) });
             after.deadline = Some(deadline.clone());
-            // A deadline of its own unties it from its parent's.
-            after.deadline_offset_minutes = None;
+            // A deadline of its own unties it from what it was measured
+            // from.
+            after.deadline_rule = None;
         }
         _ => {
             history.push(StatusChange { status: change.status, at, deadline: goal.deadline.clone() });
@@ -366,7 +367,7 @@ pub fn apply(store: &Goals, change: &GoalChange, zone: &Tz) -> anyhow::Result<Li
     let all = store.all()?;
     let goal = goals::find(&all, change.goal_id.trim())?;
     if already_made(&goal, change) {
-        return Ok(goals::listed(&goal, &all));
+        return Ok(goals::listed(&goal, &all, zone));
     }
     if let Some(status) = goal.status.filter(|s| s.is_closed()) {
         anyhow::bail!("{} is {} already, not open", label(&goal), status.text());

@@ -1918,6 +1918,8 @@
         "attribution_hints",
         "with_ids",
         "for_ids",
+        "deadline_rule",
+        "activate_when",
         "version"
        ]
       ]
@@ -2567,6 +2569,8 @@
         "attribution_hints",
         "with_ids",
         "for_ids",
+        "deadline_rule",
+        "activate_when",
         "version"
        ]
       ]
