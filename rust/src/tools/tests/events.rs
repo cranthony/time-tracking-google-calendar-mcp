@@ -563,7 +563,7 @@ fn an_events_people_and_places_take_shares_of_it() {
 // -- goals -----------------------------------------------------------------------------
 
 fn with_goal(server: &Server, id: &str) {
-    server.ok("create_goal", json!({"goal": {"id": id, "title": format!("Goal {id}"), "deadline": "2026-12-01"}}));
+    server.ok("create_goal", json!({"goal": {"id": id, "title": format!("Goal {id}"), "deadline": {"at": "2026-12-01"}}}));
 }
 
 #[test]

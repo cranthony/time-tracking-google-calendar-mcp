@@ -263,7 +263,7 @@ fn clearing_a_description_or_facts_sends_them_empty() {
 fn amend_proposal_sets_and_clears_goals_and_confirming_writes_them() {
     let (server, p, _, _) = proposed();
     for id in ["goal01", "goal02"] {
-        server.ok("create_goal", json!({"goal": {"id": id, "title": format!("Goal {id}"), "deadline": "2026-12-01"}}));
+        server.ok("create_goal", json!({"goal": {"id": id, "title": format!("Goal {id}"), "deadline": {"at": "2026-12-01"}}}));
     }
     server.ok("update_event", json!({"updates": [{"event": {"id": "e2", "goals": [{"goal_id": "goal02"}]}}]}));
     let shares = json!([{"goal_id": "goal01", "minutes": 20}, {"goal_id": "goal02", "percent": 50}]);

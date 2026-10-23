@@ -309,8 +309,8 @@ fn every_stale_item_of_a_batch_is_said_not_just_the_first() {
     let made = s.ok(
         "update_goals",
         json!({"creates": [
-            {"id": "read-more", "title": "Read more", "deadline": "2026-12-01"},
-            {"id": "run-more", "title": "Run more", "deadline": "2026-12-01"},
+            {"id": "read-more", "title": "Read more", "deadline": {"at": "2026-12-01"}},
+            {"id": "run-more", "title": "Run more", "deadline": {"at": "2026-12-01"}},
         ]}),
     );
     assert_eq!(made["goals"].as_array().unwrap().len(), 2);
