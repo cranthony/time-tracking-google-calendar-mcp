@@ -109,7 +109,6 @@
      ],
      "context": null,
      "facts": null,
-     "foundations": null,
      "id": "rs21so",
      "name": "Sam Example",
      "status": "active",
@@ -118,7 +117,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"a0g0jc\"\n    ],\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Family\"\n    ],\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"a0g0jc\"\n    ],\n    \"traits\": null,\n    \"circle_names\": [\n      \"Family\"\n    ],\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_person"
   },
   {
@@ -283,7 +282,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -300,7 +298,6 @@
      ],
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "rs21so",
      "name": "Sam Example",
      "status": "active",
@@ -309,7 +306,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"traits\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_people"
   },
   {
@@ -326,7 +323,6 @@
     ],
     "context": null,
     "facts": {},
-    "foundations": null,
     "id": "rs21so",
     "name": "Sam Example",
     "status": "active",
@@ -334,7 +330,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"a0g0jc\"\n  ],\n  \"traits\": null,\n  \"circle_names\": [\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -697,7 +693,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -1519,7 +1514,6 @@
         "active",
         "[\"a0g0jc\"]",
         "",
-        "",
         "1"
        ]
       ]
@@ -2283,7 +2277,6 @@
         "",
         "active",
         "[\"a0g0jc\"]",
-        "",
         "",
         "1"
        ]
@@ -3676,7 +3669,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -3685,7 +3677,6 @@
         "",
         "active",
         "[\"a0g0jc\"]",
-        "",
         "",
         "1"
        ]

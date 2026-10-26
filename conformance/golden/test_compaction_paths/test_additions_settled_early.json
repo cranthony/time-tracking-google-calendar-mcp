@@ -14,7 +14,6 @@
      "circles": null,
      "context": null,
      "facts": null,
-     "foundations": null,
      "id": "co2yzn",
      "name": "Sam Example",
      "status": "active",
@@ -23,7 +22,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -5092,7 +5091,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -5105,7 +5103,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "co2yzn",
      "name": "Sam Example",
      "status": "active",
@@ -5118,7 +5115,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "s3wod9",
      "name": "Alex Example",
      "status": "active",
@@ -5127,7 +5123,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}\n{\n  \"id\": \"s3wod9\",\n  \"name\": \"Alex Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}\n{\n  \"id\": \"s3wod9\",\n  \"name\": \"Alex Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_people"
   },
   {
@@ -5454,7 +5450,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -5887,7 +5882,6 @@
         "Sam Example",
         "",
         "active",
-        "",
         "",
         "",
         "1"
@@ -7761,7 +7755,6 @@
         "active",
         "",
         "",
-        "",
         "1"
        ]
       ]
@@ -9267,7 +9260,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -9277,7 +9269,6 @@
         "active",
         "",
         "",
-        "",
         "1"
        ],
        [
@@ -9285,7 +9276,6 @@
         "Alex Example",
         "",
         "active",
-        "",
         "",
         "",
         "1"

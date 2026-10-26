@@ -218,7 +218,6 @@
      "circles": null,
      "context": null,
      "facts": null,
-     "foundations": null,
      "id": "co2yzn",
      "name": "Sam Example",
      "status": "active",
@@ -231,7 +230,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -275,7 +274,6 @@
     "circles": null,
     "context": null,
     "facts": null,
-    "foundations": null,
     "id": "co2yzn",
     "name": "Sam Example",
     "status": "active",
@@ -295,7 +293,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"a0g0jc\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"a0g0jc\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"circle_names\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_person"
   },
   {
@@ -336,7 +334,6 @@
     "circles": null,
     "context": null,
     "facts": null,
-    "foundations": null,
     "id": "co2yzn",
     "name": "Sam Example",
     "status": "active",
@@ -344,7 +341,7 @@
     "version": 3
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 3\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 3\n}",
    "tool": "update_person"
   }
  ],
@@ -822,7 +819,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -1257,7 +1253,6 @@
         "active",
         "",
         "{\"select\":[\"thoughtful\"]}",
-        "",
         "1"
        ]
       ]
@@ -1700,7 +1695,6 @@
         "active",
         "",
         "{\"parts\":{\"thoughtful\":[{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"noun\":\"visits\"}]}}",
-        "",
         "2"
        ]
       ]
@@ -1733,7 +1727,6 @@
         "Sam Example",
         "",
         "active",
-        "",
         "",
         "",
         "3"
@@ -2132,7 +2125,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -2140,7 +2132,6 @@
         "Sam Example",
         "",
         "active",
-        "",
         "",
         "",
         "3"

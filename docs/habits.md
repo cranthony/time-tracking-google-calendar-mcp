@@ -96,22 +96,21 @@ can't be backfilled: cancellations are recorded only as they happen.
 
 ## 4. Foundations, and spacing
 
-Habits, and the people the user chooses, form a graph: each node's
-`foundations` are what it's built on -- exercising on sleeping and
-eating well, a relationship on exercising and working well.
+Habits form a graph: each one's `foundations` are what it's built on
+-- exercising on sleeping and eating well, a relationship on exercising
+and working well.
 
-- **Ids.** A foundation is a subject id: a habit as `habit:<id>`, a
-  person by their id. A person can be a foundation, and so can self.
-- **On the graph.** Every habit is. A person is when their
-  `foundations` is set, even to `[]`; clearing it (`clear_fields`)
-  takes them off. They're in the **People** tab's `foundations` column.
-- **Checked when written**, for the habit or person written: a list of
-  ids, none twice, not itself, each an existing habit or person that
-  isn't deleted, and no cycle through habits and people
-  (rust/src/stores/foundations.rs). Each store checks against the
-  other's nodes.
-- **Deleting** a habit or person takes it out of every habit's and
-  person's foundations; restoring it doesn't put it back.
+- **Ids.** A foundation is a habit, as `habit:<id>`.
+- **People and circles** are on the graph by their habits (`person_id`
+  or `circle_id`): some of their traits, as they're scored -- a layer
+  of the relationship, being reliable for someone under being close to
+  them, say. A person can have several, and so can self.
+- **Checked when written**, for the habit written: a list of ids, none
+  twice, not itself, each an existing habit that isn't deleted, and no
+  cycle (rust/src/stores/foundations.rs).
+- **Deleting** a habit takes it out of every habit's foundations;
+  restoring it doesn't put it back. Deleting a person or circle deletes
+  their habits.
 
 A **spacing** part (`{"kind": "spacing", "action": <meals>,
 "max_gap_hours": 6, "exceptions": [{"actions": [<sleep>],

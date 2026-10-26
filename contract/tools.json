@@ -9099,7 +9099,7 @@
     }
   },
   {
-    "description": "The people the user spends time with: by default the active ones,\nnot archived (out of touch) or deleted ones. The user themself is\nalways first, with the id \"self\". Each has an id, name, context (what\ntells them apart from others of the same name, e.g. \"met at salsa\"),\nstatus, circles (the ids of the circles they're in) with their\ncircle_names, traits (which traits apply to them, and their own parts\nfor any; see create_person; without it, every active trait applies as\nget_traits has it) and facts: their summary of each trait fact (see\nget_traits), as {trait id: {fact id: summary}}, those they have\none of. Each also has cancelled_events: the events the user cancelled\nthat count against their follow-through, newest first -- when each was\nplanned, its actions, whether they were to be there (\"with\") or it was\nfor them (\"for\"), the follow-through parts it counted against, and\nwhat cancelled it. Each also has foundations: the habits (each as\n\"habit:<id>\") and people (by id) their relationship is built on, on\nthe user's habit graph -- a person with foundations, even none ([]),\nis on it; without, they aren't. Read-only.",
+    "description": "The people the user spends time with: by default the active ones,\nnot archived (out of touch) or deleted ones. The user themself is\nalways first, with the id \"self\". Each has an id, name, context (what\ntells them apart from others of the same name, e.g. \"met at salsa\"),\nstatus, circles (the ids of the circles they're in) with their\ncircle_names, traits (which traits apply to them, and their own parts\nfor any; see create_person; without it, every active trait applies as\nget_traits has it) and facts: their summary of each trait fact (see\nget_traits), as {trait id: {fact id: summary}}, those they have\none of. Each also has cancelled_events: the events the user cancelled\nthat count against their follow-through, newest first -- when each was\nplanned, its actions, whether they were to be there (\"with\") or it was\nfor them (\"for\"), the follow-through parts it counted against, and\nwhat cancelled it. A person is on the user's habit graph by their\nhabits (see create_habit). Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -9256,15 +9256,6 @@
                 "null"
               ]
             },
-            "foundations": {
-              "items": {
-                "type": "string"
-              },
-              "type": [
-                "array",
-                "null"
-              ]
-            },
             "circle_names": {
               "items": {
                 "type": "string"
@@ -9371,15 +9362,6 @@
           "additionalProperties": true,
           "type": [
             "object",
-            "null"
-          ]
-        },
-        "foundations": {
-          "items": {
-            "type": "string"
-          },
-          "type": [
-            "array",
             "null"
           ]
         },
@@ -9495,7 +9477,7 @@
     }
   },
   {
-    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]},\n\"part_scoring\": {trait id: scoring}, \"scoring\": scoring}, all\noptional -- the traits that apply to them (by default every active\none); parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}; how a trait's parts combine\nfor them, in place of the trait's scoring (weights by part id: their\nown parts' ids, if they have them); and how their traits combine into\ntheir score, in place of the scoring defaults' traits (weights by\ntrait id) -- each an aggregation (see get_scoring_defaults); and their\nown prompts for a trait's facts (see get_traits), {\"facts\": {trait\nid: {fact id: {\"summary_prompt\": {\"text\": ..., \"how\": \"replace\" or\n\"append\"}, \"log_prompt\": {...}}}}}, each optional -- \"replace\" (the\ndefault) keeps their summary by their text in place of the trait's,\n\"append\" by the trait's with theirs after it -- kept for a trait that\ndoesn't apply to them too, and let go of once the trait no longer has\nthe fact (when they're next saved); and\nfoundations (see\nget_people: habits as \"habit:<id>\", people by id; none of them\ndeleted, and never making a cycle). Active unless given a status. id\nis assigned. facts sets their trait facts' summaries (see get_people).\nReturns the person and their id as created_id.",
+    "description": "Add a person: a name, and optionally a context (what tells them\napart, e.g. \"met at salsa\" -- a name and context together must be\nunique, so give one when the name's taken), circles (circle ids, see\nget_circles) and traits:\n{\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]},\n\"part_scoring\": {trait id: scoring}, \"scoring\": scoring}, all\noptional -- the traits that apply to them (by default every active\none); parts replacing a trait's for them alone, each checked as a\ntrait's own (see get_traits): a person's own cadence, say,\n{\"parts\": {\"reliable\": [{\"kind\": \"count\", \"target\": 1,\n\"interval_days\": 21, \"noun\": \"visits\"}]}}; how a trait's parts combine\nfor them, in place of the trait's scoring (weights by part id: their\nown parts' ids, if they have them); and how their traits combine into\ntheir score, in place of the scoring defaults' traits (weights by\ntrait id) -- each an aggregation (see get_scoring_defaults); and their\nown prompts for a trait's facts (see get_traits), {\"facts\": {trait\nid: {fact id: {\"summary_prompt\": {\"text\": ..., \"how\": \"replace\" or\n\"append\"}, \"log_prompt\": {...}}}}}, each optional -- \"replace\" (the\ndefault) keeps their summary by their text in place of the trait's,\n\"append\" by the trait's with theirs after it -- kept for a trait that\ndoesn't apply to them too, and let go of once the trait no longer has\nthe fact (when they're next saved). Active unless given a status. id\nis assigned. facts sets their trait facts' summaries (see get_people).\nReturns the person and their id as created_id.",
     "inputSchema": {
       "properties": {
         "person": {
@@ -9568,15 +9550,6 @@
               "additionalProperties": true,
               "type": [
                 "object",
-                "null"
-              ]
-            },
-            "foundations": {
-              "items": {
-                "type": "string"
-              },
-              "type": [
-                "array",
                 "null"
               ]
             },
@@ -9730,15 +9703,6 @@
                 "null"
               ]
             },
-            "foundations": {
-              "items": {
-                "type": "string"
-              },
-              "type": [
-                "array",
-                "null"
-              ]
-            },
             "circle_names": {
               "items": {
                 "type": "string"
@@ -9782,7 +9746,7 @@
     }
   },
   {
-    "description": "Update a person by id (\"self\" for the user): their name, context,\nstatus (active; archived, out of touch; or deleted, shouldn't have\nexisted -- self is always active), circles (replaced whole, so send\nevery circle to keep), traits (replaced whole; see create_person) or\nfoundations (replaced whole; clear it to take them off the habit\ngraph). Omitted properties keep their value; list one in clear_fields\nto blank it instead. facts sets their summaries of the trait facts it\nnames ({trait id: {fact id: summary}}, each the whole summary; \"\" to\nclear one), as the user's own -- with no log -- and keeps the rest. A\nperson deleted leaves every habit's and person's foundations. Returns\nthe person as updated.",
+    "description": "Update a person by id (\"self\" for the user): their name, context,\nstatus (active; archived, out of touch; or deleted, shouldn't have\nexisted -- self is always active), circles (replaced whole, so send\nevery circle to keep) or traits (replaced whole; see create_person).\nOmitted properties keep their value; list one in clear_fields\nto blank it instead. facts sets their summaries of the trait facts it\nnames ({trait id: {fact id: summary}}, each the whole summary; \"\" to\nclear one), as the user's own -- with no log -- and keeps the rest. A\nperson deleted takes their habits with them. Returns the person as\nupdated.",
     "inputSchema": {
       "properties": {
         "person": {
@@ -9793,8 +9757,7 @@
             "enum": [
               "context",
               "circles",
-              "traits",
-              "foundations"
+              "traits"
             ],
             "type": "string"
           },
@@ -9873,15 +9836,6 @@
                 "null"
               ]
             },
-            "foundations": {
-              "items": {
-                "type": "string"
-              },
-              "type": [
-                "array",
-                "null"
-              ]
-            },
             "version": {
               "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
               "type": [
@@ -9944,15 +9898,6 @@
           "additionalProperties": true,
           "type": [
             "object",
-            "null"
-          ]
-        },
-        "foundations": {
-          "items": {
-            "type": "string"
-          },
-          "type": [
-            "array",
             "null"
           ]
         },
@@ -12355,7 +12300,7 @@
     }
   },
   {
-    "description": "The user's habits: by default the active ones, not archived (set\naside) or deleted ones. Each is about the user's events with one\naction, or with any action under one action group (action_id, with\nits action_path) -- or is a person's or circle's habit (person_id or\ncircle_id): some of their traits, as they're scored for them, on the\nhabit graph (see create_habit). An action's habit is rated by traits as a person is: its traits\nsay which apply (by default every active one) and give it its own\nparts -- its own rubrics -- for any (see create_habit). Each has an\nid, name, status and note (what it's for, and what doing it well\nlooks like). Each also has cancelled_events: the events the user\ncancelled that count against its follow-through, newest first, as a\nperson's (see get_people). Its events' judgments are kept under\n\"habit:<id>\", as a person's are under their id. Each also has\nfoundations: the habits (each as \"habit:<id>\") and people (by id)\nit's built on, on the user's habit graph. Read-only.",
+    "description": "The user's habits: by default the active ones, not archived (set\naside) or deleted ones. Each is about the user's events with one\naction, or with any action under one action group (action_id, with\nits action_path) -- or is a person's or circle's habit (person_id or\ncircle_id): some of their traits, as they're scored for them, on the\nhabit graph (see create_habit). An action's habit is rated by traits as a person is: its traits\nsay which apply (by default every active one) and give it its own\nparts -- its own rubrics -- for any (see create_habit). Each has an\nid, name, status and note (what it's for, and what doing it well\nlooks like). Each also has cancelled_events: the events the user\ncancelled that count against its follow-through, newest first, as a\nperson's (see get_people). Its events' judgments are kept under\n\"habit:<id>\", as a person's are under their id. Each also has\nfoundations: the habits (each as \"habit:<id>\") it's built on, on the\nuser's habit graph. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -12935,7 +12880,7 @@
     }
   },
   {
-    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") and people (by id) it's built on -- sleeping well under\nexercising, say; none of them deleted, and never making a cycle.\nA person's or circle's habit has a person_id or circle_id in place of\naction_id: it's some of their traits, scored as they are for them (a\ncircle's, its people's combined as the circle's scoring says) -- a\nlayer of the relationship on the habit graph, being reliable for\nSam under being close to them, say. Its traits take only \"select\"\n(the traits it's on; by default all that apply to them) and\n\"except\" (traits left out, though selected: those added later are\non it), and its events aren't judged for it: they're theirs. Its\nname is optional: without one it's named by them and its traits\n(\"Sam · Reliable\", \"Sam · except Reliable\"), and it loses its own\nwhen its traits or whose it is change, unless given another (given\nits default, it has none of its own: default_name lists it).\nA recurring goal's habit has a recurring_goal in place of action_id:\n{period: day | week | month, title?, priority?, expected_minutes?,\ndescription?, definition_of_done?, attribution_hints?, with_ids?,\nfor_ids?, rate_periods?} -- a goal for each period on the calendar\n(weeks run Sunday to Saturday), made by the server as each begins,\nonce the one before is done or obsolete, and tried again through the\nnext period when it's missed; titled by the habit's name unless it\ngives one. Its goals have its id and the period's start as theirs\n(\"<habit id>_2026-11-01\") and are its (habit_id); its events are\nthose tagged with them. It's scored by its goal rate -- the share of\nits last rate_periods periods (6 by default) with a goal done -- and\nby its traits only once given some (it's made with {\"select\": []}).\nArchived or deleted, its open goal is made obsolete.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
+    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") it's built on -- sleeping well under exercising, say;\nnone of them deleted, and never making a cycle.\nA person's or circle's habit has a person_id or circle_id in place of\naction_id: it's some of their traits, scored as they are for them (a\ncircle's, its people's combined as the circle's scoring says) -- a\nlayer of the relationship on the habit graph, being reliable for\nSam under being close to them, say. Its traits take only \"select\"\n(the traits it's on; by default all that apply to them) and\n\"except\" (traits left out, though selected: those added later are\non it), and its events aren't judged for it: they're theirs. Its\nname is optional: without one it's named by them and its traits\n(\"Sam · Reliable\", \"Sam · except Reliable\"), and it loses its own\nwhen its traits or whose it is change, unless given another (given\nits default, it has none of its own: default_name lists it).\nA recurring goal's habit has a recurring_goal in place of action_id:\n{period: day | week | month, title?, priority?, expected_minutes?,\ndescription?, definition_of_done?, attribution_hints?, with_ids?,\nfor_ids?, rate_periods?} -- a goal for each period on the calendar\n(weeks run Sunday to Saturday), made by the server as each begins,\nonce the one before is done or obsolete, and tried again through the\nnext period when it's missed; titled by the habit's name unless it\ngives one. Its goals have its id and the period's start as theirs\n(\"<habit id>_2026-11-01\") and are its (habit_id); its events are\nthose tagged with them. It's scored by its goal rate -- the share of\nits last rate_periods periods (6 by default) with a goal done -- and\nby its traits only once given some (it's made with {\"select\": []}).\nArchived or deleted, its open goal is made obsolete.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
     "inputSchema": {
       "properties": {
         "habit": {
@@ -13405,7 +13350,7 @@
     }
   },
   {
-    "description": "Update a habit by id: its name, action_id (an action's or a\ngroup's), person_id, circle_id or recurring_goal, status (active; archived, set aside; or deleted, shouldn't\nhave existed), note, traits or foundations (each replaced whole; see\ncreate_habit). Omitted properties keep their value; list one in\nclear_fields to blank it instead (a person's or circle's habit's name\nto go back to its default). A habit deleted leaves every habit's and\nperson's foundations; a person's or circle's habits go with them.\nReturns the habit as updated.",
+    "description": "Update a habit by id: its name, action_id (an action's or a\ngroup's), person_id, circle_id or recurring_goal, status (active; archived, set aside; or deleted, shouldn't\nhave existed), note, traits or foundations (each replaced whole; see\ncreate_habit). Omitted properties keep their value; list one in\nclear_fields to blank it instead (a person's or circle's habit's name\nto go back to its default). A habit deleted leaves every habit's\nfoundations; a person's or circle's habits go with them.\nReturns the habit as updated.",
     "inputSchema": {
       "properties": {
         "habit": {

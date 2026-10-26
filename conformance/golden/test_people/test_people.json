@@ -9,7 +9,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -18,7 +17,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
    "tool": "get_people"
   },
   {
@@ -45,7 +44,6 @@
        "what_matters": "music"
       }
      },
-     "foundations": null,
      "id": "co2yzn",
      "name": "Alex Example",
      "status": "active",
@@ -54,7 +52,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Alex Example\",\n    \"context\": \"met at salsa\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": {\n      \"thoughtful\": {\n        \"what_matters\": \"music\"\n      }\n    },\n    \"cancelled_events\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Alex Example\",\n    \"context\": \"met at salsa\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"facts\": {\n      \"thoughtful\": {\n        \"what_matters\": \"music\"\n      }\n    },\n    \"cancelled_events\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -72,7 +70,6 @@
      "circles": null,
      "context": "from work",
      "facts": null,
-     "foundations": null,
      "id": "3dnjav",
      "name": "Alex Example",
      "status": "active",
@@ -81,7 +78,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Alex Example\",\n    \"context\": \"from work\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Alex Example\",\n    \"context\": \"from work\",\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_person"
   },
   {
@@ -130,7 +127,6 @@
       "what_matters": "music"
      }
     },
-    "foundations": null,
     "id": "co2yzn",
     "name": "Alex Example",
     "status": "active",
@@ -138,7 +134,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex Example\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {\n    \"thoughtful\": {\n      \"what_matters\": \"music\"\n    }\n  },\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex Example\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {\n    \"thoughtful\": {\n      \"what_matters\": \"music\"\n    }\n  },\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -151,7 +147,6 @@
     "circles": null,
     "context": null,
     "facts": {},
-    "foundations": null,
     "id": "self",
     "name": "Me",
     "status": "active",
@@ -159,7 +154,7 @@
     "version": 0
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
    "tool": "get_person"
   },
   {
@@ -190,7 +185,6 @@
     "circles": null,
     "context": "met at salsa",
     "facts": {},
-    "foundations": null,
     "id": "co2yzn",
     "name": "Alex E.",
     "status": "active",
@@ -198,7 +192,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "update_person"
   },
   {
@@ -241,7 +235,6 @@
     "circles": null,
     "context": "from work",
     "facts": null,
-    "foundations": null,
     "id": "3dnjav",
     "name": "Alex Example",
     "status": "archived",
@@ -249,7 +242,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_person"
   },
   {
@@ -261,7 +254,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -274,7 +266,6 @@
      "circles": null,
      "context": "met at salsa",
      "facts": {},
-     "foundations": null,
      "id": "co2yzn",
      "name": "Alex E.",
      "status": "active",
@@ -283,7 +274,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "get_people"
   },
   {
@@ -300,7 +291,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -313,7 +303,6 @@
      "circles": null,
      "context": "met at salsa",
      "facts": {},
-     "foundations": null,
      "id": "co2yzn",
      "name": "Alex E.",
      "status": "active",
@@ -326,7 +315,6 @@
      "circles": null,
      "context": "from work",
      "facts": {},
-     "foundations": null,
      "id": "3dnjav",
      "name": "Alex Example",
      "status": "archived",
@@ -335,7 +323,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}\n{\n  \"id\": \"co2yzn\",\n  \"name\": \"Alex E.\",\n  \"context\": \"met at salsa\",\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Alex Example\",\n  \"context\": \"from work\",\n  \"status\": \"archived\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "get_people"
   },
   {
@@ -385,7 +373,6 @@
       "what_matters": "time well spent"
      }
     },
-    "foundations": null,
     "id": "self",
     "name": "Me",
     "status": "active",
@@ -393,7 +380,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {\n    \"thoughtful\": {\n      \"what_matters\": \"time well spent\"\n    }\n  },\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {\n    \"thoughtful\": {\n      \"what_matters\": \"time well spent\"\n    }\n  },\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "update_person"
   }
  ],
@@ -694,7 +681,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -1714,7 +1700,6 @@
         "active",
         "",
         "",
-        "",
         "1"
        ]
       ]
@@ -1783,7 +1768,6 @@
         "active",
         "",
         "",
-        "",
         "1"
        ]
       ]
@@ -1816,7 +1800,6 @@
         "Alex E.",
         "met at salsa",
         "active",
-        "",
         "",
         "",
         "2"
@@ -1887,7 +1870,6 @@
         "archived",
         "",
         "",
-        "",
         "2"
        ]
       ]
@@ -1920,7 +1902,6 @@
         "Me",
         "",
         "active",
-        "",
         "",
         "",
         "1"
@@ -2353,7 +2334,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -2361,7 +2341,6 @@
         "Alex E.",
         "met at salsa",
         "active",
-        "",
         "",
         "",
         "2"
@@ -2373,7 +2352,6 @@
         "archived",
         "",
         "",
-        "",
         "2"
        ],
        [
@@ -2381,7 +2359,6 @@
         "Me",
         "",
         "active",
-        "",
         "",
         "",
         "1"

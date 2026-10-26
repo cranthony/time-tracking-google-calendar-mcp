@@ -155,7 +155,6 @@
      "circles": null,
      "context": null,
      "facts": {},
-     "foundations": null,
      "id": "self",
      "name": "Me",
      "status": "active",
@@ -164,7 +163,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
+   "text": "{\n  \"id\": \"self\",\n  \"name\": \"Me\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 0\n}",
    "tool": "get_people"
   },
   {
@@ -835,7 +834,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -4920,7 +4918,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]

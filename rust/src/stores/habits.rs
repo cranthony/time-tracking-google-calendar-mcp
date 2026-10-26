@@ -10,7 +10,7 @@ use crate::contract::{wire_text, RowItem, Schema};
 use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::HABITS;
 use crate::stores::cancellations::CancelledEvent;
-use crate::stores::foundations::{self, foundation_problems, Node, NodesFn, OnGraph};
+use crate::stores::foundations::{self, foundation_problems, Node, OnGraph};
 use crate::stores::actions::{Action, ActionStatus};
 use crate::stores::groups::{repr_or_none, set, str_or_none, GroupTree};
 use crate::stores::habit_goals::{self, RecurringGoal, Template};
@@ -195,20 +195,12 @@ pub struct Habits {
     sheet: RowSheet,
     scopes: Option<ScopesFn>,
     trait_ids: Option<TraitIds>,
-    people: Option<NodesFn>,
     targets: Option<TargetsFn>,
 }
 
 impl Habits {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str, scopes: Option<ScopesFn>, trait_ids: Option<TraitIds>) -> anyhow::Result<Habits> {
-        Ok(Habits { sheet: RowSheet::ensure(sheets, spreadsheet_id, HABITS.0, HABITS.1, HABIT_ROW, &["id", "name"])?, scopes, trait_ids, people: None, targets: None })
-    }
-
-    /// It, checking foundations against `people`'s nodes too: the people
-    /// on the habit graph.
-    pub fn with_people(mut self, people: NodesFn) -> Habits {
-        self.people = Some(people);
-        self
+        Ok(Habits { sheet: RowSheet::ensure(sheets, spreadsheet_id, HABITS.0, HABITS.1, HABIT_ROW, &["id", "name"])?, scopes, trait_ids, targets: None })
     }
 
     /// It, checking a person's or circle's habit against `targets`, and
@@ -403,11 +395,7 @@ impl Habits {
         }
         if let Some(habit) = habits.iter().find(|h| h.id.as_deref() == Some(changed)) {
             if let Some(given) = &habit.foundations {
-                let mut nodes = habit_nodes(habits);
-                if let Some(people) = &self.people {
-                    nodes.extend(people()?);
-                }
-                for p in foundation_problems(&subject_id(changed), &json!(given), &nodes) {
+                for p in foundation_problems(&subject_id(changed), &json!(given), &habit_nodes(habits)) {
                     problems.push(format!("habit {changed}'s {p}"));
                 }
             }
