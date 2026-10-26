@@ -42,7 +42,8 @@ fn the_patch_carries_only_what_changed() {
     setup.commit(&id);
 
     let email = setup.patch("e1");
-    assert!(email.get("summary").is_none() && email.get("description").is_none(), "{email}");
+    assert!(email.get("summary").is_none() && email.get("location").is_none(), "{email}");
+    assert_eq!(email["description"], "Notes:\n- 09:05 email\n- 10:20 report");
 }
 
 #[test]

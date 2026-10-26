@@ -189,6 +189,6 @@ fn a_rejected_plan_can_be_redone_with_a_rename_and_a_note() {
 
     let email = change(&revised, "e1").after.clone().unwrap();
     assert_eq!(email.summary.as_deref(), Some("Deep work"));
-    assert_eq!(email.description.as_deref(), Some("Notes:\n- phone rang"));
+    assert_eq!(email.description.as_deref(), Some("Notes:\n- 09:05 email\n- 10:20 report\n- phone rang"));
     assert!(setup.calendar_writes().is_empty());
 }
