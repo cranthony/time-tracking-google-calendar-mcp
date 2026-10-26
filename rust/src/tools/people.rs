@@ -203,7 +203,18 @@ pub enum HabitField {
 /// max_gap_hours left, stopped during an exception's events and, after
 /// one, set to its reset_hours left (if given) -- each day scored as
 /// the share of its time outside exceptions that the clock hadn't run
-/// out. continuity, count, duration and follow_through can take an
+/// out; "schedule" ({"kind": "schedule", "action": "<work>", "from":
+/// "10:00", "to": "18:00", "measure": "covered", "days": ["mon", "tue",
+/// "wed", "thu", "fri"], "window_days": 7, "slack_minutes": 60}): when
+/// its action's events happen -- each day it's on (days, weekdays "mon"
+/// to "sun", by default every day) scored by its window from "from" to
+/// "to" ("HH:MM" in the calendar's time zone; "to" before "from" crosses
+/// midnight) as its measure says: "starts" 100 if an event starts in it,
+/// else 0; "ends" the same for one ending in it; "covered" the share of
+/// it the events cover, slack_minutes (only for covered; 0 by default)
+/// forgiven -- and the part's score of a day the mean of the days it's
+/// on in the window_days (7 by default) ending with it.
+/// continuity, count, duration and follow_through can take an
 /// "action" (an action or action group id) to count only its events. A
 /// trait's facts are what it keeps about each person it applies to, for
 /// its judgments: each {"id", "name", "summary_prompt", "log_prompt"?} --

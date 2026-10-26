@@ -123,6 +123,21 @@ the share of its time outside exceptions that the clock hadn't run
 out. The server only checks its shape (and that its actions exist);
 the app scores it.
 
+A **schedule** part (`{"kind": "schedule", "action": <work>, "from":
+"10:00", "to": "18:00", "measure": "covered", "days": ["mon", "tue",
+"wed", "thu", "fri"], "window_days": 7, "slack_minutes": 60}`)
+measures when something happens, not how much. Each day it's on
+(`days`, weekdays `mon`..`sun`; every day by default) is scored by its
+window, `from` to `to` in the calendar's time zone (`to` before `from`
+crosses midnight -- bedtime 22:30 to 00:30), as its `measure` says:
+`starts`, 100 if an event of `action` starts in it, else 0; `ends`, the
+same for one ending in it; `covered`, the share of it the events cover,
+with `slack_minutes` (0 by default, and only for `covered`) forgiven
+first -- min(100, covered / (length − slack)). The part's score of a
+day is the mean of the days it's on in the `window_days` (7 by
+default) ending with it; with none, it has nothing to rate it by. As
+with spacing, the server only checks its shape; the app scores it.
+
 ## The app
 
 The app scores habits as it scores people, from the events, their
