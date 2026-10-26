@@ -2,7 +2,7 @@
 //! action group and rated by traits as a person is, in the Habits tab --
 //! or a person's or circle's habit: some of their traits, as they're
 //! scored, on the habit graph -- or a recurring goal's: a goal for each
-//! day, week or month (see habit_goals).
+//! day, week, month, quarter or year (see habit_goals).
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;

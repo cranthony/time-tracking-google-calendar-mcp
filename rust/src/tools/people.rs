@@ -483,16 +483,17 @@ pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError
 /// when its traits or whose it is change, unless given another (given
 /// its default, it has none of its own: default_name lists it).
 /// A recurring goal's habit has a recurring_goal in place of action_id:
-/// {period: day | week | month, title?, priority?, expected_minutes?,
+/// {period: day | week | month | quarter | year, title?, priority?, expected_minutes?,
 /// description?, definition_of_done?, attribution_hints?, with_ids?,
 /// for_ids?, rate_periods?} -- a goal for each period on the calendar
-/// (weeks run Sunday to Saturday), made by the server as each begins,
+/// (weeks run Sunday to Saturday, quarters from January), made by the server as each begins,
 /// once the one before is done or obsolete, and tried again through the
 /// next period when it's missed; titled by the habit's name unless it
 /// gives one. Its goals have its id and the period's start as theirs
 /// ("<habit id>_2026-11-01") and are its (habit_id); its events are
 /// those tagged with them. It's scored by its goal rate -- the share of
-/// its last rate_periods periods (6 by default) with a goal done -- and
+/// its last rate_periods periods (by default 7 days, 6 weeks, 4 months,
+/// 4 quarters or 2 years) with a goal done -- and
 /// by its traits only once given some (it's made with {"select": []}).
 /// Archived or deleted, its open goal is made obsolete.
 /// Active unless given a status. id is assigned. Returns the habit and
