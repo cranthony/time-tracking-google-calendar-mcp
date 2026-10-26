@@ -119,13 +119,14 @@
      "name": "Eat together",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": null,
      "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_habit"
   },
   {
@@ -1165,13 +1166,14 @@
      "name": "Eat together",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": null,
      "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 92b5a6b5e7e4r1\"\n    }\n  ],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 92b5a6b5e7e4r1\"\n    }\n  ],\n  \"version\": 1\n}",
    "tool": "get_habits"
   },
   {
@@ -2594,6 +2596,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -2651,6 +2654,7 @@
         "rs21so",
         "Eat together",
         "3dnjav",
+        "",
         "",
         "",
         "active",
@@ -3438,6 +3442,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]
@@ -4891,6 +4896,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -4901,6 +4907,7 @@
         "rs21so",
         "Eat together",
         "3dnjav",
+        "",
         "",
         "",
         "active",
@@ -5037,6 +5044,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]

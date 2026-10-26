@@ -3,7 +3,8 @@
 //! sub-goal is a piece of reaching its parent -- and events are tagged
 //! with goals (an event's goal shares, kept on the event; see
 //! `GoalShare`), apart from their actions. Goals aren't tied to actions,
-//! habits, people or places.
+//! people or places; a habit's recurring goal makes one goal for each of
+//! its periods (see habit_goals), the habit's.
 //!
 //! The old goals (replaced by actions) left a Goals tab and events'
 //! goal_ids behind; these are kept apart from them: their own tab, and
@@ -16,6 +17,7 @@ use crate::py;
 use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::GOALS;
 use crate::stores::groups::{set, str_or_none};
+use crate::stores::habit_goals::{self, Template};
 use crate::stores::locations::dedup;
 use crate::stores::people::SELF_ID;
 use anyhow::bail;
@@ -300,6 +302,9 @@ pub struct Goal {
     /// What it waits for before it's activated, while it's inactive (see
     /// ActivateWhen).
     pub activate_when: Option<ActivateWhen>,
+    /// The habit it was made from, for one of its periods (see
+    /// habit_goals): set by the server, never given.
+    pub habit_id: Option<String>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -334,6 +339,9 @@ pub struct ListedGoal {
     pub with_ids: Option<Vec<String>>,
     pub for_ids: Option<Vec<String>>,
     pub path: Vec<String>,
+    /// The habit whose recurring goal it is, for one of its periods (its
+    /// id is the habit's and the period's start: "<habit id>_2026-11-01").
+    pub habit_id: Option<String>,
     pub started_at: Option<DateTimeText>,
     pub closed_at: Option<DateTimeText>,
     pub version: Option<i64>,
@@ -779,20 +787,39 @@ fn shown(at: NaiveDateTime) -> String {
 /// Every person's id, to check the people goals name against.
 pub type PersonIds = Arc<dyn Fn() -> anyhow::Result<Vec<String>> + Send + Sync>;
 
+/// The active habits with a recurring goal, to make their goals from,
+/// and the calendar's time zone, their periods' -- none without any.
+pub type TemplatesFn = Arc<dyn Fn() -> anyhow::Result<Option<(Vec<Template>, Tz)>> + Send + Sync>;
+
+/// Where the habits are, read with the goals, and their templates.
+#[derive(Clone)]
+pub struct Renewal {
+    pub habits_tab: TabRange,
+    pub templates: TemplatesFn,
+}
+
 #[derive(Clone)]
 pub struct Goals {
     sheet: RowSheet,
     people: Option<PersonIds>,
+    renewal: Option<Renewal>,
 }
 
 impl Goals {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str) -> anyhow::Result<Goals> {
-        Ok(Goals { sheet: RowSheet::ensure(sheets, spreadsheet_id, GOALS.0, GOALS.1, GOAL_ROW, &["id", "title"])?, people: None })
+        Ok(Goals { sheet: RowSheet::ensure(sheets, spreadsheet_id, GOALS.0, GOALS.1, GOAL_ROW, &["id", "title"])?, people: None, renewal: None })
     }
 
     /// It, checking the people goals name against `people`.
     pub fn with_people(mut self, people: PersonIds) -> Goals {
         self.people = Some(people);
+        self
+    }
+
+    /// It, making the goals of `renewal`'s habits as their periods come
+    /// (see habit_goals::renew).
+    pub fn with_renewal(mut self, renewal: Renewal) -> Goals {
+        self.renewal = Some(renewal);
         self
     }
 
@@ -804,9 +831,18 @@ impl Goals {
         self.sheet.prefetch(ranges)
     }
 
-    /// Every goal, as the tab keeps it.
+    /// Every goal, as the tab keeps it -- with each habit's goal for the
+    /// period under way made, or its missed one tried again (see
+    /// habit_goals::renew). A read doesn't write those; the next change
+    /// of goals does, as they are here -- made the same till then.
     pub fn all(&self) -> anyhow::Result<Vec<Goal>> {
-        Ok(upgraded(self.sheet.read_items::<Goal>()?))
+        let Some(renewal) = &self.renewal else { return Ok(upgraded(self.sheet.read_items::<Goal>()?)) };
+        self.sheet.prefetch(&[self.sheet.whole_tab(), renewal.habits_tab.clone()])?;
+        let mut goals = upgraded(self.sheet.read_items::<Goal>()?);
+        if let Some((templates, zone)) = (renewal.templates)()? {
+            habit_goals::renew(&mut goals, &templates, &zone, local(&crate::determinism::now(), &zone));
+        }
+        Ok(goals)
     }
 
     /// Every goal as it stands now: those whose activate_when is ready
@@ -1153,6 +1189,11 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
         if let Some(priority) = goal.priority.filter(|p| *p < 0) {
             problems.push((me.clone(), format!("{name}'s priority must be 0 or more, not {priority}")));
         }
+        // Only a habit's goal is named for it, and always.
+        let named_for = goal.id.as_deref().and_then(habit_goals::habit_of_id);
+        if named_for != set(goal.habit_id.as_deref()) {
+            problems.push((me.clone(), format!("{name} is a habit's goal exactly when its id is \"<habit id>_<its period's start>\": the server makes them")));
+        }
         if let Some(minutes) = goal.expected_minutes.filter(|m| *m <= 0) {
             problems.push((me.clone(), format!("{name}'s expected_minutes must be more than 0, not {minutes}")));
         }
@@ -1459,6 +1500,7 @@ pub fn listed(goal: &Goal, goals: &[Goal], zone: &Tz) -> ListedGoal {
         with_ids: goal.with_ids.clone(),
         for_ids: goal.for_ids.clone(),
         path: path(goal, goals),
+        habit_id: goal.habit_id.clone(),
         started_at: started_at(goal).cloned(),
         closed_at: closed_at(goal).cloned(),
         version: goal.version,

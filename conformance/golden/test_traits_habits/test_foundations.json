@@ -88,13 +88,14 @@
      "name": "Sleep well",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": null,
      "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Sleep well\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"sleep\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Sleep well\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"sleep\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_habit"
   },
   {
@@ -136,6 +137,7 @@
      "name": "Eat well",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": {
       "parts": {
@@ -161,7 +163,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat well\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"parts\": {\n        \"reliable\": [\n          {\n            \"id\": \"onvtja\",\n            \"kind\": \"spacing\",\n            \"action\": \"co2yzn\",\n            \"max_gap_hours\": 6,\n            \"exceptions\": [\n              {\n                \"actions\": [\n                  \"3dnjav\"\n                ],\n                \"reset_hours\": 1\n              }\n            ]\n          }\n        ]\n      }\n    },\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat well\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"parts\": {\n        \"reliable\": [\n          {\n            \"id\": \"onvtja\",\n            \"kind\": \"spacing\",\n            \"action\": \"co2yzn\",\n            \"max_gap_hours\": 6,\n            \"exceptions\": [\n              {\n                \"actions\": [\n                  \"3dnjav\"\n                ],\n                \"reset_hours\": 1\n              }\n            ]\n          }\n        ]\n      }\n    },\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_habit"
   },
   {
@@ -222,13 +224,14 @@
      "name": "Exercise",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": null,
      "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"htmn3w\",\n    \"name\": \"Exercise\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:a0g0jc\",\n      \"habit:rs21so\"\n    ],\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"htmn3w\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"htmn3w\",\n    \"name\": \"Exercise\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:a0g0jc\",\n      \"habit:rs21so\"\n    ],\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"htmn3w\"\n}",
    "tool": "create_habit"
   },
   {
@@ -352,12 +355,13 @@
     "name": "Exercise",
     "note": null,
     "person_id": null,
+    "recurring_goal": null,
     "status": "deleted",
     "traits": null,
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"htmn3w\",\n  \"name\": \"Exercise\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"deleted\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:a0g0jc\",\n    \"habit:rs21so\"\n  ],\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"htmn3w\",\n  \"name\": \"Exercise\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"deleted\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:a0g0jc\",\n    \"habit:rs21so\"\n  ],\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_habit"
   },
   {
@@ -1352,6 +1356,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -1588,6 +1593,7 @@
         "3dnjav",
         "",
         "",
+        "",
         "active",
         "",
         "",
@@ -1625,6 +1631,7 @@
         "co2yzn",
         "",
         "",
+        "",
         "active",
         "",
         "{\"parts\":{\"reliable\":[{\"id\":\"onvtja\",\"kind\":\"spacing\",\"action\":\"co2yzn\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"3dnjav\"],\"reset_hours\":1}]}]}}",
@@ -1660,6 +1667,7 @@
         "htmn3w",
         "Exercise",
         "co2yzn",
+        "",
         "",
         "",
         "active",
@@ -2035,6 +2043,7 @@
         "htmn3w",
         "Exercise",
         "co2yzn",
+        "",
         "",
         "",
         "deleted",
@@ -2476,6 +2485,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -2486,6 +2496,7 @@
         "a0g0jc",
         "Sleep well",
         "3dnjav",
+        "",
         "",
         "",
         "active",
@@ -2500,6 +2511,7 @@
         "co2yzn",
         "",
         "",
+        "",
         "active",
         "",
         "{\"parts\":{\"reliable\":[{\"id\":\"onvtja\",\"kind\":\"spacing\",\"action\":\"co2yzn\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"3dnjav\"],\"reset_hours\":1}]}]}}",
@@ -2510,6 +2522,7 @@
         "htmn3w",
         "Exercise",
         "co2yzn",
+        "",
         "",
         "",
         "deleted",

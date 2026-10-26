@@ -340,7 +340,11 @@ pub struct ContextEvent {
 /// outermost first; `with_ids` the people it's done with and `for_ids`
 /// those it's done for. `due_in_window` says an open one's deadline fell
 /// inside the window (its start to now): one to propose missed
-/// (`goal_changes`) unless a note or event shows it done.
+/// (`goal_changes`) unless a note or event shows it done. One whose id
+/// is "<habit id>_<a date>" is a habit's goal for the period starting
+/// then (a day, a week or a month, due at its end): tag every event that
+/// works toward it, done or not, and settle it as any other -- the server
+/// makes the next period's, or tries a missed one again for it.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ContextGoal {
     pub id: String,

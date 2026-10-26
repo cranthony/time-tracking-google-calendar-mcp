@@ -502,6 +502,19 @@ pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError
 /// ("Sam · Reliable", "Sam · except Reliable"), and it loses its own
 /// when its traits or whose it is change, unless given another (given
 /// its default, it has none of its own: default_name lists it).
+/// A recurring goal's habit has a recurring_goal in place of action_id:
+/// {period: day | week | month, title?, priority?, expected_minutes?,
+/// description?, definition_of_done?, attribution_hints?, with_ids?,
+/// for_ids?, rate_periods?} -- a goal for each period on the calendar
+/// (weeks run Sunday to Saturday), made by the server as each begins,
+/// once the one before is done or obsolete, and tried again through the
+/// next period when it's missed; titled by the habit's name unless it
+/// gives one. Its goals have its id and the period's start as theirs
+/// ("<habit id>_2026-11-01") and are its (habit_id); its events are
+/// those tagged with them. It's scored by its goal rate -- the share of
+/// its last rate_periods periods (6 by default) with a goal done -- and
+/// by its traits only once given some (it's made with {"select": []}).
+/// Archived or deleted, its open goal is made obsolete.
 /// Active unless given a status. id is assigned. Returns the habit and
 /// its id as created_id.
 #[tool(writes)]
@@ -512,7 +525,7 @@ pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> 
 }
 
 /// Update a habit by id: its name, action_id (an action's or a
-/// group's), person_id or circle_id, status (active; archived, set aside; or deleted, shouldn't
+/// group's), person_id, circle_id or recurring_goal, status (active; archived, set aside; or deleted, shouldn't
 /// have existed), note, traits or foundations (each replaced whole; see
 /// create_habit). Omitted properties keep their value; list one in
 /// clear_fields to blank it instead (a person's or circle's habit's name
@@ -528,7 +541,28 @@ pub fn update_habit(app: &App, habit: Habit, clear_fields: Option<Vec<HabitField
     if updated.status == Some(Status::Deleted) {
         app.people()?.drop_foundation(&subject_id(updated.id.as_deref().unwrap_or("None")))?;
     }
+    if updated.status != Some(Status::Active) && updated.recurring_goal.is_some() {
+        retire_goals(app, updated.id.as_deref().unwrap_or_default())?;
+    }
     Ok(updated)
+}
+
+/// The open goal of habit `habit_id` (archived or deleted) made
+/// obsolete: no more are made for it.
+fn retire_goals(app: &App, habit_id: &str) -> Result<(), ToolError> {
+    use crate::stores::goals::{Goal, GoalEdit, GoalStatus};
+    let zone = app.calendar_client()?.get_time_zone()?;
+    let goals = app.goals()?;
+    let (all, _) = goals.current(&zone)?;
+    let edits: Vec<GoalEdit> = all
+        .iter()
+        .filter(|g| g.habit_id.as_deref() == Some(habit_id) && g.status.is_some_and(|s| !s.is_closed()))
+        .map(|g| GoalEdit { goal: Goal { id: g.id.clone(), status: Some(GoalStatus::Obsolete), version: Some(g.version.unwrap_or(0)), ..Goal::default() }, clear_fields: Vec::new() })
+        .collect();
+    if !edits.is_empty() {
+        goals.change_goals(&[], &edits, &[], &zone).map_err(refused)?;
+    }
+    Ok(())
 }
 
 /// How scores combine wherever nothing says otherwise -- the defaults the

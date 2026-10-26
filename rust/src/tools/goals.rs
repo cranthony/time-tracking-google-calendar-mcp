@@ -111,6 +111,7 @@ impl From<GoalInput> for Goal {
             for_ids: input.for_ids,
             deadline_rule,
             activate_when: input.activate_when,
+            habit_id: None,
             version: input.version,
         }
     }

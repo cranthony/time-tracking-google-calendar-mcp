@@ -4765,6 +4765,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -5185,6 +5186,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]
@@ -7329,6 +7331,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -7478,6 +7481,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]

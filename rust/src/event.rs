@@ -42,6 +42,27 @@ pub fn is_person_key(key: &str) -> bool {
     key.starts_with(&format!("{PREFIX}person-"))
 }
 
+/// The private property each habit an event's goal shares are for has
+/// on it -- a share of one of its recurring goal's goals -- so Calendar
+/// can list its events, as a person's.
+pub fn habit_key(habit_id: &str) -> String {
+    format!("{PREFIX}habit-{habit_id}")
+}
+
+/// Whether `key` is a habit's index property.
+pub fn is_habit_key(key: &str) -> bool {
+    key.starts_with(&format!("{PREFIX}habit-"))
+}
+
+/// The habits' index properties `shares` call for, by key: a habit's
+/// goal names it in its id.
+pub fn habit_properties(shares: &[crate::stores::goals::GoalShare]) -> Vec<String> {
+    use crate::stores::shares::Share;
+    let mut keys: Vec<String> = shares.iter().filter_map(|s| crate::stores::habit_goals::habit_of_id(s.id())).map(habit_key).collect();
+    keys.dedup();
+    keys
+}
+
 /// The index properties `facts` call for, by key.
 pub fn person_properties(facts: &Facts) -> Vec<String> {
     facts.people().into_iter().filter(|id| id != "self").map(|id| person_key(&id)).collect()
@@ -243,6 +264,11 @@ impl Event {
         if let Some(shares) = &self.goals {
             let text = if shares.is_empty() { None } else { Some(shares_text(shares)) };
             set(&mut private, format!("{PREFIX}goal_shares"), text);
+            // Those it no longer names are removed as it's written (see
+            // CalendarClient::update_event_request).
+            for key in habit_properties(shares) {
+                set(&mut private, key, Some(PERSON_INDEXED.into()));
+            }
         }
         if let Some(facts) = &self.facts {
             let text = if facts.is_empty() { None } else { Some(facts.to_json()) };

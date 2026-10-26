@@ -114,13 +114,14 @@
      "name": "Eat slowly",
      "note": "no screens",
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": null,
      "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Eat slowly\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"status\": \"active\",\n    \"note\": \"no screens\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Eat slowly\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": \"no screens\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_habit"
   },
   {
@@ -1086,12 +1087,13 @@
     "name": "Eat slowly",
     "note": "no screens",
     "person_id": null,
+    "recurring_goal": null,
     "status": "archived",
     "traits": null,
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Eat slowly\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"archived\",\n  \"note\": \"no screens\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Eat slowly\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"archived\",\n  \"note\": \"no screens\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_habit"
   },
   {
@@ -2223,6 +2225,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -2280,6 +2283,7 @@
         "a0g0jc",
         "Eat slowly",
         "co2yzn",
+        "",
         "",
         "",
         "active",
@@ -3028,6 +3032,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]
@@ -3508,6 +3513,7 @@
         "a0g0jc",
         "Eat slowly",
         "co2yzn",
+        "",
         "",
         "",
         "archived",
@@ -4333,6 +4339,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -4343,6 +4350,7 @@
         "a0g0jc",
         "Eat slowly",
         "co2yzn",
+        "",
         "",
         "",
         "archived",
@@ -4479,6 +4487,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]

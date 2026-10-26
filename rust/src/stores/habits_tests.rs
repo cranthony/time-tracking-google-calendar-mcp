@@ -305,3 +305,34 @@ fn a_persons_habits_go_with_them() {
     let of = |id: &str| all.iter().find(|h| h.id.as_deref() == Some(id)).unwrap().clone();
     assert_eq!((of(&sams).status, of(&walk).foundations), (Some(Status::Deleted), Some(vec![])));
 }
+
+#[test]
+fn a_recurring_goals_habit_needs_no_action_and_is_about_it_alone() {
+    let f = fixture(Some(strings(&["reliable"])));
+    let _held = WRITE_LOCK.hold();
+
+    let made = f.habits.create_habit(&habit(json!({"name": "Call Mom", "recurring_goal": {"period": "week", "rate_periods": 4}}))).unwrap().habit;
+
+    assert_eq!(made.action_id, None);
+    assert_eq!(json_of(&made.recurring_goal), json!({"period": "week", "rate_periods": 4}));
+    // Scored by its goal rate alone till it's given traits.
+    assert_eq!(made.traits.map(Value::Object), Some(json!({"select": []})));
+    let templates = f.habits.templates().unwrap();
+    assert_eq!(templates.len(), 1);
+    assert_eq!((templates[0].habit_id.as_str(), templates[0].name.as_str()), (made.id.as_deref().unwrap(), "Call Mom"));
+    refused(f.habits.create_habit(&habit(json!({"name": "Both", "action_id": "walk", "recurring_goal": {"period": "week"}}))), "is about one thing");
+    refused(f.habits.create_habit(&habit(json!({"name": "When", "recurring_goal": {}}))), "recurring_goal needs a period");
+    refused(f.habits.create_habit(&habit(json!({"name": "Neither"}))), "circle_id or recurring_goal");
+}
+
+#[test]
+fn only_active_habits_make_goals() {
+    let f = fixture(None);
+    let _held = WRITE_LOCK.hold();
+    let id = f.habits.create_habit(&habit(json!({"name": "Call Mom", "recurring_goal": {"period": "week"}}))).unwrap().created_id;
+    f.habits.create_habit(&habit(json!({"name": "Guitar", "action_id": "guitar"}))).unwrap();
+
+    assert_eq!(f.habits.templates().unwrap().len(), 1);
+    f.habits.update_habit(&habit(json!({"id": id, "status": "archived"})), &[]).unwrap();
+    assert!(f.habits.templates().unwrap().is_empty());
+}

@@ -260,6 +260,13 @@ fn with(event: &Event, person_id: &str) -> bool {
     facts.with().iter().any(|p| p == person_id) || facts.for_().iter().any(|p| p == person_id)
 }
 
+/// Whether `event` is for one of habit `habit_id`'s recurring goal's
+/// goals: has a share of one.
+fn for_habit(event: &Event, habit_id: &str) -> bool {
+    use crate::stores::shares::Share;
+    event.goals.as_deref().unwrap_or_default().iter().any(|s| crate::stores::habit_goals::habit_of_id(s.id()) == Some(habit_id))
+}
+
 fn judgeable(event: &Event) -> bool {
     !event.is_cancelled() && event.facts.as_ref().is_some_and(|f| !f.is_empty())
 }
@@ -297,6 +304,8 @@ impl Subjects {
 
     fn part_of(&self, tree: Option<&ActionTree>, event: &Event, subject: &str) -> bool {
         match self.scope(subject) {
+            // A recurring goal's habit: the events for its goals.
+            Some(Value::Object(scope)) => scope.get("habit").and_then(Value::as_str).is_some_and(|habit| for_habit(event, habit)),
             Some(scope) => !of_action(std::slice::from_ref(event), Some(scope), tree).is_empty(),
             None => with(event, subject),
         }
@@ -333,8 +342,13 @@ impl Judging {
         let mut scopes: Vec<(String, Value)> = Vec::new();
         if let Some(store) = &self.habits {
             for habit in store.all()? {
-                let (Some(id), Some(action_id)) = (habit.id.clone().filter(|i| !i.is_empty()), habit.action_id.clone().filter(|a| !a.is_empty())) else {
-                    continue;
+                let Some(id) = habit.id.clone().filter(|i| !i.is_empty()) else { continue };
+                // An action's habit, its action's events; a recurring
+                // goal's, its goals'.
+                let scope = match (habit.action_id.clone().filter(|a| !a.is_empty()), &habit.recurring_goal) {
+                    (Some(action_id), _) => Value::String(action_id),
+                    (None, Some(_)) => json!({"habit": id}),
+                    (None, None) => continue,
                 };
                 if habit.status != Some(crate::stores::people::Status::Active) {
                     continue;
@@ -353,8 +367,8 @@ impl Judging {
                     },
                 );
                 match scopes.iter_mut().find(|(k, _)| *k == key) {
-                    Some(slot) => slot.1 = Value::String(action_id),
-                    None => scopes.push((key, Value::String(action_id))),
+                    Some(slot) => slot.1 = scope,
+                    None => scopes.push((key, scope)),
                 }
             }
         }

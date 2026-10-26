@@ -1,7 +1,8 @@
 //! Habits: what the user wants to do well, each scoped to one action or
 //! action group and rated by traits as a person is, in the Habits tab --
 //! or a person's or circle's habit: some of their traits, as they're
-//! scored, on the habit graph.
+//! scored, on the habit graph -- or a recurring goal's: a goal for each
+//! day, week or month (see habit_goals).
 
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
@@ -12,6 +13,7 @@ use crate::stores::cancellations::CancelledEvent;
 use crate::stores::foundations::{self, foundation_problems, Node, NodesFn, OnGraph};
 use crate::stores::actions::{Action, ActionStatus};
 use crate::stores::groups::{repr_or_none, set, str_or_none, GroupTree};
+use crate::stores::habit_goals::{self, RecurringGoal, Template};
 use crate::stores::locations::dedup;
 use crate::stores::people::{Status, TraitIds};
 use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids, SpecOf};
@@ -37,6 +39,7 @@ pub struct ListedHabit {
     pub action_id: Option<String>,
     pub person_id: Option<String>,
     pub circle_id: Option<String>,
+    pub recurring_goal: Option<RecurringGoal>,
     pub status: Option<Status>,
     pub note: Option<String>,
     pub traits: Option<Map<String, Value>>,
@@ -60,6 +63,9 @@ pub struct Habit {
     pub person_id: Option<String>,
     /// For a circle's habit, in place of action_id: its.
     pub circle_id: Option<String>,
+    /// For a recurring goal's habit, in place of action_id: the goal made
+    /// for each of its periods (see RecurringGoal).
+    pub recurring_goal: Option<RecurringGoal>,
     #[row(text)]
     pub status: Option<Status>,
     pub note: Option<String>,
@@ -234,6 +240,19 @@ impl Habits {
         Ok(gone)
     }
 
+    /// Each active habit with a recurring goal, as its goals are made.
+    pub fn templates(&self) -> anyhow::Result<Vec<Template>> {
+        Ok(self
+            .all()?
+            .into_iter()
+            .filter(|h| h.status == Some(Status::Active))
+            .filter_map(|h| {
+                let habit_id = set(h.id.as_deref())?.to_string();
+                Some(Template { name: h.name.clone().filter(|n| !n.trim().is_empty()).unwrap_or_else(|| habit_id.clone()), habit_id, goal: h.recurring_goal? })
+            })
+            .collect())
+    }
+
     /// Every habit as a node of the habit graph.
     pub fn nodes(&self) -> anyhow::Result<Vec<Node>> {
         Ok(habit_nodes(&self.all()?))
@@ -319,7 +338,12 @@ impl Habits {
                 return Ok(CreatedHabit { habit: self.shown(&made)?, created_id: made.id.clone().unwrap_or_default() })
             }
         };
-        let traits = habit.traits.as_ref().map(spec_with_new_part_ids);
+        // A recurring goal's habit is scored by its goal rate alone,
+        // unless it's given traits too.
+        let traits = match (&habit.traits, &habit.recurring_goal) {
+            (None, Some(_)) => Some(Map::from_iter([("select".to_string(), json!([]))])),
+            (given, _) => given.as_ref().map(spec_with_new_part_ids),
+        };
         let mut new =
             Habit { id: Some(id.clone()), status: Some(habit.status.unwrap_or(Status::Active)), traits, version: None, ..habit.clone() };
         self.unless_default(&mut new)?;
@@ -481,8 +505,13 @@ pub fn habit_problems(habits: &[Habit], scopes: Option<&Scopes>, trait_ids: Opti
             }
         }
         let about = [habit.action_id.as_deref(), habit.person_id.as_deref(), habit.circle_id.as_deref()];
-        if about.iter().filter(|a| set(**a).is_some()).count() > 1 {
-            problems.push(format!("{label} is about one thing: an action_id, a person_id or a circle_id, not more"));
+        if about.iter().filter(|a| set(**a).is_some()).count() + usize::from(habit.recurring_goal.is_some()) > 1 {
+            problems.push(format!("{label} is about one thing: an action_id, a person_id, a circle_id or a recurring_goal, not more"));
+        }
+        if let Some(goal) = &habit.recurring_goal {
+            for p in habit_goals::problems(goal) {
+                problems.push(format!("{label}'s recurring_goal {p}"));
+            }
         }
         if target_of(habit).is_some() {
             if let Some(traits) = &habit.traits {
@@ -497,8 +526,10 @@ pub fn habit_problems(habits: &[Habit], scopes: Option<&Scopes>, trait_ids: Opti
             }
         }
         match set(habit.action_id.as_deref()) {
-            None if target_of(habit).is_some() => {}
-            None => problems.push(format!("{label} needs an action_id: the action, or the action group, it's about (or a person_id or circle_id)")),
+            None if target_of(habit).is_some() || habit.recurring_goal.is_some() => {}
+            None => problems.push(format!(
+                "{label} needs an action_id: the action, or the action group, it's about (or a person_id, circle_id or recurring_goal)"
+            )),
             Some(action_id) => {
                 let applies = changed.is_none() || habit.id.as_deref() == changed;
                 if let Some(scopes) = scopes {
@@ -537,6 +568,7 @@ pub fn listed(habit: &Habit, paths: &Scopes) -> ListedHabit {
         action_id: habit.action_id.clone(),
         person_id: habit.person_id.clone(),
         circle_id: habit.circle_id.clone(),
+        recurring_goal: habit.recurring_goal.clone(),
         status: habit.status,
         note: habit.note.clone(),
         traits: habit.traits.clone(),

@@ -285,13 +285,14 @@
      "name": "Daily practice",
      "note": "20 minutes a day",
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": null,
      "version": 1
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Daily practice\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"status\": \"active\",\n    \"note\": \"20 minutes a day\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"Music › play guitar\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Daily practice\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": \"20 minutes a day\",\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"Music › play guitar\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_habit"
   },
   {
@@ -343,6 +344,7 @@
      "name": "Music overall",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": {
       "select": [
@@ -353,7 +355,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"lejxa2\",\n    \"name\": \"Music overall\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"action_path\": \"Music\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"lejxa2\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"lejxa2\",\n    \"name\": \"Music overall\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"select\": [\n        \"thoughtful\"\n      ]\n    },\n    \"foundations\": null,\n    \"action_path\": \"Music\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"lejxa2\"\n}",
    "tool": "create_habit"
   },
   {
@@ -387,6 +389,7 @@
      "name": "Daily practice",
      "note": "20 minutes a day",
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": null,
      "version": 1
@@ -402,6 +405,7 @@
      "name": "Music overall",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": {
       "select": [
@@ -412,7 +416,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_habits"
   },
   {
@@ -430,12 +434,13 @@
     "name": "Daily practice",
     "note": "20 minutes a day",
     "person_id": null,
+    "recurring_goal": null,
     "status": "active",
     "traits": null,
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Daily practice\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": \"20 minutes a day\",\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music › play guitar\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_habit"
   },
   {
@@ -470,12 +475,13 @@
     "name": "Guitar practice",
     "note": null,
     "person_id": null,
+    "recurring_goal": null,
     "status": "active",
     "traits": null,
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_habit"
   },
   {
@@ -509,6 +515,7 @@
     "name": "Guitar practice",
     "note": null,
     "person_id": null,
+    "recurring_goal": null,
     "status": "active",
     "traits": {
      "parts": {
@@ -527,7 +534,7 @@
     "version": 3
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 3\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 3\n}",
    "tool": "update_habit"
   },
   {
@@ -549,6 +556,7 @@
     "name": "Guitar practice",
     "note": null,
     "person_id": null,
+    "recurring_goal": null,
     "status": "archived",
     "traits": {
      "parts": {
@@ -567,7 +575,7 @@
     "version": 4
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 4\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 4\n}",
    "tool": "update_habit"
   },
   {
@@ -584,6 +592,7 @@
      "name": "Music overall",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": {
       "select": [
@@ -594,7 +603,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_habits"
   },
   {
@@ -617,6 +626,7 @@
      "name": "Guitar practice",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "archived",
      "traits": {
       "parts": {
@@ -645,6 +655,7 @@
      "name": "Music overall",
      "note": null,
      "person_id": null,
+     "recurring_goal": null,
      "status": "active",
      "traits": {
       "select": [
@@ -655,7 +666,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 4\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Guitar practice\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"archived\",\n  \"note\": null,\n  \"traits\": {\n    \"parts\": {\n      \"thoughtful\": [\n        {\n          \"id\": \"htmn3w\",\n          \"kind\": \"count\",\n          \"target\": 1,\n          \"interval_days\": 21,\n          \"zero_at_days\": 42,\n          \"noun\": \"visits\"\n        }\n      ]\n    }\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 4\n}\n{\n  \"id\": \"lejxa2\",\n  \"name\": \"Music overall\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": {\n    \"select\": [\n      \"thoughtful\"\n    ]\n  },\n  \"foundations\": null,\n  \"action_path\": \"Music\",\n  \"default_name\": null,\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_habits"
   },
   {
@@ -1778,6 +1789,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -1837,6 +1849,7 @@
         "3dnjav",
         "",
         "",
+        "",
         "active",
         "20 minutes a day",
         "",
@@ -1872,6 +1885,7 @@
         "lejxa2",
         "Music overall",
         "co2yzn",
+        "",
         "",
         "",
         "active",
@@ -2016,6 +2030,7 @@
         "co2yzn",
         "",
         "",
+        "",
         "active",
         "",
         "",
@@ -2053,6 +2068,7 @@
         "co2yzn",
         "",
         "",
+        "",
         "active",
         "",
         "{\"parts\":{\"thoughtful\":[{\"id\":\"htmn3w\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
@@ -2088,6 +2104,7 @@
         "a0g0jc",
         "Guitar practice",
         "co2yzn",
+        "",
         "",
         "",
         "archived",
@@ -2403,6 +2420,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -2415,6 +2433,7 @@
         "co2yzn",
         "",
         "",
+        "",
         "archived",
         "",
         "{\"parts\":{\"thoughtful\":[{\"id\":\"htmn3w\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]}}",
@@ -2425,6 +2444,7 @@
         "lejxa2",
         "Music overall",
         "co2yzn",
+        "",
         "",
         "",
         "active",

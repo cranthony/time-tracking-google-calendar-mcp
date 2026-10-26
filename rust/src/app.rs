@@ -328,7 +328,16 @@ impl App {
             let (_, sheets, id) = self.spreadsheet()?;
             let me = self.me();
             let people: crate::stores::goals::PersonIds = Arc::new(move || Ok(me.people()?.all()?.into_iter().filter_map(|p| p.id).collect()));
-            Ok(Goals::ensure(&sheets, &id)?.with_people(people))
+            let me = self.me();
+            let templates: crate::stores::goals::TemplatesFn = Arc::new(move || {
+                let templates = me.habits()?.templates()?;
+                if templates.is_empty() {
+                    return Ok(None);
+                }
+                Ok(Some((templates, me.calendar_client()?.get_time_zone()?)))
+            });
+            let renewal = crate::stores::goals::Renewal { habits_tab: self.habits()?.whole_tab(), templates };
+            Ok(Goals::ensure(&sheets, &id)?.with_people(people).with_renewal(renewal))
         })
     }
 
