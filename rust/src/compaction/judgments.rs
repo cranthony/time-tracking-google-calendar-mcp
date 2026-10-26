@@ -407,6 +407,13 @@ impl Judging {
             None => Vec::new(),
         };
         let habit = habits::find(&all, id_or_name)?;
+        if let Some((kind, _)) = habits::target_of(&habit) {
+            anyhow::bail!(
+                "{} ({}) is a {kind}'s habit: it's scored by their judgments, and isn't judged itself",
+                repr_or_none(habit.name.as_deref()),
+                str_or_none(habit.id.as_deref())
+            );
+        }
         if habit.status != Some(crate::stores::people::Status::Active) {
             anyhow::bail!(
                 "{} ({}) is {}: only an active habit is judged",

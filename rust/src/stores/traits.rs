@@ -638,7 +638,7 @@ pub fn fact_lookbacks(part: &Value) -> Vec<(String, i64)> {
 
 /// What's wrong with a person's (or habit's) `traits`, as phrases
 /// following "its traits".
-const SPEC_FIELDS: [&str; 5] = ["select", "parts", "part_scoring", "scoring", "facts"];
+const SPEC_FIELDS: [&str; 6] = ["select", "except", "parts", "part_scoring", "scoring", "facts"];
 
 /// Whose `traits` a spec is: a person's can override a fact's prompts
 /// for them (its "facts"); a habit's can't.
@@ -650,13 +650,13 @@ pub enum SpecOf {
 
 pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>, of: SpecOf) -> Vec<String> {
     let Value::Object(spec) = spec else {
-        return vec!["must be an object: {\"select\": \"all\" or [trait ids], \"parts\": {trait id: [parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring, \"facts\": {trait id: {fact id: prompts}}}".into()];
+        return vec!["must be an object: {\"select\": \"all\" or [trait ids], \"except\": [trait ids], \"parts\": {trait id: [parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring, \"facts\": {trait id: {fact id: prompts}}}".into()];
     };
     let mut extra: Vec<&String> = spec.keys().filter(|k| !SPEC_FIELDS.contains(&k.as_str())).collect();
     extra.sort();
     let mut problems: Vec<String> = extra
         .iter()
-        .map(|n| format!("has no field \"{n}\"; it takes \"select\", \"parts\", \"part_scoring\", \"scoring\" and \"facts\""))
+        .map(|n| format!("has no field \"{n}\"; it takes \"select\", \"except\", \"parts\", \"part_scoring\", \"scoring\" and \"facts\""))
         .collect();
     match (spec.get("facts"), of) {
         (None, _) => {}
@@ -682,6 +682,21 @@ pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>, of: Sp
             }
         }
     }
+    let except: Vec<String> = match spec.get("except") {
+        None => Vec::new(),
+        Some(Value::Array(items)) if items.iter().all(Value::is_string) => items.iter().filter_map(Value::as_str).map(str::to_string).collect(),
+        Some(_) => {
+            problems.push("\"except\" must be a list of trait ids".into());
+            Vec::new()
+        }
+    };
+    if let Some(known) = trait_ids {
+        for id in &except {
+            if !known.iter().any(|k| k == id) {
+                problems.push(format!("\"except\" names {}, which isn't a trait", py::repr(id)));
+            }
+        }
+    }
     let overrides = spec.get("parts").cloned().unwrap_or(json!({}));
     let Value::Object(overrides) = overrides else {
         problems.push("\"parts\" must be {trait id: [parts]}".into());
@@ -691,7 +706,7 @@ pub fn person_traits_problems(spec: &Value, trait_ids: Option<&[String]>, of: Sp
         let selected = match &select {
             Value::Array(items) => items.iter().any(|i| i.as_str() == Some(trait_id)),
             _ => true,
-        };
+        } && !except.contains(trait_id);
         if trait_ids.is_some_and(|known| !known.iter().any(|k| k == trait_id)) {
             problems.push(format!("\"parts\" names {}, which isn't a trait", py::repr(trait_id)));
         } else if !selected {

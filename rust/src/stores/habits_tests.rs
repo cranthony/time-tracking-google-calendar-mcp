@@ -221,3 +221,87 @@ fn a_habit_deleted_leaves_the_others_foundations() {
     f.held(|h| h.drop_foundation(&subject_id(&walk))).unwrap();
     assert_eq!(f.get(&guitar)["foundations"], json!([]));
 }
+
+/// The fixture's habits, with Sam, the family circle and two traits to
+/// be about and named by.
+fn with_targets(f: &Fixture) -> Habits {
+    let targets = Targets {
+        people: vec![("sam".into(), "Sam".into())],
+        circles: vec![("family".into(), "Family".into())],
+        traits: vec![("reliable".into(), "Reliable".into()), ("kind".into(), "Kind".into()), ("present".into(), "Present".into())],
+    };
+    f.habits.clone().with_targets(Arc::new(move || Ok(targets.clone())))
+}
+
+#[test]
+fn a_persons_or_circles_habit_is_named_by_them_and_its_traits() {
+    let f = fixture(Some(strings(&["reliable", "kind", "present"])));
+    let habits = with_targets(&f);
+    let _held = WRITE_LOCK.hold();
+    let name = |given: Value| habits.create_habit(&habit(given)).unwrap().habit.name.unwrap();
+
+    assert_eq!(name(json!({"person_id": "sam"})), "Sam");
+    assert_eq!(name(json!({"person_id": "sam", "traits": {"select": ["reliable"]}})), "Sam · Reliable");
+    assert_eq!(name(json!({"person_id": "sam", "traits": {"select": ["reliable", "kind", "present"]}})), "Sam · Reliable, Kind +1");
+    assert_eq!(name(json!({"circle_id": "family", "traits": {"except": ["reliable"]}})), "Family · except Reliable");
+    let own = habits.create_habit(&habit(json!({"person_id": "sam", "name": "Sam, closer"}))).unwrap().habit;
+    assert_eq!((own.name.unwrap(), own.default_name.unwrap()), ("Sam, closer".to_string(), "Sam".to_string()));
+}
+
+#[test]
+fn a_persons_habit_is_about_them_alone_and_scored_as_they_are() {
+    let f = fixture(Some(strings(&["reliable", "kind", "present"])));
+    let habits = with_targets(&f);
+    let _held = WRITE_LOCK.hold();
+
+    refused(habits.create_habit(&habit(json!({"person_id": "ana"}))), "person_id 'ana' isn't a person");
+    refused(habits.create_habit(&habit(json!({"person_id": "sam", "action_id": "walk"}))), "is about one thing");
+    refused(
+        habits.create_habit(&habit(json!({"person_id": "sam", "traits": {"parts": {"kind": [{"kind": "count", "target": 1}]}}}))),
+        "takes only \"select\" and \"except\"",
+    );
+    refused(habits.create_habit(&habit(json!({"person_id": "sam", "traits": {"except": ["nope"]}}))), "\"except\" names 'nope'");
+}
+
+#[test]
+fn a_persons_habit_loses_its_own_name_when_its_traits_change() {
+    let f = fixture(Some(strings(&["reliable", "kind", "present"])));
+    let habits = with_targets(&f);
+    let _held = WRITE_LOCK.hold();
+    let id = habits.create_habit(&habit(json!({"person_id": "sam", "name": "Mine"}))).unwrap().created_id;
+
+    let kept = habits.update_habit(&habit(json!({"id": id, "note": "x"})), &[]).unwrap();
+    let reset = habits.update_habit(&habit(json!({"id": id, "traits": {"except": ["kind"]}})), &[]).unwrap();
+    let renamed = habits.update_habit(&habit(json!({"id": id, "name": "Again", "traits": {"select": "all"}})), &[]).unwrap();
+
+    assert_eq!((kept.name.unwrap(), reset.name.unwrap(), renamed.name.unwrap()), ("Mine".into(), "Sam · except Kind".into(), "Again".to_string()));
+}
+
+#[test]
+fn a_persons_habit_given_its_default_name_has_none_of_its_own() {
+    let f = fixture(None);
+    let habits = with_targets(&f);
+    let _held = WRITE_LOCK.hold();
+    let id = habits.create_habit(&habit(json!({"person_id": "sam", "name": "Sam"}))).unwrap().created_id;
+
+    let selected = habits.update_habit(&habit(json!({"id": id, "name": "Sam · Reliable", "traits": {"select": ["reliable"]}})), &[]).unwrap();
+
+    assert_eq!(selected.name.as_deref(), Some("Sam · Reliable"));
+    let stored = habits.all().unwrap().into_iter().find(|h| h.id.as_deref() == Some(id.as_str())).unwrap();
+    assert_eq!(stored.name, None);
+}
+
+#[test]
+fn a_persons_habits_go_with_them() {
+    let f = fixture(None);
+    let habits = with_targets(&f);
+    let _held = WRITE_LOCK.hold();
+    let sams = habits.create_habit(&habit(json!({"person_id": "sam"}))).unwrap().created_id;
+    let walk = habits.create_habit(&habit(json!({"name": "Walk", "action_id": "walk", "foundations": [subject_id(&sams)]}))).unwrap().created_id;
+
+    assert_eq!(habits.delete_about("sam").unwrap(), vec![subject_id(&sams)]);
+
+    let all = habits.all().unwrap();
+    let of = |id: &str| all.iter().find(|h| h.id.as_deref() == Some(id)).unwrap().clone();
+    assert_eq!((of(&sams).status, of(&walk).foundations), (Some(Status::Deleted), Some(vec![])));
+}

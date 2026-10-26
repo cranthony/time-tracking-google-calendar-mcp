@@ -12355,7 +12355,7 @@
     }
   },
   {
-    "description": "The user's habits: by default the active ones, not archived (set\naside) or deleted ones. Each is about the user's events with one\naction, or with any action under one action group (action_id, with\nits action_path), and is rated by traits as a person is: its traits\nsay which apply (by default every active one) and give it its own\nparts -- its own rubrics -- for any (see create_habit). Each has an\nid, name, status and note (what it's for, and what doing it well\nlooks like). Each also has cancelled_events: the events the user\ncancelled that count against its follow-through, newest first, as a\nperson's (see get_people). Its events' judgments are kept under\n\"habit:<id>\", as a person's are under their id. Each also has\nfoundations: the habits (each as \"habit:<id>\") and people (by id)\nit's built on, on the user's habit graph. Read-only.",
+    "description": "The user's habits: by default the active ones, not archived (set\naside) or deleted ones. Each is about the user's events with one\naction, or with any action under one action group (action_id, with\nits action_path) -- or is a person's or circle's habit (person_id or\ncircle_id): some of their traits, as they're scored for them, on the\nhabit graph (see create_habit). An action's habit is rated by traits as a person is: its traits\nsay which apply (by default every active one) and give it its own\nparts -- its own rubrics -- for any (see create_habit). Each has an\nid, name, status and note (what it's for, and what doing it well\nlooks like). Each also has cancelled_events: the events the user\ncancelled that count against its follow-through, newest first, as a\nperson's (see get_people). Its events' judgments are kept under\n\"habit:<id>\", as a person's are under their id. Each also has\nfoundations: the habits (each as \"habit:<id>\") and people (by id)\nit's built on, on the user's habit graph. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -12481,6 +12481,18 @@
                 "null"
               ]
             },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "circle_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "status": {
               "anyOf": [
                 {
@@ -12519,6 +12531,13 @@
               ]
             },
             "action_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "default_name": {
+              "description": "For a person's or circle's habit, the name it has without its own\n(see create_habit): its name, unless it has its own.",
               "type": [
                 "string",
                 "null"
@@ -12581,6 +12600,18 @@
             "null"
           ]
         },
+        "person_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "circle_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "status": {
           "anyOf": [
             {
@@ -12619,6 +12650,13 @@
           ]
         },
         "action_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "default_name": {
+          "description": "For a person's or circle's habit, the name it has without its own\n(see create_habit): its name, unless it has its own.",
           "type": [
             "string",
             "null"
@@ -12715,7 +12753,7 @@
     }
   },
   {
-    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") and people (by id) it's built on -- sleeping well under\nexercising, say; none of them deleted, and never making a cycle.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
+    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") and people (by id) it's built on -- sleeping well under\nexercising, say; none of them deleted, and never making a cycle.\nA person's or circle's habit has a person_id or circle_id in place of\naction_id: it's some of their traits, scored as they are for them (a\ncircle's, its people's combined as the circle's scoring says) -- a\nlayer of the relationship on the habit graph, being reliable for\nSam under being close to them, say. Its traits take only \"select\"\n(the traits it's on; by default all that apply to them) and\n\"except\" (traits left out, though selected: those added later are\non it), and its events aren't judged for it: they're theirs. Its\nname is optional: without one it's named by them and its traits\n(\"Sam · Reliable\", \"Sam · except Reliable\"), and it loses its own\nwhen its traits or whose it is change, unless given another (given\nits default, it has none of its own: default_name lists it).\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
     "inputSchema": {
       "properties": {
         "habit": {
@@ -12743,6 +12781,20 @@
               ]
             },
             "action_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "description": "For a person's habit, in place of action_id: theirs.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "circle_id": {
+              "description": "For a circle's habit, in place of action_id: its.",
               "type": [
                 "string",
                 "null"
@@ -12904,6 +12956,18 @@
                 "null"
               ]
             },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "circle_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "status": {
               "anyOf": [
                 {
@@ -12947,6 +13011,13 @@
                 "null"
               ]
             },
+            "default_name": {
+              "description": "For a person's or circle's habit, the name it has without its own\n(see create_habit): its name, unless it has its own.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "cancelled_events": {
               "items": {
                 "$ref": "#/$defs/CancelledEvent"
@@ -12969,7 +13040,7 @@
     }
   },
   {
-    "description": "Update a habit by id: its name, action_id (an action's or a\ngroup's), status (active; archived, set aside; or deleted, shouldn't\nhave existed), note, traits or foundations (each replaced whole; see\ncreate_habit). Omitted properties keep their value; list one in\nclear_fields to blank it instead. A habit deleted leaves every\nhabit's and person's foundations. Returns the habit as updated.",
+    "description": "Update a habit by id: its name, action_id (an action's or a\ngroup's), person_id or circle_id, status (active; archived, set aside; or deleted, shouldn't\nhave existed), note, traits or foundations (each replaced whole; see\ncreate_habit). Omitted properties keep their value; list one in\nclear_fields to blank it instead (a person's or circle's habit's name\nto go back to its default). A habit deleted leaves every habit's and\nperson's foundations; a person's or circle's habits go with them.\nReturns the habit as updated.",
     "inputSchema": {
       "properties": {
         "habit": {
@@ -12978,6 +13049,7 @@
         "clear_fields": {
           "items": {
             "enum": [
+              "name",
               "note",
               "traits",
               "foundations"
@@ -13011,6 +13083,20 @@
               ]
             },
             "action_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "description": "For a person's habit, in place of action_id: theirs.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "circle_id": {
+              "description": "For a circle's habit, in place of action_id: its.",
               "type": [
                 "string",
                 "null"
@@ -13087,6 +13173,18 @@
             "null"
           ]
         },
+        "person_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "circle_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "status": {
           "anyOf": [
             {
@@ -13125,6 +13223,13 @@
           ]
         },
         "action_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "default_name": {
+          "description": "For a person's or circle's habit, the name it has without its own\n(see create_habit): its name, unless it has its own.",
           "type": [
             "string",
             "null"

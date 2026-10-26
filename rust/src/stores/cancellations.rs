@@ -209,6 +209,10 @@ impl Cancellations {
         if let Some(habits) = &self.habits {
             for habit in habits.all()? {
                 let Some(id) = set(habit.id.as_deref()).map(str::to_string) else { continue };
+                // A person's or circle's habit counts theirs.
+                if set(habit.action_id.as_deref()).is_none() {
+                    continue;
+                }
                 let action_id = habit.action_id.clone().map(Value::String);
                 if habit.status != Some(crate::stores::people::Status::Active)
                     || of_action(std::slice::from_ref(event), action_id.as_ref(), Some(&tree)).is_empty()
@@ -301,6 +305,7 @@ pub fn traits_for(spec: Option<&Value>, traits: &[Trait]) -> Vec<(Trait, Vec<Val
     let empty = Map::new();
     let spec = spec.and_then(Value::as_object).unwrap_or(&empty);
     let select = spec.get("select").cloned().unwrap_or(json!("all"));
+    let except: Vec<Value> = spec.get("except").and_then(Value::as_array).cloned().unwrap_or_default();
     let overrides = spec.get("parts").and_then(Value::as_object).cloned().unwrap_or_default();
     let chosen: Vec<&Trait> = if select == json!("all") {
         active
@@ -308,6 +313,7 @@ pub fn traits_for(spec: Option<&Value>, traits: &[Trait]) -> Vec<(Trait, Vec<Val
         let listed: Vec<Value> = select.as_array().cloned().unwrap_or_default();
         active.into_iter().filter(|t| listed.contains(&json!(t.id))).collect()
     };
+    let chosen: Vec<&Trait> = chosen.into_iter().filter(|t| !except.contains(&json!(t.id))).collect();
     chosen
         .into_iter()
         .map(|t| {
