@@ -931,12 +931,13 @@ fn annotate(
         }
     }
     let by_key = |key: &str| targets.iter().rev().find(|t| t.2 == key).cloned();
+    // The event a note marking an edge goes with: the one it ends, or
+    // else the one it starts.
     let mut edge_of: Vec<(String, String)> = Vec::new();
-    for fact in facts.iter() {
-        for note in [&fact.start_note, &fact.end_note].into_iter().flatten() {
-            match edge_of.iter_mut().find(|(k, _)| *k == note.id) {
-                Some(slot) => slot.1 = fact.key.clone(),
-                None => edge_of.push((note.id.clone(), fact.key.clone())),
+    for note_of in [|f: &Fact| f.end_note.clone(), |f: &Fact| f.start_note.clone()] {
+        for fact in facts.iter() {
+            if let Some(note) = note_of(fact).filter(|n| !edge_of.iter().any(|(k, _)| *k == n.id)) {
+                edge_of.push((note.id, fact.key.clone()));
             }
         }
     }
@@ -981,7 +982,7 @@ fn annotate(
         let text = strip(note.description.as_deref());
         let targeted = note_targets.iter().rev().find(|(k, _)| *k == note.id);
         let mut target = targeted.and_then(|(_, t)| t.clone());
-        if (anchors.contains(&note.id) && targeted.is_none()) || ignored.contains(&note.id) || text.is_empty() {
+        if ignored.contains(&note.id) || text.is_empty() {
             continue;
         }
         if target.is_none() && anchors.contains(&note.id) {

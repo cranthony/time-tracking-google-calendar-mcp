@@ -149,11 +149,13 @@ fn the_user_adds_a_note_to_another_event() {
 fn annotating_an_edge_note_adds_it_to_its_event_and_keeps_the_edge() {
     let setup = Setup::standard();
     let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
-    let before = setup.get_proposal();
-    let before = note(&before, &setup.note_id(2));
+    let ignored = notes(&setup, &p, 1, vec![note_edit(json!({"note_id": setup.note_id(2), "use": "ignore"}))]).unwrap();
+    let before = note(&ignored, &setup.note_id(2));
     assert_eq!((before.use_.as_str(), before.event_id.as_deref(), before.edge_of.as_deref()), ("edge", Some("e1"), Some("e1")));
+    assert_eq!(event(&ignored, "e1").description.as_deref(), Some("Notes:
+- 10:20 report"));
 
-    let proposal = notes(&setup, &p, 1, vec![annotate(&setup, None)]).unwrap();
+    let proposal = notes(&setup, &p, 2, vec![annotate(&setup, None)]).unwrap();
 
     let email = note(&proposal, &setup.note_id(2));
     assert_eq!(
@@ -161,7 +163,18 @@ fn annotating_an_edge_note_adds_it_to_its_event_and_keeps_the_edge() {
         ("annotates", Some("e1"), Some("e1"), Some("user"))
     );
     let email_event = event(&proposal, "e1");
-    assert_eq!((email_event.start, email_event.description.as_deref()), (Some(time_at("09:05")), Some("Notes:\n- 09:05 email")));
+    assert_eq!((email_event.start, email_event.description.as_deref()), (Some(time_at("09:05")), Some("Notes:\n- 09:05 email\n- 10:20 report")));
+}
+
+#[test]
+fn an_edge_notes_text_goes_with_its_event_unless_said_otherwise() {
+    let setup = Setup::standard();
+    setup.dry_run(setup.email_then_report());
+
+    let proposal = setup.get_proposal();
+    let email = note(&proposal, &setup.note_id(2));
+    assert_eq!((email.use_.as_str(), email.event_id.as_deref(), email.edge_of.as_deref()), ("annotates", Some("e1"), Some("e1")));
+    assert_eq!(event(&proposal, "e1").description.as_deref(), Some("Notes:\n- 09:05 email\n- 10:20 report"));
 }
 
 #[test]

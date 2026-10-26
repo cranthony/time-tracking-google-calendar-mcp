@@ -395,7 +395,7 @@ fn create_makes_a_new_event() {
     let after = made[0].after.clone().unwrap();
     assert_eq!(span(&after), at("11:05", "11:20"));
     assert_eq!(after.action_ids, Some(crate::testing::shares(&["g1"])));
-    assert_eq!(after.description, None);
+    assert_eq!(after.description.as_deref(), Some("Notes:\n- 11:05 coffee"));
 }
 
 #[test]
@@ -642,8 +642,29 @@ fn an_edge_note_given_no_event_is_added_to_the_one_whose_edge_it_sets() {
 }
 
 #[test]
-fn an_edge_note_isnt_added_to_anything_unless_its_given_an_event() {
-    let plan = plan(&[note(1, "09:50", Some("done with email"))], &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }]);
+fn an_edge_notes_text_goes_with_the_event_it_ends_or_else_the_one_it_starts() {
+    let plan = plan(
+        &[note(1, "09:05", Some("on email")), note(2, "09:50", Some("done with email, on to the report"))],
+        &[EventDecision { start_note: Some("n1".into()), end_note: Some("n2".into()), ..keep("e1") }, EventDecision { start_note: Some("n2".into()), ..keep("e2") }],
+    );
+    assert_eq!(
+        changed(&plan, "e1").after.unwrap().description.as_deref(),
+        Some("Notes:\n- 09:05 on email\n- 09:50 done with email, on to the report")
+    );
+    assert_eq!(changed(&plan, "e2").after.unwrap().description, None);
+    assert_eq!(uses(&plan), using(&[("n1", "annotates", Some("e1")), ("n2", "annotates", Some("e1"))]));
+}
+
+#[test]
+fn an_ignored_edge_note_still_sets_its_edge() {
+    let plan = plan_with(
+        &[note(1, "09:50", Some("done with email"))],
+        &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }],
+        &day(),
+        "11:30",
+        Extra { ignore_notes: strings(&["n1"]), ..Default::default() },
+    )
+    .unwrap();
     assert_eq!(changed(&plan, "e1").after.unwrap().description, None);
     assert_eq!(uses(&plan), using(&[("n1", "edge", Some("e1"))]));
     assert_eq!(plan.note_edges, vec![("n1".to_string(), "e1".to_string())]);
@@ -697,7 +718,7 @@ fn the_plan_says_what_each_note_is_for() {
     .unwrap();
     assert_eq!(
         uses(&plan),
-        using(&[("n1", "edge", Some("e1")), ("n2", "annotates", Some("e1")), ("n3", "ignored", None), ("n4", "unused", None)])
+        using(&[("n1", "annotates", Some("e1")), ("n2", "annotates", Some("e1")), ("n3", "ignored", None), ("n4", "unused", None)])
     );
 }
 
@@ -1070,6 +1091,7 @@ fn renders_notes_and_events_in_one_narrow_column() {
         "17:00 ┌ Work\n",
         "          ⚠ no action, no location\n",
         "18:15 ● Leaving for salsa early to prep\n",
+        "        ↳ Salsa prep\n",
         "     →├ Salsa prep · new\n",
         "          ⚠ no action, no location\n",
         "18:30 ├ Google Salsa class\n",
@@ -1079,6 +1101,7 @@ fn renders_notes_and_events_in_one_narrow_column() {
         "19:30 ├ Dinner\n",
         "          ⚠ no action, no location\n",
         "20:10 ● Done with dinner\n",
+        "        ↳ Dinner\n",
         "     →└ Dinner ends · +10m (was 20:00)\n",
         "     →├ Reading · +10m (was 20:00)\n",
         "          ⚠ no action, no location\n",
@@ -1140,7 +1163,7 @@ fn wraps_a_long_note_under_its_text() {
 #[test]
 fn says_where_a_note_set_an_edge_at_another_time() {
     let plan = plan(&[note(1, "09:30", Some("leaving in 15"))], &[EventDecision { end_note: Some("n1".into()), end: Some(time_at("09:45")), ..keep("e1") }]);
-    assert!(timeline_text(&plan).contains("09:30 ● leaving in 15\n        → end of Email (09:45)\n"));
+    assert!(timeline_text(&plan).contains("09:30 ● leaving in 15\n        ↳ Email\n        → end of Email (09:45)\n"));
 }
 
 #[test]
