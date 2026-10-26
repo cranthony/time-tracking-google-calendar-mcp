@@ -342,7 +342,7 @@ pub struct ContextEvent {
 /// inside the window (its start to now): one to propose missed
 /// (`goal_changes`) unless a note or event shows it done. One whose id
 /// is "<habit id>_<a date>" is a habit's goal for the period starting
-/// then (a day, a week or a month, due at its end): tag every event that
+/// then (a day, a week, a month, a quarter or a year, due at its end): tag every event that
 /// works toward it, done or not, and settle it as any other -- the server
 /// makes the next period's, or tries a missed one again for it.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]

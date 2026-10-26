@@ -12517,7 +12517,7 @@
           "type": "object"
         },
         "RecurringGoal": {
-          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(6 by default): the share of them with a goal done in them.",
+          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
             "period": {
               "anyOf": [
@@ -12525,7 +12525,9 @@
                   "enum": [
                     "day",
                     "week",
-                    "month"
+                    "month",
+                    "quarter",
+                    "year"
                   ],
                   "type": "string"
                 },
@@ -12796,7 +12798,7 @@
           "type": "object"
         },
         "RecurringGoal": {
-          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(6 by default): the share of them with a goal done in them.",
+          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
             "period": {
               "anyOf": [
@@ -12804,7 +12806,9 @@
                   "enum": [
                     "day",
                     "week",
-                    "month"
+                    "month",
+                    "quarter",
+                    "year"
                   ],
                   "type": "string"
                 },
@@ -12880,7 +12884,7 @@
     }
   },
   {
-    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") it's built on -- sleeping well under exercising, say;\nnone of them deleted, and never making a cycle.\nA person's or circle's habit has a person_id or circle_id in place of\naction_id: it's some of their traits, scored as they are for them (a\ncircle's, its people's combined as the circle's scoring says) -- a\nlayer of the relationship on the habit graph, being reliable for\nSam under being close to them, say. Its traits take only \"select\"\n(the traits it's on; by default all that apply to them) and\n\"except\" (traits left out, though selected: those added later are\non it), and its events aren't judged for it: they're theirs. Its\nname is optional: without one it's named by them and its traits\n(\"Sam · Reliable\", \"Sam · except Reliable\"), and it loses its own\nwhen its traits or whose it is change, unless given another (given\nits default, it has none of its own: default_name lists it).\nA recurring goal's habit has a recurring_goal in place of action_id:\n{period: day | week | month, title?, priority?, expected_minutes?,\ndescription?, definition_of_done?, attribution_hints?, with_ids?,\nfor_ids?, rate_periods?} -- a goal for each period on the calendar\n(weeks run Sunday to Saturday), made by the server as each begins,\nonce the one before is done or obsolete, and tried again through the\nnext period when it's missed; titled by the habit's name unless it\ngives one. Its goals have its id and the period's start as theirs\n(\"<habit id>_2026-11-01\") and are its (habit_id); its events are\nthose tagged with them. It's scored by its goal rate -- the share of\nits last rate_periods periods (6 by default) with a goal done -- and\nby its traits only once given some (it's made with {\"select\": []}).\nArchived or deleted, its open goal is made obsolete.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
+    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") it's built on -- sleeping well under exercising, say;\nnone of them deleted, and never making a cycle.\nA person's or circle's habit has a person_id or circle_id in place of\naction_id: it's some of their traits, scored as they are for them (a\ncircle's, its people's combined as the circle's scoring says) -- a\nlayer of the relationship on the habit graph, being reliable for\nSam under being close to them, say. Its traits take only \"select\"\n(the traits it's on; by default all that apply to them) and\n\"except\" (traits left out, though selected: those added later are\non it), and its events aren't judged for it: they're theirs. Its\nname is optional: without one it's named by them and its traits\n(\"Sam · Reliable\", \"Sam · except Reliable\"), and it loses its own\nwhen its traits or whose it is change, unless given another (given\nits default, it has none of its own: default_name lists it).\nA recurring goal's habit has a recurring_goal in place of action_id:\n{period: day | week | month | quarter | year, title?, priority?, expected_minutes?,\ndescription?, definition_of_done?, attribution_hints?, with_ids?,\nfor_ids?, rate_periods?} -- a goal for each period on the calendar\n(weeks run Sunday to Saturday, quarters from January), made by the server as each begins,\nonce the one before is done or obsolete, and tried again through the\nnext period when it's missed; titled by the habit's name unless it\ngives one. Its goals have its id and the period's start as theirs\n(\"<habit id>_2026-11-01\") and are its (habit_id); its events are\nthose tagged with them. It's scored by its goal rate -- the share of\nits last rate_periods periods (by default 7 days, 6 weeks, 4 months,\n4 quarters or 2 years) with a goal done -- and\nby its traits only once given some (it's made with {\"select\": []}).\nArchived or deleted, its open goal is made obsolete.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
     "inputSchema": {
       "properties": {
         "habit": {
@@ -12986,7 +12990,7 @@
           "type": "object"
         },
         "RecurringGoal": {
-          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(6 by default): the share of them with a goal done in them.",
+          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
             "period": {
               "anyOf": [
@@ -12994,7 +12998,9 @@
                   "enum": [
                     "day",
                     "week",
-                    "month"
+                    "month",
+                    "quarter",
+                    "year"
                   ],
                   "type": "string"
                 },
@@ -13266,7 +13272,7 @@
           "type": "object"
         },
         "RecurringGoal": {
-          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(6 by default): the share of them with a goal done in them.",
+          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
             "period": {
               "anyOf": [
@@ -13274,7 +13280,9 @@
                   "enum": [
                     "day",
                     "week",
-                    "month"
+                    "month",
+                    "quarter",
+                    "year"
                   ],
                   "type": "string"
                 },
@@ -13471,7 +13479,7 @@
           "type": "object"
         },
         "RecurringGoal": {
-          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(6 by default): the share of them with a goal done in them.",
+          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
             "period": {
               "anyOf": [
@@ -13479,7 +13487,9 @@
                   "enum": [
                     "day",
                     "week",
-                    "month"
+                    "month",
+                    "quarter",
+                    "year"
                   ],
                   "type": "string"
                 },
@@ -13735,7 +13745,7 @@
           "type": "object"
         },
         "RecurringGoal": {
-          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(6 by default): the share of them with a goal done in them.",
+          "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
             "period": {
               "anyOf": [
@@ -13743,7 +13753,9 @@
                   "enum": [
                     "day",
                     "week",
-                    "month"
+                    "month",
+                    "quarter",
+                    "year"
                   ],
                   "type": "string"
                 },
@@ -18668,7 +18680,7 @@
           "type": "object"
         },
         "ContextGoal": {
-          "description": "An open goal (inactive or active), or one closed (done, missed or\nobsolete) since the earliest event offered started, at `closed_at`.\nAn event can be tagged with it when it clearly matches its attribution\nhints, or with none its title and path -- a closed one only if the\nevent started before it closed. `path` is its parents' titles,\noutermost first; `with_ids` the people it's done with and `for_ids`\nthose it's done for. `due_in_window` says an open one's deadline fell\ninside the window (its start to now): one to propose missed\n(`goal_changes`) unless a note or event shows it done. One whose id\nis \"<habit id>_<a date>\" is a habit's goal for the period starting\nthen (a day, a week or a month, due at its end): tag every event that\nworks toward it, done or not, and settle it as any other -- the server\nmakes the next period's, or tries a missed one again for it.",
+          "description": "An open goal (inactive or active), or one closed (done, missed or\nobsolete) since the earliest event offered started, at `closed_at`.\nAn event can be tagged with it when it clearly matches its attribution\nhints, or with none its title and path -- a closed one only if the\nevent started before it closed. `path` is its parents' titles,\noutermost first; `with_ids` the people it's done with and `for_ids`\nthose it's done for. `due_in_window` says an open one's deadline fell\ninside the window (its start to now): one to propose missed\n(`goal_changes`) unless a note or event shows it done. One whose id\nis \"<habit id>_<a date>\" is a habit's goal for the period starting\nthen (a day, a week, a month, a quarter or a year, due at its end): tag every event that\nworks toward it, done or not, and settle it as any other -- the server\nmakes the next period's, or tries a missed one again for it.",
           "properties": {
             "id": {
               "type": "string"

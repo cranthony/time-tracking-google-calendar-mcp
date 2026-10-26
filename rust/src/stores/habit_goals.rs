@@ -1,5 +1,5 @@
 //! A habit's recurring goal: one goal for each calendar period (a day, a
-//! week from Sunday, a month), made from the habit's template by the
+//! week from Sunday, a month, a quarter, a year), made from the habit's template by the
 //! server as each period begins -- once the goal before it is done, or
 //! made obsolete -- and tried again for the next period when it's missed.
 //! A habit has at most one open goal at a time.
@@ -20,14 +20,13 @@ use serde::{Deserialize, Serialize};
 /// goal made from it.
 pub const ID_MARK: char = '_';
 
-/// How many periods a habit's goal rate counts back unless it says.
-pub const DEFAULT_RATE_PERIODS: i64 = 6;
 
 /// The longest a recurring goal's title can be.
 pub const MAX_TITLE_LENGTH: usize = 200;
 
 /// How long each of a recurring goal's periods is, on the calendar: a
-/// day, a week (Sunday to Saturday) or a month.
+/// day, a week (Sunday to Saturday), a month, a quarter (from January,
+/// April, July or October) or a year.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Schema)]
 pub enum Period {
     #[serde(rename = "day")]
@@ -36,13 +35,31 @@ pub enum Period {
     Week,
     #[serde(rename = "month")]
     Month,
+    #[serde(rename = "quarter")]
+    Quarter,
+    #[serde(rename = "year")]
+    Year,
+}
+
+impl Period {
+    /// How many periods a goal rate counts back unless its habit says:
+    /// fewer of the longer ones.
+    pub fn default_rate_periods(self) -> i64 {
+        match self {
+            Period::Day => 7,
+            Period::Week => 6,
+            Period::Month | Period::Quarter => 4,
+            Period::Year => 2,
+        }
+    }
 }
 
 /// A habit's recurring goal: the goal made for each period, in place of
 /// an action, a person or a circle. Its fields are the goal's (see
 /// get_goals); `title` defaults to the habit's name. `rate_periods` is
 /// how many of the periods before the one under way its goal rate counts
-/// (6 by default): the share of them with a goal done in them.
+/// (by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the
+/// share of them with a goal done in them.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
 pub struct RecurringGoal {
     pub period: Option<Period>,
@@ -71,7 +88,7 @@ pub struct RecurringGoal {
 pub fn problems(goal: &RecurringGoal) -> Vec<String> {
     let mut problems = Vec::new();
     if goal.period.is_none() {
-        problems.push("needs a period: day, week or month".to_string());
+        problems.push("needs a period: day, week, month, quarter or year".to_string());
     }
     if goal.title.as_deref().is_some_and(|t| t.chars().count() > MAX_TITLE_LENGTH) {
         problems.push(format!("title is longer than {MAX_TITLE_LENGTH} characters"));
@@ -108,16 +125,20 @@ pub fn period_of(day: NaiveDate, period: Period) -> (NaiveDate, NaiveDate) {
             let start = day - Duration::days(i64::from(day.weekday().num_days_from_sunday()));
             (start, start + Duration::days(6))
         }
-        Period::Month => {
-            let start = day.with_day(1).unwrap_or(day);
-            let next = if start.month() == 12 {
-                NaiveDate::from_ymd_opt(start.year() + 1, 1, 1)
-            } else {
-                NaiveDate::from_ymd_opt(start.year(), start.month() + 1, 1)
-            };
-            (start, next.map_or(start, |n| n - Duration::days(1)))
-        }
+        Period::Month => months(day, 1),
+        Period::Quarter => months(day, 3),
+        Period::Year => months(day, 12),
     }
+}
+
+/// The first and last day of the run of `length` months, counted from
+/// January, that `day` falls in.
+fn months(day: NaiveDate, length: u32) -> (NaiveDate, NaiveDate) {
+    let first = (day.month0() / length) * length;
+    let start = NaiveDate::from_ymd_opt(day.year(), first + 1, 1).unwrap_or(day);
+    let after = first + length;
+    let next = NaiveDate::from_ymd_opt(day.year() + i32::try_from(after / 12).unwrap_or(0), after % 12 + 1, 1);
+    (start, next.map_or(start, |n| n - Duration::days(1)))
 }
 
 /// The first and last day of the `period` after the one `day` falls in.

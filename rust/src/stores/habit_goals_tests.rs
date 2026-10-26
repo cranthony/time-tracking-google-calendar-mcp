@@ -46,6 +46,22 @@ fn periods_follow_the_calendar_weeks_from_sunday() {
 }
 
 #[test]
+fn quarters_run_from_january_and_years_are_calendar_years() {
+    assert_eq!(period_of(day("2026-02-14"), Period::Quarter), (day("2026-01-01"), day("2026-03-31")));
+    assert_eq!(period_of(day("2026-05-01"), Period::Quarter), (day("2026-04-01"), day("2026-06-30")));
+    assert_eq!(period_of(day("2026-11-30"), Period::Quarter), (day("2026-10-01"), day("2026-12-31")));
+    assert_eq!(next_period(day("2026-12-31"), Period::Quarter), (day("2027-01-01"), day("2027-03-31")));
+    assert_eq!(period_of(day("2026-07-04"), Period::Year), (day("2026-01-01"), day("2026-12-31")));
+    assert_eq!(next_period(day("2026-07-04"), Period::Year), (day("2027-01-01"), day("2027-12-31")));
+}
+
+#[test]
+fn the_longer_the_period_the_fewer_a_goal_rate_counts() {
+    let counts: Vec<i64> = [Period::Day, Period::Week, Period::Month, Period::Quarter, Period::Year].iter().map(|p| p.default_rate_periods()).collect();
+    assert_eq!(counts, vec![7, 6, 4, 4, 2]);
+}
+
+#[test]
 fn a_goals_id_names_its_habit_and_nothing_else_does() {
     assert_eq!(goal_id("hab1", day("2026-11-01")), "hab1_2026-11-01");
     assert_eq!(habit_of_id("hab1_2026-11-01"), Some("hab1"));
@@ -149,7 +165,7 @@ fn only_a_template_with_a_period_makes_goals() {
     let template = Template { goal: RecurringGoal::default(), ..weekly() };
     let mut goals = Vec::new();
     assert!(renew(&mut goals, &[template], &ZONE, at("2026-10-28T09:30")).is_empty());
-    assert_eq!(problems(&RecurringGoal::default()), vec!["needs a period: day, week or month"]);
+    assert_eq!(problems(&RecurringGoal::default()), vec!["needs a period: day, week, month, quarter or year"]);
     assert!(problems(&weekly().goal).is_empty());
     assert_eq!(problems(&RecurringGoal { rate_periods: Some(0), ..weekly().goal }), vec!["rate_periods must be at least 1"]);
 }
