@@ -23,7 +23,6 @@
        "what_matters": "- time outdoors"
       }
      },
-     "foundations": null,
      "id": "co2yzn",
      "name": "Robin Example",
      "status": "active",
@@ -32,7 +31,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": {\n      \"thoughtful\": {\n        \"what_matters\": \"- time outdoors\"\n      }\n    },\n    \"cancelled_events\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Robin Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"facts\": {\n      \"thoughtful\": {\n        \"what_matters\": \"- time outdoors\"\n      }\n    },\n    \"cancelled_events\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -2236,7 +2235,6 @@
       "what_matters": "- time outdoors\n- a new job, from Monday"
      }
     },
-    "foundations": null,
     "id": "co2yzn",
     "name": "Robin Example",
     "status": "active",
@@ -2244,7 +2242,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {\n    \"thoughtful\": {\n      \"what_matters\": \"- time outdoors\\n- a new job, from Monday\"\n    }\n  },\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Robin Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": null,\n  \"circle_names\": null,\n  \"facts\": {\n    \"thoughtful\": {\n      \"what_matters\": \"- time outdoors\\n- a new job, from Monday\"\n    }\n  },\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -2689,7 +2687,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -3299,7 +3296,6 @@
         "Robin Example",
         "",
         "active",
-        "",
         "",
         "",
         "1"
@@ -5505,7 +5501,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -5513,7 +5508,6 @@
         "Robin Example",
         "",
         "active",
-        "",
         "",
         "",
         "1"

@@ -7,7 +7,6 @@ use crate::contract::{wire_text, RowItem, Schema};
 use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::{CIRCLES, PEOPLE};
 use crate::stores::cancellations::CancelledEvent;
-use crate::stores::foundations::{self, foundation_problems, Node, NodesFn, OnGraph};
 use crate::stores::groups::{repr_or_none, set, str_or_none};
 use crate::stores::locations::dedup;
 use crate::stores::scoring::aggregation_problems;
@@ -15,7 +14,7 @@ use crate::stores::traits::{fact_override_problems, person_traits_problems, sett
 use anyhow::bail;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
 use std::sync::Arc;
 
 pub const SELF_ID: &str = "self";
@@ -23,7 +22,7 @@ pub const SELF_NAME: &str = "Me";
 pub const PERSON_STATUSES: [&str; 3] = ["active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 1] = ["active"];
 pub const MAX_NAME_LENGTH: usize = 100;
-pub const PERSON_CLEARABLE_FIELDS: [&str; 4] = ["context", "circles", "traits", "foundations"];
+pub const PERSON_CLEARABLE_FIELDS: [&str; 3] = ["context", "circles", "traits"];
 pub const CIRCLE_CLEARABLE_FIELDS: [&str; 2] = ["note", "scoring"];
 
 // -- the types -------------------------------------------------------------------
@@ -50,7 +49,6 @@ pub struct ListedPerson {
     pub status: Option<Status>,
     pub circles: Option<Vec<String>>,
     pub traits: Option<Map<String, Value>>,
-    pub foundations: Option<Vec<String>>,
     pub circle_names: Option<Vec<String>>,
     pub facts: Option<IndexMap<String, IndexMap<String, String>>>,
     pub cancelled_events: Option<Vec<CancelledEvent>>,
@@ -67,7 +65,6 @@ pub struct Person {
     pub status: Option<Status>,
     pub circles: Option<Vec<String>>,
     pub traits: Option<Map<String, Value>>,
-    pub foundations: Option<Vec<String>>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -115,12 +112,6 @@ pub struct DeletedCircle {
     pub left: Vec<String>,
 }
 
-impl OnGraph for Person {
-    fn foundations_mut(&mut self) -> &mut Option<Vec<String>> {
-        &mut self.foundations
-    }
-}
-
 pub const PERSON_ROW: RowType = <Person as rows::RowItem>::ROW_TYPE;
 
 pub const CIRCLE_ROW: RowType = <Circle as rows::RowItem>::ROW_TYPE;
@@ -158,7 +149,6 @@ pub struct People {
     sheet: RowSheet,
     circle_sheet: RowSheet,
     trait_ids: Option<TraitIds>,
-    habits: Option<NodesFn>,
     traits: Option<TraitsFn>,
 }
 
@@ -169,7 +159,7 @@ impl People {
     pub fn ensure(sheets: &SheetsClient, spreadsheet_id: &str, trait_ids: Option<TraitIds>) -> anyhow::Result<People> {
         let sheet = RowSheet::ensure(sheets, spreadsheet_id, PEOPLE.0, PEOPLE.1, PERSON_ROW, &["id", "name"])?;
         let circle_sheet = RowSheet::ensure(sheets, spreadsheet_id, CIRCLES.0, CIRCLES.1, CIRCLE_ROW, &["id", "name"])?;
-        Ok(People { sheet, circle_sheet, trait_ids, habits: None, traits: None })
+        Ok(People { sheet, circle_sheet, trait_ids, traits: None })
     }
 
     /// It, checking a person's own fact prompts against `traits`' facts.
@@ -193,29 +183,6 @@ impl People {
             bail!("{}", problems.iter().map(|p| format!("{label}'s traits {p}")).collect::<Vec<_>>().join("; "));
         }
         person.traits = Some(settled_fact_overrides(spec, Some(&traits)));
-        Ok(())
-    }
-
-    /// It, checking foundations against `habits`' nodes too.
-    pub fn with_habits(mut self, habits: NodesFn) -> People {
-        self.habits = Some(habits);
-        self
-    }
-
-    /// Every person as a node of the habit graph: any may be a
-    /// foundation, though only those with foundations (even none) are
-    /// on it by themselves.
-    pub fn nodes(&self) -> anyhow::Result<Vec<Node>> {
-        Ok(person_nodes(&self.all()?))
-    }
-
-    /// Takes `subject` (a habit's or a person's, deleted) out of every
-    /// person's foundations.
-    pub fn drop_foundation(&self, subject: &str) -> anyhow::Result<()> {
-        let mut people = self.read_people()?;
-        if foundations::without(&mut people, subject) {
-            self.sheet.write_items(&people)?;
-        }
         Ok(())
     }
 
@@ -285,7 +252,7 @@ impl People {
         check_context(&new, &everyone)?;
         let mut all = people.clone();
         all.push(new.clone());
-        self.write_people(&all, &circles, &id)?;
+        self.write_people(&all, &circles)?;
         Ok(CreatedPerson { person: listed(&new, &circles), created_id: id })
     }
 
@@ -305,7 +272,6 @@ impl People {
             find_person(&self.all()?, &id)?;
             unreachable!()
         };
-        let was_deleted = people[index].status == Some(Status::Deleted);
         let given = Person { traits: person.traits.as_ref().map(spec_with_new_part_ids), ..person.clone() };
         let mut changed = rows::updated_item(&people[index], &given, clear_fields, &["id"])?;
         self.settle_fact_overrides(&mut changed, Some(&people[index]))?;
@@ -315,34 +281,20 @@ impl People {
             check_context(&changed, &everyone)?;
         }
         people[index] = changed.clone();
-        if !was_deleted && changed.status == Some(Status::Deleted) {
-            foundations::without(&mut people, &id);
-        }
         let circles = self.circles()?;
-        self.write_people(&people, &circles, &id)?;
+        self.write_people(&people, &circles)?;
         let shown = if is_self(&changed) { as_self(Some(&changed)) } else { changed };
         Ok(listed(&shown, &circles))
     }
 
-    fn write_people(&self, people: &[Person], circles: &[Circle], changed: &str) -> anyhow::Result<()> {
+    fn write_people(&self, people: &[Person], circles: &[Circle]) -> anyhow::Result<()> {
         let checked: Vec<Person> =
             if people.iter().any(is_self) { people.to_vec() } else { std::iter::once(self_person()).chain(people.iter().cloned()).collect() };
         let trait_ids = match &self.trait_ids {
             Some(lookup) if people.iter().any(|p| p.traits.is_some()) => Some(lookup()?),
             _ => None,
         };
-        let mut problems = person_problems(&checked, circles, trait_ids.as_deref());
-        if let Some(person) = checked.iter().find(|p| p.id.as_deref() == Some(changed)) {
-            if let Some(given) = &person.foundations {
-                let mut nodes = person_nodes(&checked);
-                if let Some(habits) = &self.habits {
-                    nodes.extend(habits()?);
-                }
-                for p in foundation_problems(changed, &json!(given), &nodes) {
-                    problems.push(format!("person {changed}'s {p}"));
-                }
-            }
-        }
+        let problems = person_problems(&checked, circles, trait_ids.as_deref());
         if !problems.is_empty() {
             bail!("{}", problems.join("; "));
         }
@@ -423,16 +375,6 @@ impl People {
         }
         self.circle_sheet.write_items(circles)
     }
-}
-
-fn person_nodes(people: &[Person]) -> Vec<Node> {
-    people
-        .iter()
-        .filter_map(|p| {
-            let id = set(p.id.as_deref())?;
-            Some(Node { subject: id.to_string(), deleted: p.status == Some(Status::Deleted), foundations: p.foundations.clone().unwrap_or_default() })
-        })
-        .collect()
 }
 
 
@@ -629,7 +571,6 @@ pub fn listed(person: &Person, circles: &[Circle]) -> ListedPerson {
         status: person.status,
         circles: person.circles.clone(),
         traits: person.traits.clone(),
-        foundations: person.foundations.clone(),
         circle_names: if names.is_empty() { None } else { Some(names) },
         facts: None,
         cancelled_events: None,

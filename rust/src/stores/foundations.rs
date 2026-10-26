@@ -1,13 +1,11 @@
-//! Foundations: what a habit, or a person on the habit graph, is built
-//! on -- other habits (by their subject id, "habit:<id>") and people (by
-//! their id). Habits and people together form the graph, so each store
-//! checks its own rows against the other's.
+//! Foundations: what a habit is built on, on the habit graph -- other
+//! habits, by their subject id ("habit:<id>"). A person or circle is on
+//! the graph by their habits.
 
 use crate::py;
 use serde_json::Value;
-use std::sync::Arc;
 
-/// One node of the graph: a habit or a person, by subject id.
+/// One node of the graph: a habit, by subject id.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Node {
     pub subject: String,
@@ -15,21 +13,18 @@ pub struct Node {
     pub foundations: Vec<String>,
 }
 
-/// The other store's nodes.
-pub type NodesFn = Arc<dyn Fn() -> anyhow::Result<Vec<Node>> + Send + Sync>;
-
-/// A row on the habit graph: a habit, or a person.
+/// A row on the habit graph: a habit.
 pub trait OnGraph {
     fn foundations_mut(&mut self) -> &mut Option<Vec<String>>;
 }
 
 /// What's wrong with `subject`'s foundations, `value`, in `nodes` (every
-/// habit and person, `subject` among them): not a list of ids, an id
-/// given twice, itself, an id that's no habit or person (or a deleted
-/// one), or a cycle back to it.
+/// habit, `subject` among them): not a list of ids, an id given twice,
+/// itself, an id that's no habit (or a deleted one), or a cycle back to
+/// it.
 pub fn foundation_problems(subject: &str, value: &Value, nodes: &[Node]) -> Vec<String> {
     let Some(items) = value.as_array().filter(|items| items.iter().all(|i| i.as_str().is_some_and(|s| !s.trim().is_empty()))) else {
-        return vec!["foundations must be a list of ids: a habit's as \"habit:<id>\", a person's as their id".into()];
+        return vec!["foundations must be a list of habits' ids, each as \"habit:<id>\"".into()];
     };
     let ids: Vec<&str> = items.iter().filter_map(Value::as_str).collect();
     let mut problems = Vec::new();
@@ -45,7 +40,7 @@ pub fn foundation_problems(subject: &str, value: &Value, nodes: &[Node]) -> Vec<
     let unknown: Vec<&str> = ids.iter().copied().filter(|i| *i != subject && !nodes.iter().any(|n| n.subject == *i && !n.deleted)).collect();
     if !unknown.is_empty() {
         problems.push(format!(
-            "foundations {} aren't habits or people (get_habits and get_people list them; a habit is named \"habit:<id>\")",
+            "foundations {} aren't habits (get_habits lists them, each named \"habit:<id>\"; a person or circle is built on by their habits)",
             py::repr_list(&unknown)
         ));
     }

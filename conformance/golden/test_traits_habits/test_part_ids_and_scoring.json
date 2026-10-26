@@ -370,7 +370,6 @@
      "circles": null,
      "context": null,
      "facts": null,
-     "foundations": null,
      "id": "lejxa2",
      "name": "Sam",
      "status": "active",
@@ -391,7 +390,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"lejxa2\",\n    \"name\": \"Sam\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": {\n      \"scoring\": {\n        \"statistic\": \"percentile\",\n        \"percentile\": 0\n      },\n      \"part_scoring\": {\n        \"daring\": {\n          \"weights\": {\n            \"co2yzn\": 3\n          }\n        }\n      }\n    },\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"lejxa2\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"lejxa2\",\n    \"name\": \"Sam\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": {\n      \"scoring\": {\n        \"statistic\": \"percentile\",\n        \"percentile\": 0\n      },\n      \"part_scoring\": {\n        \"daring\": {\n          \"weights\": {\n            \"co2yzn\": 3\n          }\n        }\n      }\n    },\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"lejxa2\"\n}",
    "tool": "create_person"
   },
   {
@@ -404,7 +403,6 @@
     "circles": null,
     "context": null,
     "facts": {},
-    "foundations": null,
     "id": "lejxa2",
     "name": "Sam",
     "status": "active",
@@ -424,7 +422,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"lejxa2\",\n  \"name\": \"Sam\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": {\n    \"scoring\": {\n      \"statistic\": \"percentile\",\n      \"percentile\": 0\n    },\n    \"part_scoring\": {\n      \"daring\": {\n        \"weights\": {\n          \"co2yzn\": 3\n        }\n      }\n    }\n  },\n  \"foundations\": null,\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"lejxa2\",\n  \"name\": \"Sam\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": null,\n  \"traits\": {\n    \"scoring\": {\n      \"statistic\": \"percentile\",\n      \"percentile\": 0\n    },\n    \"part_scoring\": {\n      \"daring\": {\n        \"weights\": {\n          \"co2yzn\": 3\n        }\n      }\n    }\n  },\n  \"circle_names\": null,\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -1200,7 +1198,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -1635,7 +1632,6 @@
         "active",
         "",
         "{\"scoring\":{\"statistic\":\"percentile\",\"percentile\":0},\"part_scoring\":{\"daring\":{\"weights\":{\"co2yzn\":3}}}}",
-        "",
         "1"
        ]
       ]
@@ -2677,7 +2673,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -2687,7 +2682,6 @@
         "active",
         "",
         "{\"scoring\":{\"statistic\":\"percentile\",\"percentile\":0},\"part_scoring\":{\"daring\":{\"weights\":{\"co2yzn\":3}}}}",
-        "",
         "1"
        ]
       ]

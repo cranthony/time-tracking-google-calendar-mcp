@@ -8,14 +8,14 @@ fn n(subject: &str, foundations: &[&str]) -> Node {
 }
 
 fn graph() -> Vec<Node> {
-    vec![n("habit:sleep", &[]), n("habit:eat", &[]), n("habit:gym", &["habit:sleep", "habit:eat"]), n("family", &["habit:gym"])]
+    vec![n("habit:sleep", &[]), n("habit:eat", &[]), n("habit:gym", &["habit:sleep", "habit:eat"]), n("habit:family", &["habit:gym"])]
 }
 
 #[test]
-fn accepts_habits_and_people_as_foundations() {
+fn accepts_habits_as_foundations() {
     assert!(foundation_problems("habit:gym", &json!(["habit:sleep", "habit:eat"]), &graph()).is_empty());
-    assert!(foundation_problems("habit:read", &json!(["family", "habit:sleep"]), &graph()).is_empty());
-    assert!(foundation_problems("family", &json!([]), &graph()).is_empty());
+    assert!(foundation_problems("habit:read", &json!(["habit:family", "habit:sleep"]), &graph()).is_empty());
+    assert!(foundation_problems("habit:family", &json!([]), &graph()).is_empty());
 }
 
 #[test]
@@ -23,7 +23,7 @@ fn refuses_what_isnt_a_list_of_ids() {
     for value in [json!("habit:sleep"), json!([1]), json!([""]), json!({"habit:sleep": true})] {
         let problems = foundation_problems("habit:gym", &value, &graph());
         assert_eq!(problems.len(), 1, "{value}");
-        assert!(problems[0].starts_with("foundations must be a list of ids"), "{value}: {problems:?}");
+        assert!(problems[0].starts_with("foundations must be a list of habits' ids"), "{value}: {problems:?}");
     }
 }
 
@@ -35,14 +35,14 @@ fn refuses_repeats_itself_and_unknown_or_deleted_ids() {
     assert_eq!(foundation_problems("habit:gym", &json!(["habit:eat", "habit:eat"]), &nodes), vec!["foundations name ['habit:eat'] more than once"]);
     assert_eq!(foundation_problems("habit:gym", &json!(["habit:gym"]), &nodes), vec!["foundations can't include itself"]);
     let problems = foundation_problems("habit:gym", &json!(["sleep", "habit:gone"]), &nodes);
-    assert!(problems[0].starts_with("foundations ['sleep', 'habit:gone'] aren't habits or people"), "{problems:?}");
+    assert!(problems[0].starts_with("foundations ['sleep', 'habit:gone'] aren't habits ("), "{problems:?}");
 }
 
 #[test]
-fn refuses_a_cycle_through_habits_and_people() {
+fn refuses_a_cycle() {
     assert_eq!(
-        foundation_problems("habit:sleep", &json!(["family"]), &graph()),
-        vec!["foundations would make a cycle: habit:sleep → family → habit:gym → habit:sleep"]
+        foundation_problems("habit:sleep", &json!(["habit:family"]), &graph()),
+        vec!["foundations would make a cycle: habit:sleep → habit:family → habit:gym → habit:sleep"]
     );
     assert!(foundation_problems("habit:sleep", &json!(["habit:eat"]), &graph()).is_empty());
 }

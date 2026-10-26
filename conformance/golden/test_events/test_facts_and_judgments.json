@@ -14,7 +14,6 @@
      "circles": null,
      "context": null,
      "facts": null,
-     "foundations": null,
      "id": "co2yzn",
      "name": "Friend One",
      "status": "active",
@@ -23,7 +22,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Friend One\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Friend One\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": null,\n    \"traits\": null,\n    \"circle_names\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_person"
   },
   {
@@ -646,7 +645,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -1079,7 +1077,6 @@
         "Friend One",
         "",
         "active",
-        "",
         "",
         "",
         "1"
@@ -2308,7 +2305,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -2316,7 +2312,6 @@
         "Friend One",
         "",
         "active",
-        "",
         "",
         "",
         "1"

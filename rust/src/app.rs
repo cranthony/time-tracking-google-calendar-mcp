@@ -292,10 +292,8 @@ impl App {
         built(&self.people, || {
             let (_, sheets, id) = self.spreadsheet()?;
             let me = self.me();
-            let habits: crate::stores::foundations::NodesFn = Arc::new(move || me.habits()?.nodes());
-            let me = self.me();
             let traits: crate::stores::people::TraitsFn = Arc::new(move || me.traits()?.all());
-            Ok(People::ensure(&sheets, &id, Some(self.trait_ids_fn()))?.with_habits(habits).with_traits(traits))
+            Ok(People::ensure(&sheets, &id, Some(self.trait_ids_fn()))?.with_traits(traits))
         })
     }
 
@@ -308,8 +306,6 @@ impl App {
                 Ok(action_scopes(&actions.all()?, &actions.groups()?))
             });
             let me = self.me();
-            let people: crate::stores::foundations::NodesFn = Arc::new(move || me.people()?.nodes());
-            let me = self.me();
             let targets: crate::stores::habits::TargetsFn = Arc::new(move || {
                 let people = me.people()?;
                 let named = |id: &Option<String>, name: &Option<String>| Some((id.clone()?, name.clone().unwrap_or_default()));
@@ -319,7 +315,7 @@ impl App {
                     traits: me.traits()?.all()?.iter().filter_map(|t| named(&t.id, &t.name)).collect(),
                 })
             });
-            Ok(Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))?.with_people(people).with_targets(targets))
+            Ok(Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))?.with_targets(targets))
         })
     }
 

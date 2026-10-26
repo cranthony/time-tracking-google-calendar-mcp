@@ -186,24 +186,17 @@ fn a_habit_goes_by_a_prefixed_id_where_a_persons_would() {
 }
 
 #[test]
-fn foundations_are_other_habits_or_people_without_a_cycle() {
+fn foundations_are_other_habits_without_a_cycle() {
     let f = fixture(None);
-    let people: NodesFn = Arc::new(|| Ok(vec![Node { subject: "family".into(), deleted: false, foundations: vec!["habit:nope".into()] }]));
-    let habits = f.habits.clone().with_people(people);
-    let held = |given: Value| {
-        let _held = WRITE_LOCK.hold();
-        habits.create_habit(&habit(given)).map(|c| c.created_id)
-    };
-    let sleep = held(json!({"name": "Sleep", "action_id": "walk"})).unwrap();
-    let guitar = held(json!({"name": "Guitar", "action_id": "guitar", "foundations": [subject_id(&sleep), "family"]})).unwrap();
+    let sleep = f.create(json!({"name": "Sleep", "action_id": "walk"})).unwrap();
+    let guitar = f.create(json!({"name": "Guitar", "action_id": "guitar", "foundations": [subject_id(&sleep)]})).unwrap();
 
-    assert_eq!(f.get(&guitar)["foundations"], json!([subject_id(&sleep), "family"]));
+    assert_eq!(f.get(&guitar)["foundations"], json!([subject_id(&sleep)]));
     assert!(f.get(&sleep)["foundations"].is_null());
-    refused(held(json!({"name": "Walk", "action_id": "walk", "foundations": [sleep.clone()]})), &format!(r"habit .*'s foundations \['{sleep}'\] aren't habits or people"));
-    let update = |given: Value| {
-        let _held = WRITE_LOCK.hold();
-        habits.update_habit(&habit(given), &[])
-    };
+    refused(f.create(json!({"name": "Walk", "action_id": "walk", "foundations": [sleep.clone()]})), &format!(r"habit .*'s foundations \['{sleep}'\] aren't habits"));
+    // A person is built on by their habits.
+    refused(f.create(json!({"name": "Walk", "action_id": "walk", "foundations": ["family"]})), r"foundations \['family'\] aren't habits");
+    let update = |given: Value| f.held(|h| h.update_habit(&habit(given), &[]));
     refused(update(json!({"id": sleep, "foundations": [subject_id(&guitar)]})), &format!(r"habit {sleep}'s foundations would make a cycle: habit:{sleep} → habit:{guitar} → habit:{sleep}"));
 }
 

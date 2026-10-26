@@ -91,15 +91,14 @@ async def test_foundations(session):
     eat = (await session.call("create_habit", habit={"name": "Eat well", "action_id": meal, "traits": {"parts": {"reliable": [spacing]}}}))["created_id"]
     await session.call_error("create_habit", habit={"name": "Bad gap", "action_id": meal, "traits": {"parts": {"reliable": [{**spacing, "max_gap_hours": 0}]}}})
     gym = (await session.call("create_habit", habit={"name": "Exercise", "action_id": meal, "foundations": [f"habit:{rest}", f"habit:{eat}"]}))["created_id"]
-    family = (await session.call("create_person", person={"name": "Family Example", "foundations": [f"habit:{gym}"]}))["created_id"]
+    family = (await session.call("create_person", person={"name": "Family Example"}))["created_id"]
+    theirs = (await session.call("create_habit", habit={"person_id": family, "foundations": [f"habit:{gym}"]}))["created_id"]
     await session.call_error("create_habit", habit={"name": "Unknown", "action_id": meal, "foundations": [rest]})
+    # A person is built on by their habits, not themselves.
     await session.call_error("update_habit", habit={"id": rest, "foundations": [family]})
-    await session.call_error("update_person", person={"id": family, "foundations": [family]})
-    assert (await session.call("get_person", id_or_name=family))["foundations"] == [f"habit:{gym}"]
+    assert (await session.call("get_habit", id_or_name=theirs))["foundations"] == [f"habit:{gym}"]
     await session.call("update_habit", habit={"id": gym, "status": "deleted"})
-    assert (await session.call("get_person", id_or_name=family))["foundations"] == []
-    cleared = await session.call("update_person", person={"id": family}, clear_fields=["foundations"])
-    assert cleared["foundations"] is None
+    assert (await session.call("get_habit", id_or_name=theirs))["foundations"] == []
 
 
 async def test_schedule_hints(session):

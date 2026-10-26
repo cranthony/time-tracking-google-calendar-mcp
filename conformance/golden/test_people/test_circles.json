@@ -78,7 +78,6 @@
      ],
      "context": null,
      "facts": null,
-     "foundations": null,
      "id": "rs21so",
      "name": "Sam Example",
      "status": "active",
@@ -87,7 +86,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"co2yzn\",\n      \"3dnjav\"\n    ],\n    \"traits\": null,\n    \"foundations\": null,\n    \"circle_names\": [\n      \"Close friends\",\n      \"Family\"\n    ],\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"person\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Sam Example\",\n    \"context\": null,\n    \"status\": \"active\",\n    \"circles\": [\n      \"co2yzn\",\n      \"3dnjav\"\n    ],\n    \"traits\": null,\n    \"circle_names\": [\n      \"Close friends\",\n      \"Family\"\n    ],\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_person"
   },
   {
@@ -148,7 +147,6 @@
     ],
     "context": null,
     "facts": {},
-    "foundations": null,
     "id": "rs21so",
     "name": "Sam Example",
     "status": "active",
@@ -156,7 +154,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"co2yzn\",\n    \"3dnjav\"\n  ],\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Close friends\",\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"co2yzn\",\n    \"3dnjav\"\n  ],\n  \"traits\": null,\n  \"circle_names\": [\n    \"Close friends\",\n    \"Family\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_person"
   },
   {
@@ -268,7 +266,6 @@
     ],
     "context": null,
     "facts": {},
-    "foundations": null,
     "id": "rs21so",
     "name": "Sam Example",
     "status": "active",
@@ -276,7 +273,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"3dnjav\"\n  ],\n  \"traits\": null,\n  \"foundations\": null,\n  \"circle_names\": [\n    \"Relatives\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Sam Example\",\n  \"context\": null,\n  \"status\": \"active\",\n  \"circles\": [\n    \"3dnjav\"\n  ],\n  \"traits\": null,\n  \"circle_names\": [\n    \"Relatives\"\n  ],\n  \"facts\": {},\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "get_person"
   },
   {
@@ -586,7 +583,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ]
       ]
@@ -1084,7 +1080,6 @@
         "",
         "active",
         "[\"co2yzn\",\"3dnjav\"]",
-        "",
         "",
         "1"
        ]
@@ -1769,7 +1764,6 @@
         "active",
         "[\"3dnjav\"]",
         "",
-        "",
         "2"
        ]
       ]
@@ -2201,7 +2195,6 @@
         "status",
         "circles",
         "traits",
-        "foundations",
         "version"
        ],
        [
@@ -2210,7 +2203,6 @@
         "",
         "active",
         "[\"3dnjav\"]",
-        "",
         "",
         "2"
        ]
