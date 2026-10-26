@@ -393,3 +393,16 @@ fn keeps_a_judgment_made_since_though_whats_kept_lags_it() {
     assert_eq!(now.get("mom"), mom.get("mom"), "{now:?}");
     assert!(now.contains_key("self"), "{now:?}");
 }
+
+#[test]
+fn a_recurring_goals_habit_is_judged_for_the_events_for_its_goals() {
+    use crate::stores::shares::Share;
+    let tagged = Event { goals: Some(vec![crate::stores::goals::GoalShare::new("call_2026-10-25".into(), None, None, false)]), ..tonight() };
+    let goal_habit = |id: &str| json!({"id": id, "name": id, "recurring_goal": {"period": "week"}, "status": "active", "traits": {"select": ["thoughtful"]}});
+    let s = Setup::standard(&[tagged]).with_habits(&[goal_habit("call"), goal_habit("gym")]);
+
+    let ids = s.ids();
+
+    assert!(ids.contains(&"e0001/habit:call/thoughtful/judgment".to_string()), "{ids:?}");
+    assert!(!ids.iter().any(|i| i.contains("habit:gym")));
+}

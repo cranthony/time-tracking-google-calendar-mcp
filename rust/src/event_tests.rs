@@ -388,3 +388,19 @@ fn refuses_clearing_what_cant_be_cleared_or_is_also_set() {
         assert!(error.to_string().contains(message), "{error}");
     }
 }
+
+#[test]
+fn to_api_body_indexes_an_event_under_the_habits_its_goals_are_from() {
+    use crate::stores::goals::GoalShare;
+    use crate::stores::shares::Share;
+    let event = Event {
+        goals: Some(vec![GoalShare::new("call_2026-10-25".into(), None, None, false), GoalShare::new("plain".into(), None, None, false)]),
+        ..Event::default()
+    };
+
+    let body = event.to_api_body().unwrap();
+
+    let private = &body["extendedProperties"]["private"];
+    assert_eq!(private["cascading-time-tracker-habit-call"], "1");
+    assert_eq!(private.as_object().unwrap().keys().filter(|k| is_habit_key(k)).count(), 1);
+}

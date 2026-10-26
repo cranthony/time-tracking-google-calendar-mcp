@@ -704,7 +704,12 @@ impl CalendarClient {
         let private_has_null = private.is_some_and(|p| !p.is_empty() && p.values().any(Value::is_null));
         // Facts written, set or cleared, replace the people it's indexed under.
         let writes_facts = private.is_some_and(|p| p.contains_key(&format!("{}facts", crate::event::PREFIX)));
-        if private_has_null || writes_facts {
+        // Goal shares for a habit's goals replace the habits it's indexed
+        // under. Others leave them as they are, sparing a read for each
+        // event tagged: the index may name a habit an event is no longer
+        // for, so read its goal shares to be sure.
+        let writes_goals = event.goals.as_deref().is_some_and(|g| !crate::event::habit_properties(g).is_empty());
+        if private_has_null || writes_facts || writes_goals {
             // A null removes a property -- but Calendar refuses one an
             // instance doesn't have, and facts null every chunk they don't
             // use. Removing what isn't there is nothing, so drop those.
@@ -722,6 +727,11 @@ impl CalendarClient {
             let mut private = body["extendedProperties"]["private"].as_object().unwrap().clone();
             if writes_facts {
                 for key in current_private.keys().filter(|k| crate::event::is_person_key(k)) {
+                    private.entry(key.clone()).or_insert(Value::Null);
+                }
+            }
+            if writes_goals {
+                for key in current_private.keys().filter(|k| crate::event::is_habit_key(k)) {
                     private.entry(key.clone()).or_insert(Value::Null);
                 }
             }

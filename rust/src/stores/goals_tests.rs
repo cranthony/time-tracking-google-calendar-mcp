@@ -677,3 +677,46 @@ fn a_deadline_offset_from_before_deadline_rule_reads_as_one_before_the_parents()
     f.change(&[], vec![edit(json!({"id": top, "deadline": "2026-11-25"}))], vec![]).unwrap();
     assert_eq!(f.get(&sub)["due"], json!("2026-11-24"));
 }
+
+fn with_templates(f: &Fixture) -> Goals {
+    let templates: TemplatesFn = Arc::new(|| {
+        let template = Template {
+            habit_id: "hab1".into(),
+            name: "Call Mom".into(),
+            goal: habit_goals::RecurringGoal { period: Some(habit_goals::Period::Week), ..Default::default() },
+        };
+        Ok(Some((vec![template], ZONE)))
+    });
+    f.goals.clone().with_renewal(Renewal { habits_tab: f.goals.whole_tab(), templates })
+}
+
+#[test]
+fn a_habits_goal_is_made_as_its_period_comes_and_written_with_the_next_change() {
+    // 2026-10-17 is a Saturday: its week began the 11th.
+    let f = fixture();
+    let goals = with_templates(&f);
+    let _held = WRITE_LOCK.hold();
+
+    let listed = goals.get_goals(None, &ZONE).unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].id.as_deref(), Some("hab1_2026-10-11"));
+    assert_eq!(listed[0].habit_id.as_deref(), Some("hab1"));
+    assert_eq!(listed[0].due.as_deref(), Some("2026-10-17"));
+    // A read doesn't write it: the next change does.
+    assert!(f.goals.all().unwrap().is_empty());
+    goals.change_goals(&[goal(json!({"title": "Other", "deadline": "2026-11-01"}))], &[], &[], &ZONE).unwrap();
+    assert_eq!(f.goals.all().unwrap().iter().filter(|g| g.habit_id.is_some()).count(), 1);
+
+    // Done, the next waits for its week.
+    goals.change_goals(&[], &[edit(json!({"id": "hab1_2026-10-11", "status": "done", "version": 1}))], &[], &ZONE).unwrap();
+    assert_eq!(goals.get_goals(None, &ZONE).unwrap().len(), 1);
+    crate::determinism::TEST_NOW.with(|n| n.set(Some(at("2026-10-18T09:00:00-04:00"))));
+    let ids: Vec<Option<String>> = goals.get_goals(None, &ZONE).unwrap().into_iter().map(|g| g.id).collect();
+    assert!(ids.contains(&Some("hab1_2026-10-18".into())), "{ids:?}");
+}
+
+#[test]
+fn only_a_habits_goal_is_named_for_one() {
+    let f = fixture();
+    refused(f.create(json!({"id": "hab1_2026-10-11", "title": "Mine", "deadline": "2026-11-01"})), "lowercase letters, digits and dashes");
+}

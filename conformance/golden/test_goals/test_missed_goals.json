@@ -24,6 +24,7 @@
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
+     "habit_id": null,
      "history": [
       {
        "at": "2026-10-07T15:30:00-04:00",
@@ -45,7 +46,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Run a marathon\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Run a marathon\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_goal"
   },
   {
@@ -74,6 +75,7 @@
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
+     "habit_id": null,
      "history": [
       {
        "at": "2026-10-07T15:30:00-04:00",
@@ -97,7 +99,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Run a half first\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-11-01\"\n    },\n    \"due\": \"2026-11-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-11-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [\n      \"Run a marathon\"\n    ],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Run a half first\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-11-01\"\n    },\n    \"due\": \"2026-11-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-11-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [\n      \"Run a marathon\"\n    ],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_goal"
   },
   {
@@ -152,6 +154,7 @@
       "expected_minutes": null,
       "expected_start": null,
       "for_ids": null,
+      "habit_id": null,
       "history": [
        {
         "at": "2026-10-07T15:30:00-04:00",
@@ -191,6 +194,7 @@
       "expected_minutes": null,
       "expected_start": null,
       "for_ids": null,
+      "habit_id": null,
       "history": [
        {
         "at": "2026-10-07T15:30:00-04:00",
@@ -218,7 +222,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"3dnjav\",\n      \"title\": \"Run a half first\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-11-01\"\n      },\n      \"due\": \"2026-11-01\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"missed\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-01\"\n        },\n        {\n          \"status\": \"missed\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-01\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [\n        \"Run a marathon\"\n      ],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Run a marathon\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-12-01\"\n      },\n      \"due\": \"2026-12-01\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [],\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    }\n  ],\n  \"deleted_ids\": []\n}",
+   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"3dnjav\",\n      \"title\": \"Run a half first\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-11-01\"\n      },\n      \"due\": \"2026-11-01\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"missed\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-01\"\n        },\n        {\n          \"status\": \"missed\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-01\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [\n        \"Run a marathon\"\n      ],\n      \"habit_id\": null,\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Run a marathon\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-12-01\"\n      },\n      \"due\": \"2026-12-01\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [],\n      \"habit_id\": null,\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    }\n  ],\n  \"deleted_ids\": []\n}",
    "tool": "update_goals"
   },
   {
@@ -248,6 +252,7 @@
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
+     "habit_id": null,
      "history": [
       {
        "at": "2026-10-07T15:30:00-04:00",
@@ -276,7 +281,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"title\": \"Run a half first\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-01\"\n  },\n  \"due\": \"2026-11-01\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"missed\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-01\"\n    },\n    {\n      \"status\": \"missed\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-01\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Run a marathon\"\n  ],\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"title\": \"Run a half first\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-01\"\n  },\n  \"due\": \"2026-11-01\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"missed\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-01\"\n    },\n    {\n      \"status\": \"missed\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-01\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Run a marathon\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
    "tool": "get_goals"
   }
  ],
@@ -327,6 +332,111 @@
    "query": {}
   },
   {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "habits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Habits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "person_id",
+        "circle_id",
+        "recurring_goal",
+        "status",
+        "note",
+        "traits",
+        "foundations",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "habits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -372,7 +482,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000005,
+        "sheetId": 1000007,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -398,6 +508,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]
@@ -417,7 +528,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000005
+         "sheetId": 1000007
         },
         "metadataKey": "sheet-role",
         "metadataValue": "outcome-goals",
@@ -440,7 +551,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 2,
-        "sheetId": 1000005,
+        "sheetId": 1000007,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -466,6 +577,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ]
       ]
@@ -486,7 +598,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 3,
-        "sheetId": 1000005,
+        "sheetId": 1000007,
         "startColumnIndex": 0,
         "startRowIndex": 2
        }
@@ -512,6 +624,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ]
       ]
@@ -532,7 +645,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 3,
-        "sheetId": 1000005,
+        "sheetId": 1000007,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -558,6 +671,7 @@
         "",
         "",
         "",
+        "",
         "2"
        ],
        [
@@ -572,6 +686,7 @@
         "",
         "missed",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2026-11-01\"},{\"status\":\"missed\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2026-11-01\"}]",
+        "",
         "",
         "",
         "",
@@ -613,6 +728,14 @@
        "sheetId": 1000005
       },
       "metadataKey": "sheet-role",
+      "metadataValue": "habits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
       "metadataValue": "outcome-goals",
       "visibility": "PROJECT"
      }
@@ -621,7 +744,7 @@
      "title": "Calendar Metadata (do not edit by hand)"
     },
     "tabs": {
-     "Outcome Goals": {
+     "Habits": {
       "column_widths": {},
       "properties": {
        "gridProperties": {
@@ -630,6 +753,39 @@
        },
        "index": 0,
        "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Habits"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "person_id",
+        "circle_id",
+        "recurring_goal",
+        "status",
+        "note",
+        "traits",
+        "foundations",
+        "version"
+       ]
+      ]
+     },
+     "Outcome Goals": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -658,6 +814,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ],
        [
@@ -679,6 +836,7 @@
         "",
         "",
         "",
+        "",
         "2"
        ],
        [
@@ -693,6 +851,7 @@
         "",
         "missed",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2026-11-01\"},{\"status\":\"missed\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2026-11-01\"}]",
+        "",
         "",
         "",
         "",

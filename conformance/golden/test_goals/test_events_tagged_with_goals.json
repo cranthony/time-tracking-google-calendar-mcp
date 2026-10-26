@@ -24,6 +24,7 @@
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
+     "habit_id": null,
      "history": [
       {
        "at": "2026-10-07T15:30:00-04:00",
@@ -45,7 +46,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Learn Rust\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Learn Rust\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_goal"
   },
   {
@@ -281,6 +282,111 @@
    "query": {}
   },
   {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "habits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Habits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "person_id",
+        "circle_id",
+        "recurring_goal",
+        "status",
+        "note",
+        "traits",
+        "foundations",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "habits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
    "body": {
     "dataFilters": [
      {
@@ -326,7 +432,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000005,
+        "sheetId": 1000007,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -352,6 +458,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ]
       ]
@@ -371,7 +478,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000005
+         "sheetId": 1000007
         },
         "metadataKey": "sheet-role",
         "metadataValue": "outcome-goals",
@@ -394,7 +501,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 2,
-        "sheetId": 1000005,
+        "sheetId": 1000007,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -413,6 +520,7 @@
         "",
         "active",
         "[{\"status\":\"active\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":\"2026-12-01\"}]",
+        "",
         "",
         "",
         "",
@@ -485,7 +593,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000007,
+        "sheetId": 1000009,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -521,7 +629,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000007
+         "sheetId": 1000009
         },
         "metadataKey": "sheet-role",
         "metadataValue": "actions",
@@ -582,7 +690,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000009,
+        "sheetId": 1000011,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -615,7 +723,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000009
+         "sheetId": 1000011
         },
         "metadataKey": "sheet-role",
         "metadataValue": "action-groups",
@@ -683,7 +791,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000011,
+        "sheetId": 1000013,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -717,7 +825,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000011
+         "sheetId": 1000013
         },
         "metadataKey": "sheet-role",
         "metadataValue": "people",
@@ -778,7 +886,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000013,
+        "sheetId": 1000015,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -809,7 +917,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000013
+         "sheetId": 1000015
         },
         "metadataKey": "sheet-role",
         "metadataValue": "circles",
@@ -877,7 +985,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000015,
+        "sheetId": 1000017,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -909,7 +1017,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000015
+         "sheetId": 1000017
         },
         "metadataKey": "sheet-role",
         "metadataValue": "locations",
@@ -970,7 +1078,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000017,
+        "sheetId": 1000019,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1001,7 +1109,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000017
+         "sheetId": 1000019
         },
         "metadataKey": "sheet-role",
         "metadataValue": "location-groups",
@@ -1062,7 +1170,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000019,
+        "sheetId": 1000021,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1095,7 +1203,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000019
+         "sheetId": 1000021
         },
         "metadataKey": "sheet-role",
         "metadataValue": "travel-times",
@@ -1163,7 +1271,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1198,7 +1306,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 6,
-        "sheetId": 1000021,
+        "sheetId": 1000023,
         "startColumnIndex": 0,
         "startRowIndex": 1
        }
@@ -1272,114 +1380,10 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000021
-        },
-        "metadataKey": "sheet-role",
-        "metadataValue": "traits",
-        "visibility": "PROJECT"
-       }
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "developerMetadataLookup": {
-       "metadataKey": "sheet-role",
-       "metadataValue": "habits"
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
-   "query": {}
-  },
-  {
-   "body": {
-    "requests": [
-     {
-      "addSheet": {
-       "properties": {
-        "tabColor": {
-         "blue": 0.96,
-         "green": 0.52,
-         "red": 0.26
-        },
-        "title": "Habits"
-       }
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 26,
-        "endRowIndex": 1,
-        "sheetId": 1000023,
-        "startColumnIndex": 0,
-        "startRowIndex": 0
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "id",
-        "name",
-        "action_id",
-        "person_id",
-        "circle_id",
-        "status",
-        "note",
-        "traits",
-        "foundations",
-        "version"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "requests": [
-     {
-      "createDeveloperMetadata": {
-       "developerMetadata": {
-        "location": {
          "sheetId": 1000023
         },
         "metadataKey": "sheet-role",
-        "metadataValue": "habits",
+        "metadataValue": "traits",
         "visibility": "PROJECT"
        }
       }
@@ -1858,7 +1862,7 @@
        "sheetId": 1000005
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "outcome-goals",
+      "metadataValue": "habits",
       "visibility": "PROJECT"
      },
      {
@@ -1866,7 +1870,7 @@
        "sheetId": 1000007
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "actions",
+      "metadataValue": "outcome-goals",
       "visibility": "PROJECT"
      },
      {
@@ -1874,7 +1878,7 @@
        "sheetId": 1000009
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "action-groups",
+      "metadataValue": "actions",
       "visibility": "PROJECT"
      },
      {
@@ -1882,7 +1886,7 @@
        "sheetId": 1000011
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "people",
+      "metadataValue": "action-groups",
       "visibility": "PROJECT"
      },
      {
@@ -1890,7 +1894,7 @@
        "sheetId": 1000013
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "circles",
+      "metadataValue": "people",
       "visibility": "PROJECT"
      },
      {
@@ -1898,7 +1902,7 @@
        "sheetId": 1000015
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "locations",
+      "metadataValue": "circles",
       "visibility": "PROJECT"
      },
      {
@@ -1906,7 +1910,7 @@
        "sheetId": 1000017
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "location-groups",
+      "metadataValue": "locations",
       "visibility": "PROJECT"
      },
      {
@@ -1914,7 +1918,7 @@
        "sheetId": 1000019
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "travel-times",
+      "metadataValue": "location-groups",
       "visibility": "PROJECT"
      },
      {
@@ -1922,7 +1926,7 @@
        "sheetId": 1000021
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "traits",
+      "metadataValue": "travel-times",
       "visibility": "PROJECT"
      },
      {
@@ -1930,7 +1934,7 @@
        "sheetId": 1000023
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "habits",
+      "metadataValue": "traits",
       "visibility": "PROJECT"
      },
      {
@@ -1962,7 +1966,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000009,
+       "sheetId": 1000011,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -1991,7 +1995,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000007,
+       "sheetId": 1000009,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2056,7 +2060,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000013,
+       "sheetId": 1000015,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2113,7 +2117,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000023,
+       "sheetId": 1000005,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2129,6 +2133,7 @@
         "action_id",
         "person_id",
         "circle_id",
+        "recurring_goal",
         "status",
         "note",
         "traits",
@@ -2145,7 +2150,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000017,
+       "sheetId": 1000019,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2172,7 +2177,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000015,
+       "sheetId": 1000017,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2200,7 +2205,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000005,
+       "sheetId": 1000007,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2229,6 +2234,7 @@
         "for_ids",
         "deadline_rule",
         "activate_when",
+        "habit_id",
         "version"
        ],
        [
@@ -2250,6 +2256,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ]
       ]
@@ -2262,7 +2269,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000011,
+       "sheetId": 1000013,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2306,7 +2313,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000021,
+       "sheetId": 1000023,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2373,7 +2380,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000019,
+       "sheetId": 1000021,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,

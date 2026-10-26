@@ -5,6 +5,7 @@ pub mod event_changes;
 pub mod foundations;
 pub mod goals;
 pub mod groups;
+pub mod habit_goals;
 pub mod habits;
 pub mod journal;
 pub mod locations;
