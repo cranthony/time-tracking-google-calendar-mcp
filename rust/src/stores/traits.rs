@@ -54,11 +54,23 @@ pub fn part_kind(kind: &str) -> Option<(&'static [&'static str], &'static [&'sta
         "duration" => Some((&["target_min"], &["interval_days", "zero_at_days", "action"])),
         "follow_through" => Some((&[], &["penalty", "recovery", "look_back_days", "action"])),
         "spacing" => Some((&["action", "max_gap_hours"], &["exceptions"])),
+        "schedule" => Some((&["action", "from", "to", "measure"], &["days", "window_days", "slack_minutes"])),
         _ => None,
     }
 }
 
-pub const PART_KIND_NAMES: [&str; 6] = ["judgment", "continuity", "count", "duration", "follow_through", "spacing"];
+pub const PART_KIND_NAMES: [&str; 7] = ["judgment", "continuity", "count", "duration", "follow_through", "spacing", "schedule"];
+
+/// What a schedule part scores a day it's on by: an event of its action
+/// starting in its window, one ending in it, or how much of it they
+/// cover.
+pub const SCHEDULE_MEASURES: [&str; 3] = ["starts", "ends", "covered"];
+
+/// The days a schedule part can be on.
+pub const WEEKDAYS: [&str; 7] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+/// A schedule part's window, in days, unless it says.
+pub const DEFAULT_SCHEDULE_WINDOW_DAYS: i64 = 7;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub enum TraitStatus {
@@ -495,6 +507,62 @@ pub fn part_problems_among(part: &Value, fact_ids: Option<&[String]>) -> Vec<Str
     }
     if let Some(exceptions) = object.get("exceptions") {
         problems.extend(exception_problems(exceptions));
+    }
+    if kind == "schedule" {
+        problems.extend(schedule_problems(object));
+    }
+    problems
+}
+
+/// The minutes after midnight "HH:MM" names, if it's a time of day.
+fn minutes_of_day(value: &Value) -> Option<i64> {
+    let (hours, minutes) = value.as_str()?.split_once(':')?;
+    if hours.len() != 2 || minutes.len() != 2 {
+        return None;
+    }
+    let (hours, minutes): (i64, i64) = (hours.parse().ok()?, minutes.parse().ok()?);
+    ((0..24).contains(&hours) && (0..60).contains(&minutes)).then_some(hours * 60 + minutes)
+}
+
+/// A schedule part's window ("from" and "to", each "HH:MM", "to" before
+/// "from" crossing midnight), measure, days and slack.
+fn schedule_problems(part: &Map<String, Value>) -> Vec<String> {
+    let mut problems = Vec::new();
+    let from = minutes_of_day(&part["from"]);
+    let to = minutes_of_day(&part["to"]);
+    for (name, at) in [("from", from), ("to", to)] {
+        if at.is_none() {
+            problems.push(format!("\"{name}\" must be a time of day, \"HH:MM\" (\"06:30\")"));
+        }
+    }
+    if from.is_some() && from == to {
+        problems.push("\"from\" and \"to\" must differ: \"to\" before \"from\" is a window crossing midnight".into());
+    }
+    let measure = part["measure"].as_str().filter(|m| SCHEDULE_MEASURES.contains(m));
+    if measure.is_none() {
+        problems.push(format!("\"measure\" must be one of {}", SCHEDULE_MEASURES.join(", ")));
+    }
+    if let Some(days) = part.get("days") {
+        let ok = days.as_array().is_some_and(|d| !d.is_empty() && d.iter().all(|day| day.as_str().is_some_and(|day| WEEKDAYS.contains(&day))));
+        if !ok {
+            problems.push(format!("\"days\" must be a list of weekdays, each one of {}", WEEKDAYS.join(", ")));
+        } else if let Some(days) = days.as_array() {
+            if days.iter().enumerate().any(|(i, d)| days[..i].contains(d)) {
+                problems.push("\"days\" names a day more than once".into());
+            }
+        }
+    }
+    if let Some(slack) = part.get("slack_minutes") {
+        if measure.is_some() && measure != Some("covered") {
+            problems.push("\"slack_minutes\" is only for the \"covered\" measure: the time of its window it needn't cover".into());
+        } else if !(is_number(slack) && number(slack) >= 0.0) {
+            problems.push("\"slack_minutes\" must be a number, 0 or more".into());
+        } else if let (Some(from), Some(to)) = (from, to) {
+            let length = (to - from).rem_euclid(24 * 60);
+            if number(slack) >= length as f64 {
+                problems.push(format!("\"slack_minutes\" must be less than its window's {length} minutes"));
+            }
+        }
     }
     problems
 }

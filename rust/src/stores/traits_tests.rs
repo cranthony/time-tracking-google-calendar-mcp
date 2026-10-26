@@ -423,6 +423,44 @@ fn part_keys_number_repeated_kinds() {
 }
 
 #[test]
+fn a_schedule_part_takes_an_action_a_window_a_measure_and_its_days() {
+    for part in [
+        json!({"kind": "schedule", "action": "sleep", "from": "06:30", "to": "07:30", "measure": "ends"}),
+        json!({"kind": "schedule", "action": "bed", "from": "22:30", "to": "00:30", "measure": "starts", "days": ["fri", "sat"], "window_days": 14}),
+        json!({"kind": "schedule", "action": "work", "from": "10:00", "to": "18:00", "measure": "covered", "days": ["mon", "tue", "wed", "thu", "fri"], "slack_minutes": 60}),
+        json!({"kind": "schedule", "action": "work", "from": "10:00", "to": "18:00", "measure": "covered", "slack_minutes": 0}),
+    ] {
+        assert!(part_problems(&part).is_empty(), "{part}: {:?}", part_problems(&part));
+    }
+    let part = |extra: Value| {
+        let mut p = json!({"kind": "schedule", "action": "work", "from": "10:00", "to": "18:00", "measure": "covered"});
+        p.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+        p
+    };
+    let cases = [
+        (json!({"kind": "schedule", "from": "06:30", "to": "07:30", "measure": "ends"}), "needs \"action\""),
+        (json!({"kind": "schedule", "action": "sleep", "to": "07:30", "measure": "ends"}), "needs \"from\""),
+        (json!({"kind": "schedule", "action": "sleep", "from": "06:30", "to": "07:30"}), "needs \"measure\""),
+        (part(json!({"from": "6:30"})), "\"from\" must be a time of day"),
+        (part(json!({"to": "24:00"})), "\"to\" must be a time of day"),
+        (part(json!({"to": "10:00"})), "\"from\" and \"to\" must differ"),
+        (part(json!({"measure": "during"})), "\"measure\" must be one of starts, ends, covered"),
+        (part(json!({"days": ["monday"]})), "\"days\" must be a list of weekdays"),
+        (part(json!({"days": []})), "\"days\" must be a list of weekdays"),
+        (part(json!({"days": ["mon", "mon"]})), "\"days\" names a day more than once"),
+        (part(json!({"window_days": 0})), "\"window_days\" must be a number above 0"),
+        (part(json!({"measure": "starts", "slack_minutes": 10})), "\"slack_minutes\" is only for the \"covered\" measure"),
+        (part(json!({"slack_minutes": -5})), "\"slack_minutes\" must be a number, 0 or more"),
+        (part(json!({"slack_minutes": 480})), "\"slack_minutes\" must be less than its window's 480 minutes"),
+        (part(json!({"max_gap_hours": 6})), "has no field \"max_gap_hours\"; a schedule part takes"),
+    ];
+    for (part, problem) in cases {
+        let problems = part_problems(&part);
+        assert!(problems.first().is_some_and(|p| p.starts_with(problem)), "{part}: {problems:?}");
+    }
+}
+
+#[test]
 fn a_spacing_part_takes_an_action_a_gap_and_exceptions() {
     for part in [
         json!({"kind": "spacing", "action": "meals", "max_gap_hours": 6}),
