@@ -309,7 +309,17 @@ impl App {
             });
             let me = self.me();
             let people: crate::stores::foundations::NodesFn = Arc::new(move || me.people()?.nodes());
-            Ok(Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))?.with_people(people))
+            let me = self.me();
+            let targets: crate::stores::habits::TargetsFn = Arc::new(move || {
+                let people = me.people()?;
+                let named = |id: &Option<String>, name: &Option<String>| Some((id.clone()?, name.clone().unwrap_or_default()));
+                Ok(crate::stores::habits::Targets {
+                    people: people.all()?.iter().filter(|p| p.status != Some(crate::stores::people::Status::Deleted)).filter_map(|p| named(&p.id, &p.name)).collect(),
+                    circles: people.circles()?.iter().filter_map(|c| named(&c.id, &c.name)).collect(),
+                    traits: me.traits()?.all()?.iter().filter_map(|t| named(&t.id, &t.name)).collect(),
+                })
+            });
+            Ok(Habits::ensure(&sheets, &id, Some(scopes), Some(self.trait_ids_fn()))?.with_people(people).with_targets(targets))
         })
     }
 

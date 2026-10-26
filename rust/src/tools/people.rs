@@ -139,6 +139,8 @@ pub enum ScoringLevel {
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub enum HabitField {
+    #[serde(rename = "name")]
+    Name,
     #[serde(rename = "note")]
     Note,
     #[serde(rename = "traits")]
@@ -357,7 +359,10 @@ pub fn update_person(
     let clear = texts(&clear_fields.unwrap_or_default());
     let updated = app.people()?.update_person(&person, &clear).map_err(refused)?;
     if updated.status == Some(Status::Deleted) {
-        app.habits()?.drop_foundation(updated.id.as_deref().unwrap_or("None"))?;
+        let id = updated.id.as_deref().unwrap_or("None");
+        let habits = app.habits()?;
+        habits.drop_foundation(id)?;
+        drop_habits_about(app, &habits, id)?;
     }
     if let Some(facts) = &facts {
         set_summaries(app, updated.id.as_deref().unwrap_or("None"), facts)?;
@@ -424,13 +429,26 @@ pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleF
 #[tool(writes)]
 pub fn delete_circle(app: &App, circle_id: String, if_version: Option<i64>) -> Result<DeletedCircle, ToolError> {
     prefetch_stores(app)?;
-    app.people()?.delete_circle(&circle_id, if_version).map_err(refused)
+    let deleted = app.people()?.delete_circle(&circle_id, if_version).map_err(refused)?;
+    drop_habits_about(app, &app.habits()?, &circle_id)?;
+    Ok(deleted)
+}
+
+/// Deletes the habits about `target`, a person or circle deleted, taking
+/// them out of every person's foundations too.
+fn drop_habits_about(app: &App, habits: &crate::stores::habits::Habits, target: &str) -> anyhow::Result<()> {
+    for subject in habits.delete_about(target)? {
+        app.people()?.drop_foundation(&subject)?;
+    }
+    Ok(())
 }
 
 /// The user's habits: by default the active ones, not archived (set
 /// aside) or deleted ones. Each is about the user's events with one
 /// action, or with any action under one action group (action_id, with
-/// its action_path), and is rated by traits as a person is: its traits
+/// its action_path) -- or is a person's or circle's habit (person_id or
+/// circle_id): some of their traits, as they're scored for them, on the
+/// habit graph (see create_habit). An action's habit is rated by traits as a person is: its traits
 /// say which apply (by default every active one) and give it its own
 /// parts -- its own rubrics -- for any (see create_habit). Each has an
 /// id, name, status and note (what it's for, and what doing it well
@@ -472,6 +490,18 @@ pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError
 /// don't apply to it. Also optionally foundations: the habits (each as
 /// "habit:<id>") and people (by id) it's built on -- sleeping well under
 /// exercising, say; none of them deleted, and never making a cycle.
+/// A person's or circle's habit has a person_id or circle_id in place of
+/// action_id: it's some of their traits, scored as they are for them (a
+/// circle's, its people's combined as the circle's scoring says) -- a
+/// layer of the relationship on the habit graph, being reliable for
+/// Sam under being close to them, say. Its traits take only "select"
+/// (the traits it's on; by default all that apply to them) and
+/// "except" (traits left out, though selected: those added later are
+/// on it), and its events aren't judged for it: they're theirs. Its
+/// name is optional: without one it's named by them and its traits
+/// ("Sam · Reliable", "Sam · except Reliable"), and it loses its own
+/// when its traits or whose it is change, unless given another (given
+/// its default, it has none of its own: default_name lists it).
 /// Active unless given a status. id is assigned. Returns the habit and
 /// its id as created_id.
 #[tool(writes)]
@@ -482,11 +512,13 @@ pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> 
 }
 
 /// Update a habit by id: its name, action_id (an action's or a
-/// group's), status (active; archived, set aside; or deleted, shouldn't
+/// group's), person_id or circle_id, status (active; archived, set aside; or deleted, shouldn't
 /// have existed), note, traits or foundations (each replaced whole; see
 /// create_habit). Omitted properties keep their value; list one in
-/// clear_fields to blank it instead. A habit deleted leaves every
-/// habit's and person's foundations. Returns the habit as updated.
+/// clear_fields to blank it instead (a person's or circle's habit's name
+/// to go back to its default). A habit deleted leaves every habit's and
+/// person's foundations; a person's or circle's habits go with them.
+/// Returns the habit as updated.
 #[tool(writes)]
 pub fn update_habit(app: &App, habit: Habit, clear_fields: Option<Vec<HabitField>>) -> Result<ListedHabit, ToolError> {
     prefetch_habits(app, false)?;
