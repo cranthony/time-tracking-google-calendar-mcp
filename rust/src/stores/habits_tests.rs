@@ -336,3 +336,21 @@ fn only_active_habits_make_goals() {
     f.habits.update_habit(&habit(json!({"id": id, "status": "archived"})), &[]).unwrap();
     assert!(f.habits.templates().unwrap().is_empty());
 }
+
+#[test]
+fn another_habits_traits_gone_wrong_dont_keep_one_from_being_saved() {
+    let f = fixture(Some(strings(&["patient", "present"])));
+    let id = f.create(json!({"name": "Guitar", "action_id": "guitar", "traits": {"select": ["patient"]}})).unwrap();
+    // A trait it named is gone.
+    let trait_ids: TraitIds = Arc::new(|| Ok(vec!["present".to_string()]));
+    let sheets = SheetsClient::new(f.fake.google());
+    let habits = {
+        let _held = WRITE_LOCK.hold();
+        Habits::ensure(&sheets, &f.spreadsheet, None, Some(trait_ids)).unwrap()
+    };
+    let _held = WRITE_LOCK.hold();
+
+    habits.create_habit(&habit(json!({"name": "Walk", "action_id": "walk"}))).unwrap();
+
+    refused(habits.update_habit(&habit(json!({"id": id, "note": "x"})), &[]), "names 'patient', which isn't a trait");
+}
