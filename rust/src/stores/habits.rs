@@ -545,7 +545,10 @@ pub fn habit_problems(habits: &[Habit], scopes: Option<&Scopes>, trait_ids: Opti
         if habit.status.is_none() {
             problems.push(format!("{label}'s status must be one of {}", HABIT_STATUSES.join(", ")));
         }
-        if let Some(traits) = &habit.traits {
+        // Only the one changed: another's, wrong since a trait changed,
+        // say, shouldn't keep this one from being saved.
+        let checked = changed.is_none() || habit.id.as_deref() == changed;
+        if let Some(traits) = habit.traits.as_ref().filter(|_| checked) {
             for p in person_traits_problems(&Value::Object(traits.clone()), trait_ids, SpecOf::Habit) {
                 problems.push(format!("{label}'s traits {p}"));
             }
