@@ -720,3 +720,16 @@ fn only_a_habits_goal_is_named_for_one() {
     let f = fixture();
     refused(f.create(json!({"id": "hab1_2026-10-11", "title": "Mine", "deadline": "2026-11-01"})), "lowercase letters, digits and dashes");
 }
+
+#[test]
+fn a_habits_goal_not_written_yet_is_listed_at_the_version_a_change_to_it_needs() {
+    let f = fixture();
+    let goals = with_templates(&f);
+    let _held = WRITE_LOCK.hold();
+
+    let listed = goals.get_goal("hab1_2026-10-11", &ZONE).unwrap();
+    assert_eq!(listed.version, Some(0));
+    // Changed at that version, as a client that read it would.
+    let changed = goals.change_goals(&[], &[edit(json!({"id": "hab1_2026-10-11", "status": "done", "version": listed.version}))], &[], &ZONE).unwrap();
+    assert_eq!(changed.goals[0].status, Some(GoalStatus::Done));
+}

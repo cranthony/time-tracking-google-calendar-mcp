@@ -1503,7 +1503,10 @@ pub fn listed(goal: &Goal, goals: &[Goal], zone: &Tz) -> ListedGoal {
         habit_id: goal.habit_id.clone(),
         started_at: started_at(goal).cloned(),
         closed_at: closed_at(goal).cloned(),
-        version: goal.version,
+        // As a change to it is checked: one with none -- a habit's goal
+        // made for the period under way and not written yet, or one
+        // written before versions -- is version 0.
+        version: Some(goal.version.unwrap_or(0)),
     }
 }
 
