@@ -301,7 +301,6 @@ struct Fact {
     start_note: Option<PlanNote>,
     end_note: Option<PlanNote>,
     default: bool,
-    moves_day_end: bool,
     annotations: Vec<String>,
     fixed_description: bool,
     dropped_notes: Option<Vec<String>>,
@@ -317,15 +316,11 @@ impl Fact {
 #[derive(Default)]
 pub struct PlanOptions<'a> {
     pub ignore_notes: Option<&'a [String]>,
-    pub day_start: Option<Moment>,
     pub names: Option<&'a [(String, String)]>,
     pub previous_note: Option<&'a PlanNote>,
     pub last_compaction: Option<Moment>,
-    pub next_day_follows: bool,
     pub history_until: Option<Moment>,
     pub note_targets: Option<&'a [(String, Option<String>)]>,
-    pub closing_id: Option<&'a str>,
-    pub nights: Option<&'a [String]>,
     /// Events an earlier compaction settled whole, offered again for historical
     /// notes: what happened at them can change, but not when, nor whether.
     pub revisits: Option<&'a [String]>,
@@ -399,22 +394,8 @@ pub fn plan_compaction(
         }
     }
     let mut copies: Vec<(String, Event)> = events_by_id.clone();
-    let sleepless: Vec<Option<&str>> = decisions.iter().filter(|d| d.action == "cancel").map(|d| d.event_id.as_deref()).collect();
-    let closing: Option<Event> = match options.closing_id {
-        Some(id) => events_by_id.iter().find(|(k, _)| k == id).map(|(_, e)| e.clone()),
-        None => live
-            .iter()
-            .filter(|e| e.is_end_of_day_sleep == Some(true))
-            .find(|e| options.day_start.is_none_or(|d| e.start() > d) && !sleepless.contains(&e.id.as_deref()))
-            .cloned(),
-    };
-    let mut unmergeable: Vec<String> = options.nights.map(|n| n.to_vec()).unwrap_or_default();
-    if let Some(closing) = &closing {
-        unmergeable.push(closing.id.clone().unwrap());
-    }
-
     let revisits: Vec<String> = options.revisits.map(|r| r.to_vec()).unwrap_or_default();
-    let resolved = resolve(decisions, notes, &events_by_id, closing.as_ref(), now, &mut problems, options.history_until, &unmergeable, &revisits);
+    let resolved = resolve(decisions, notes, &events_by_id, now, &mut problems, options.history_until, &revisits);
     if !problems.is_empty() {
         return Err(error_of(&problems, "malformed_decision"));
     }
@@ -448,7 +429,6 @@ pub fn plan_compaction(
             start_note: None,
             end_note: None,
             default: true,
-            moves_day_end: false,
             annotations: Vec::new(),
             fixed_description: false,
             dropped_notes: None,
@@ -482,7 +462,7 @@ pub fn plan_compaction(
             slot.1 = fact.event.clone();
         }
     }
-    let simulated = place(&facts, &copies, &cancels, &mut warnings, options.next_day_follows, options.history_until)?;
+    let simulated = place(&facts, &copies, &cancels, options.history_until)?;
     let changes = changes_of(&facts, &events_by_id, &copies, &cancels);
     if changes.is_empty() {
         warnings.push("nothing on the calendar needs to change".into());
@@ -526,11 +506,9 @@ fn resolve(
     decisions: &[EventDecision],
     notes: &[PlanNote],
     events_by_id: &[(String, Event)],
-    closing: Option<&Event>,
     now: Moment,
     problems: &mut Vec<Issue>,
     history_until: Option<Moment>,
-    unmergeable: &[String],
     revisits: &[String],
 ) -> Resolved {
     let mut sorted_ids: Vec<&String> = events_by_id.iter().map(|(k, _)| k).collect();
@@ -615,10 +593,6 @@ fn resolve(
                 continue;
             }
             let into = decision.into.clone().unwrap();
-            if unmergeable.contains(&event_id) || unmergeable.contains(&into) {
-                problems.push(Issue::plain(format!("{label}: the end-of-day sleep event can't be merged")));
-                continue;
-            }
             let revisited = [&event_id, &into].into_iter().find(|i| revisits.contains(i)).cloned();
             if let Some(revisited) = revisited {
                 problems.push(Issue::tagged("compacted", format!("{label}: {revisited} is revisited for a historical note, so it can't be merged: {REVISITED}")));
@@ -826,7 +800,6 @@ fn resolve(
             start_note,
             end_note,
             default: false,
-            moves_day_end: closing.is_some_and(|c| c.id.as_deref() == Some(event_id.as_str())),
             annotations: if annotation.is_empty() { Vec::new() } else { vec![annotation] },
             fixed_description: decision.description.is_some(),
             dropped_notes: decision.dropped_notes.clone(),
@@ -878,7 +851,6 @@ fn resolve(
             start_note,
             end_note,
             default: false,
-            moves_day_end: false,
             annotations: if annotation.is_empty() { Vec::new() } else { vec![annotation] },
             fixed_description: decision.description.is_some(),
             dropped_notes: decision.dropped_notes.clone(),
@@ -1125,8 +1097,6 @@ fn place(
     facts: &[Fact],
     copies: &[(String, Event)],
     cancels: &[(String, String)],
-    warnings: &mut Vec<String>,
-    next_day_follows: bool,
     history_until: Option<Moment>,
 ) -> Result<Vec<Event>, CompactionError> {
     let decided: Vec<&str> = facts.iter().filter(|f| !f.default).filter_map(|f| f.base_id()).collect();
@@ -1147,18 +1117,6 @@ fn place(
             wrapped.categories = vec!["overlap".into()];
         }
         return Err(wrapped);
-    }
-    for fact in facts {
-        if let Some(base) = &fact.base {
-            if fact.moves_day_end && fact.end != base.end() && !next_day_follows {
-                warnings.push(format!(
-                    "{} now ends at {} instead of {}. Compaction doesn't adjust the next day for that -- check the next day's first events, and move them with update_event if they now overlap.",
-                    repr_opt(fact.event.summary.as_deref()),
-                    py::isoformat(&fact.end),
-                    py::isoformat(&base.end())
-                ));
-            }
-        }
     }
     Ok(placed.into_iter().map(|p| p.event).collect())
 }

@@ -51,7 +51,7 @@ fn a_historical_note_revisits_the_settled_event_it_falls_within() {
     // The span still starts at the last compaction; the email comes first,
     // revisited, settled whole.
     assert_eq!(context.compaction_window_start, Some(time_at("11:30")));
-    assert_eq!(event_ids(&context), strings(&["e1", "e3", "s1"]));
+    assert_eq!(event_ids(&context), strings(&["e1", "e3"]));
     let email = &context.events[0];
     assert!(email.revisited);
     assert_eq!(email.history_until, Some(time_at("10:00")));
@@ -94,7 +94,7 @@ fn a_note_long_after_the_fact_doesnt_move_the_span() {
 
     assert_eq!(context.compaction_window_start, Some(time_at("11:30")));
     assert_eq!(context.now, Some(time_at("13:00")));
-    assert_eq!(event_ids(&context), strings(&["old1", "e1", "e3", "s1"]));
+    assert_eq!(event_ids(&context), strings(&["old1", "e1", "e3"]));
     assert!(context.events[0].revisited && context.events[1].revisited);
 }
 

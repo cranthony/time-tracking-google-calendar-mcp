@@ -13,9 +13,11 @@ fn offers_the_days_notes_with_candidates_and_the_days_events() {
     // 09:05 is inside Email, adjacent to Report (starts 10:00, within the
     // hour window) -- nearest first.
     assert_eq!(context.notes[0].candidates[..2], strings(&["e1", "e2"]));
-    assert_eq!(event_ids(&context), strings(&["e1", "e2", "e3", "s1"]));
+    // Lunch starts within the hour after now, so a note may be about it;
+    // the night is further off.
+    assert_eq!(event_ids(&context), strings(&["e1", "e2", "e3"]));
     assert_eq!(context.now, Some(time_at("11:30")));
-    assert_eq!(context.day_end, Some(time_at("07:00+1")));
+    assert_eq!(context.day_end, Some(time_at("12:30")));
     assert_eq!(context.remaining_note_count, 0);
     assert_eq!(context.open_compaction, None);
     assert!(DECISION_GUIDE.contains("SILENCE MEANS ON SCHEDULE"));
@@ -28,11 +30,11 @@ fn the_timeline_shows_a_future_event_only_when_a_note_is_near_it() {
     // "starting lunch" at 11:20 may start the lunch planned for noon.
     let context = Setup::new(&[("11:20", "starting lunch")], None, "11:30").prepare();
 
-    // (The day starts at the note, the first of it.) Sleep is still ahead
-    // and nowhere near a note: offered, but not shown.
-    assert_eq!(event_ids(&context), strings(&["e3", "s1"]));
-    assert_eq!(context.notes[0].candidates, strings(&["e3"]));
-    assert_eq!(timeline_event_ids(context.timeline.as_ref().unwrap()), strings(&["e3"]));
+    // Lunch is offered, starting within the hour after now, and shown as
+    // it's near the note -- the nearest of its candidates.
+    assert_eq!(event_ids(&context), strings(&["e1", "e2", "e3"]));
+    assert_eq!(context.notes[0].candidates[0], "e3");
+    assert_eq!(timeline_event_ids(context.timeline.as_ref().unwrap()), strings(&["e1", "e2", "e3"]));
 }
 
 #[test]
@@ -90,14 +92,14 @@ fn leaves_notes_written_after_now_for_later() {
 }
 
 #[test]
-fn the_days_run_on_to_now_each_ending_with_its_night() {
+fn the_days_run_on_to_now_each_from_midnight() {
     let setup = Setup::standard();
     setup.set_now("12:00+1");
 
     let context = setup.prepare();
 
     let days: Vec<(Moment, Moment)> = context.days.unwrap().iter().map(|d| (d.compaction_window_start, d.day_end)).collect();
-    assert_eq!(days, vec![(time_at("09:05"), time_at("07:00+1")), (time_at("07:00+1"), time_at("07:00+1") + Duration::days(1))]);
+    assert_eq!(days, vec![(time_at("00:00"), time_at("00:00+1")), (time_at("00:00+1"), time_at("13:00+1"))]);
     assert_eq!(context.now, Some(time_at("12:00+1")));
 }
 
@@ -155,21 +157,22 @@ fn stamp_a_compaction_at(setup: &Setup, now: &str) {
 }
 
 #[test]
-fn with_no_earlier_compaction_it_starts_when_the_night_before_ended() {
+fn with_no_earlier_compaction_it_starts_at_midnight_before_the_oldest_note() {
     let context = window_setup("09:05+1").prepare();
 
-    assert_eq!(context.compaction_window_start, Some(time_at("07:00+1")));
-    // The night's sleep ended right as the window starts, so it's offered
-    // too -- it may need stretching ("slept in").
-    assert_eq!(event_ids(&context), strings(&["s0", "gr", "w1", "w2", "s1"]));
-    assert_eq!(context.day_end, Some(time_at("07:00+1") + Duration::days(1)));
+    // The note may end what began before it: the night going on at
+    // midnight is offered, and the morning. The evening's night is too far
+    // off.
+    assert_eq!(context.compaction_window_start, Some(time_at("00:00+1")));
+    assert_eq!(event_ids(&context), strings(&["s0", "gr", "w1", "w2"]));
+    assert_eq!(context.day_end, Some(time_at("12:30+1")));
 }
 
 #[test]
-fn a_compaction_before_the_night_settles_the_rest_of_its_day_first() {
+fn a_compaction_before_the_night_settles_the_evening_and_the_night_too() {
     // Compacted at 19:45, before bed: reading ran on past it, and the night
-    // hadn't begun -- so they're settled first, with no notes of their own,
-    // before the morning the note is in.
+    // hadn't begun -- so they're settled too, the evening with no notes of
+    // its own, before the day the note is in.
     let setup = window_setup("09:05+1");
     stamp_a_compaction_at(&setup, "19:45");
 
@@ -177,8 +180,8 @@ fn a_compaction_before_the_night_settles_the_rest_of_its_day_first() {
 
     assert_eq!(context.compaction_window_start, Some(time_at("19:45")));
     let days: Vec<(Moment, Vec<String>)> = context.days.as_ref().unwrap().iter().map(|d| (d.compaction_window_start, d.note_ids.clone())).collect();
-    assert_eq!(days, vec![(time_at("19:45"), vec![]), (time_at("07:00+1"), vec![setup.note_id(2)])]);
-    assert_eq!(event_ids(&context), strings(&["r0", "s0", "gr", "w1", "w2", "s1"]));
+    assert_eq!(days, vec![(time_at("19:45"), vec![]), (time_at("00:00+1"), vec![setup.note_id(2)])]);
+    assert_eq!(event_ids(&context), strings(&["r0", "s0", "gr", "w1", "w2"]));
 }
 
 #[test]
@@ -210,7 +213,7 @@ fn a_later_compaction_the_same_day_starts_the_window_there() {
     let context = setup.prepare();
 
     assert_eq!(context.compaction_window_start, Some(time_at("10:05+1")));
-    assert_eq!(event_ids(&context), strings(&["w1", "w2", "s1"]));
+    assert_eq!(event_ids(&context), strings(&["w1", "w2"]));
 }
 
 #[test]
@@ -232,7 +235,7 @@ fn an_event_that_ended_longer_before_the_window_is_not_offered() {
     let setup = window_setup("10:40+1");
     stamp_a_compaction_at(&setup, "10:30+1");
 
-    assert_eq!(event_ids(&setup.prepare()), strings(&["w2", "s1"]));
+    assert_eq!(event_ids(&setup.prepare()), strings(&["w2"]));
 }
 
 fn compacted_note(setup: &Setup, at: &str, description: &str) {
@@ -317,14 +320,12 @@ fn a_later_round_reads_its_notes_and_the_previous_note_in_one_request() {
 }
 
 #[test]
-fn a_note_written_before_the_planned_wake_up_starts_the_day_there() {
-    let context = window_setup("06:40+1").prepare();
+fn a_note_written_before_the_planned_wake_up_can_end_the_night() {
+    let setup = window_setup("06:40+1");
 
-    assert_eq!(context.compaction_window_start, Some(time_at("06:40+1")));
-    // The night's sleep runs into the day, so it's offered (to be
-    // shortened), but it isn't the day's own end.
-    assert_eq!(event_ids(&context), strings(&["s0", "gr", "w1", "w2", "s1"]));
-    assert_eq!(context.day_end, Some(time_at("07:00+1") + Duration::days(1)));
+    let planned = setup.dry_run(vec![EventDecision { end_note: Some(setup.note_id(2)), ..keep("s0") }]);
+
+    assert_eq!(change(&planned, "s0").after.as_ref().unwrap().end, Some(time_at("06:40+1")));
 }
 
 #[test]

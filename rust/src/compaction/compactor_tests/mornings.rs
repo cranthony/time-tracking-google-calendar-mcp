@@ -9,9 +9,9 @@ fn cancel(event_id: &str) -> EventDecision {
 }
 
 // -- sleeping in past the span ------------------------------------------------------
-// A compaction made in the night -- its span ends with that night -- that
-// says the night ran on past the morning's events: they're its to settle
-// too.
+// A compaction made in the night -- its span ends at now, the night still
+// going on -- that says the night ran on past the morning's events:
+// they're its to settle too.
 
 fn night_setup() -> Setup {
     let events = vec![
@@ -21,12 +21,37 @@ fn night_setup() -> Setup {
         event_at("09:15+1-12:00+1").id("w1").summary("Work").priority(3).build(),
         event_at("22:00+1-23:30+1").id("s2").summary("Sleep").priority(0).sleep().build(),
     ];
-    Setup::new(&[("21:05", "reading")], Some(events), "06:30+1")
+    Setup::new(&[("21:05", "reading")], Some(events), "05:30+1")
 }
 
 #[test]
-fn the_span_ends_with_the_night() {
-    assert_eq!(event_ids(&night_setup().prepare()), strings(&["e1", "s1"]));
+fn the_span_ends_at_now_with_the_night_going_on() {
+    let context = night_setup().prepare();
+
+    assert_eq!(event_ids(&context), strings(&["e1", "s1"]));
+    assert_eq!(context.now, Some(time_at("05:30+1")));
+    assert_eq!(context.day_end, Some(time_at("06:30+1")));
+}
+
+#[test]
+fn a_round_in_the_evening_stops_at_now_and_the_next_settles_the_night() {
+    let setup = Setup::standard();
+    setup.set_now("18:30");
+    let first = setup.prepare();
+    assert_eq!(first.now, Some(time_at("18:30")));
+    assert!(!event_ids(&first).contains(&"s1".to_string()));
+    let id = setup.dry_run(setup.email_then_report()).compaction_id.unwrap();
+    setup.commit(&id);
+    setup.append_note("07:30+1", Some("up"));
+    setup.set_now("08:00+1");
+
+    let context = setup.prepare();
+
+    assert_eq!(context.compaction_window_start, Some(time_at("18:30")));
+    assert_eq!(event_ids(&context), strings(&["s1"]));
+    let planned = setup.dry_run(vec![EventDecision { end_note: Some(setup.note_id(4)), ..keep("s1") }]);
+    setup.commit(planned.compaction_id.as_ref().unwrap());
+    assert_eq!(moment_in(&setup.patch("s1"), "end"), Some(time_at("07:30+1")));
 }
 
 #[test]
@@ -69,7 +94,7 @@ fn what_it_doesnt_reach_is_still_outside() {
 }
 
 // -- moving past the span ------------------------------------------------------------
-// A decision that moves one of the span's events past its last night takes
+// A decision that moves one of the span's events past its end takes
 // in what it lands among, for the decisions to make room -- and where they
 // move those to, in turn.
 
@@ -147,9 +172,9 @@ fn slept_in() -> Setup {
 fn prepare_offers_it_to_the_days_first_note() {
     let context = slept_in().prepare();
 
-    assert_eq!(event_ids(&context), strings(&["s1", "gr1", "w1", "s2"]));
+    assert_eq!(event_ids(&context), strings(&["s1", "gr1", "w1"]));
     assert!(context.notes[0].candidates.contains(&"s1".to_string()));
-    assert_eq!(context.day_end, Some(time_at("23:30+1")));
+    assert_eq!(context.day_end, Some(time_at("10:00+1")));
 }
 
 #[test]
@@ -260,7 +285,7 @@ fn a_keep_with_new_times_reschedules_a_future_event() {
 }
 
 #[test]
-fn moving_bedtime_near_the_end_of_the_day_plans_and_commits() {
+fn moving_bedtime_late_in_the_day_plans_and_commits() {
     let setup = Setup::new(&[("09:05", "email"), ("10:20", "report")], None, "19:45");
     let mut decisions = setup.email_then_report();
     decisions.push(EventDecision { start: Some(time_at("22:30")), end: Some(time_at("08:00") + Duration::days(1)), ..keep("s1") });
@@ -269,7 +294,6 @@ fn moving_bedtime_near_the_end_of_the_day_plans_and_commits() {
     setup.commit(planned.compaction_id.as_ref().unwrap());
 
     assert_eq!(planned.status, "proposed");
-    assert!(planned.warnings.iter().any(|w| w.contains("doesn't adjust the next day")), "{:?}", planned.warnings);
     let night = setup.patch("s1");
     assert_eq!((moment_in(&night, "start"), moment_in(&night, "end")), (Some(time_at("22:30")), Some(time_at("08:00") + Duration::days(1))));
 }

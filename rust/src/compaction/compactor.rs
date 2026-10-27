@@ -35,29 +35,27 @@
 //!    they're all judged. `judgments_due` hands them over again -- to
 //!    finish, or redo.
 //!
-//! One span, all at once: one compaction takes on every day from the last
-//! compaction up to now (at most `MAX_DAYS` of them), notes or not, and
-//! plans them together, as one span, which the user reviews whole. It
-//! starts in the day the last compaction ran in (before there's been one,
-//! the one the oldest note falls in, or today): when the last end-of-day
-//! sleep event that began before then ends (or at the note, if it's
-//! earlier -- a note written before the planned wake-up time). It runs
-//! through its last night: the end-of-day sleep event that ends after now
-//! (or 24 hours past its last day's start, if there isn't one). Its other
-//! nights are events like any other, each decided once; nothing about
-//! them moves where a day starts, which is only how the timeline heads
-//! its days. A cancelled last night -- no sleep -- runs it on to the next
-//! night. One that ends later than planned -- slept in -- takes in the
-//! events it now runs into, up to its new end, for the decisions to
-//! settle (see `cut`). So does a decision that moves one of its events (or
-//! creates one) past its end: the events it lands among are the span's
-//! too, so they can be moved to make room -- and where they're moved to
-//! takes in what's there, in turn. Before, each day was a compaction of its own,
-//! planned after the one before it: a proposal journaled then, as a batch
-//! of days, is planned as one span too. In the journal, it's one
-//! compaction (see stores::journal) -- the compaction id
-//! the MCP tools use -- applied, then stamped, whole. Notes written after
-//! now wait for a later compaction.
+//! One span, all at once: one compaction takes on everything from the
+//! last compaction up to now (at most `MAX_DAYS` days of it), notes or not,
+//! and plans it together, as one span, which the user reviews whole. It
+//! starts where the last compaction stopped -- its `now` -- or, before
+//! there's been one, at the start of the oldest note's day: midnight, in
+//! the note's zone, as the note may end what began before it. It runs to now -- or, with more
+//! than `MAX_DAYS` days to now, to `MAX_DAYS` days past its start, the
+//! span's `now`, where the next one carries on -- however much of a day
+//! that is: a night's sleep is an event like any other, decided once, and
+//! one still going on is settled up to now, like anything else that is.
+//! The timeline heads each calendar day it takes in with its date. A
+//! decision that moves one of its events (or creates one) past its end
+//! takes in the events it lands among, for the decisions to settle (see
+//! `cut`): so they can be moved to make room -- and where they're moved
+//! to takes in what's there, in turn. A night ended later than planned --
+//! slept in -- is one, taking in the morning it now runs over. Before,
+//! each day was a compaction of its own, planned after the one before
+//! it: a proposal journaled then, as a batch of days, is planned as one
+//! span too. In the journal, it's one compaction (see stores::journal) --
+//! the compaction id the MCP tools use -- applied, then stamped, whole.
+//! Notes written after now wait for a later compaction.
 //!
 //! A day can take several compactions, so the events offered -- the
 //! *compaction window* -- start at the later of the span's start and the
@@ -65,23 +63,23 @@
 //! settled isn't offered again. Nor is anything after it skipped: a day
 //! with no notes is confirmed as planned. The one event that ended within `LOOKBACK_MINUTES`
 //! before the compaction window starts is offered too, so an event the last
-//! compaction closed off at "now" (or the night's sleep) can still be
-//! stretched. The latest compacted note, however long ago it was written,
+//! compaction closed off at "now" can still be stretched. The latest compacted note, however long ago it was written,
 //! is offered as `previous_note`: what the user last said before the window
 //! often says what was going on as it began. The timeline shows it too, and
 //! when the last compaction ran, as context, above the span's first day.
 //! Every past event offered is recorded as on schedule unless the client's
 //! decisions say otherwise (see compaction::plan).
 //!
-//! The events offered run on past `now`, through the span's last night,
-//! because an event that ran long runs into what follows it, and nothing is
+//! The events offered run on a little past `now`, to those that start
+//! within `CANDIDATE_MINUTES` of it (a note may start one early), because
+//! an event that ran long runs into what follows it, and nothing is
 //! moved to make room: the decisions have to move what follows too, and
 //! nothing may overlap any of the span's events, past or still to come (see
 //! compaction::plan). So they're part of the plan -- and of the
 //! proposal's `events`, as `planned` -- and confirming checks them too: one
 //! the plan writes that has changed since makes a new revision, and one that
 //! now overlaps what the plan keeps hands it to Claude (see `confirm`).
-//! Events after the last night aren't read. But compaction is about recording the past,
+//! Events past those aren't read. But compaction is about recording the past,
 //! so the timeline shown to the user stops at `now`: a later event appears
 //! in it only if it's near enough to a note to be one of its candidates
 //! (lunch at noon, for an 11:45 "starting lunch") or -- after a dry run --
@@ -413,8 +411,6 @@ pub struct Day {
     pub latest_compacted: Option<NotedTime>,
     pub last_compaction: Option<Moment>,
     pub history_until: Option<Moment>,
-    pub closing: Option<Event>,
-    pub nights: Vec<String>,
     /// The settled events historical notes revisit (see `revisit`), first in
     /// `events`.
     pub revisits: Vec<String>,
@@ -485,7 +481,7 @@ impl NoteCompactor {
             None => None,
         };
         let proposal = self.proposal_context()?;
-        let (day, remaining) = self.walk(self.clock(), None, &[], MAX_DAYS)?;
+        let (day, remaining) = self.walk(self.clock(), &[], MAX_DAYS)?;
         let Some(day) = day else {
             return Ok(CompactionContext { open_compaction: open_id, judgments_pending: pending, proposal, ..Default::default() });
         };
@@ -536,7 +532,6 @@ impl NoteCompactor {
             let shown = shown(&day, &candidates);
             timelines.extend(day_timelines(
                 &day,
-                &[],
                 &planned_timeline(
                     &plan_notes(&day),
                     &shown,
@@ -965,7 +960,7 @@ impl NoteCompactor {
         }
         let changes: Vec<CompactionChange> = walked.iter().flat_map(|w| w.plan.changes.clone()).collect();
         let note_count: usize = walked.iter().map(|w| w.day.notes.len()).sum();
-        let day_count: usize = walked.iter().map(|w| day_starts(&w.day, &w.decisions).len()).sum();
+        let day_count: usize = walked.iter().map(|w| day_starts(&w.day).len()).sum();
         let days = if day_count > 1 { format!(" over {day_count} days") } else { String::new() };
         let answered_ids: Vec<&String> = answered.iter().map(|(_, i)| &i.id).collect();
         let still_open = feedback_rows.iter().filter(|(_, f)| f.status == "open" && !answered_ids.contains(&&f.id)).count();
@@ -1012,8 +1007,7 @@ impl NoteCompactor {
         now: Moment,
         note_targets: &[(String, Option<String>)],
     ) -> anyhow::Result<(Vec<Walked>, usize)> {
-        let night = |event_id: &str| decisions.iter().find(|d| d.event_id.as_deref() == Some(event_id)).cloned();
-        let (day, remaining) = self.walk(now, Some(&night), decisions, MAX_DAYS)?;
+        let (day, remaining) = self.walk(now, decisions, MAX_DAYS)?;
         let Some(day) = day else { return Ok((Vec::new(), remaining)) };
         let plan = self.plan(&day, decisions, ignore_notes, additions, note_targets)?;
         Ok((
@@ -2673,7 +2667,6 @@ impl NoteCompactor {
     fn walk(
         &self,
         now: Moment,
-        night: Option<&dyn Fn(&str) -> Option<EventDecision>>,
         decisions: &[EventDecision],
         max_days: i64,
     ) -> anyhow::Result<(Option<Day>, usize)> {
@@ -2684,17 +2677,14 @@ impl NoteCompactor {
         let is_historical = |n: &SheetNote| last_stamped.is_some_and(|l| n.note.timestamp < l);
         let historical: Vec<SheetNote> = sheet_notes.iter().filter(|n| n.note.timestamp <= now && is_historical(n)).cloned().collect();
         let notes: Vec<SheetNote> = sheet_notes.iter().filter(|n| n.note.timestamp <= now && !is_historical(n)).cloned().collect();
-        let times: Vec<(String, Moment)> = notes.iter().map(|n| (n.id(), n.note.timestamp)).collect();
         let anchor = last_stamped.or(if notes.is_empty() { Some(now) } else { None });
         if anchor.is_some_and(|a| a >= now) {
             return Ok((None, sheet_notes.len()));
         }
-        let oldest = anchor.into_iter().chain(times.iter().map(|(_, t)| *t)).min().unwrap();
+        let oldest = anchor.into_iter().chain(notes.iter().map(|n| n.note.timestamp)).min().unwrap();
         self.calendar.list_events(&(oldest - prefetch_before()), &(now + prefetch_after()))?;
-        let day_for = |sleepless: &[String], overrun: Option<Moment>| {
-            self.day(now, &notes, last_stamped, latest.clone(), sleepless, overrun, anchor, max_days)
-        };
-        let mut day = cut(&day_for, night, decisions, &times)?;
+        let day_for = |taken: Option<Moment>| self.day(now, &notes, last_stamped, latest.clone(), taken, anchor, max_days);
+        let mut day = cut(&day_for, decisions)?;
         day.history_until = last_stamped;
         self.revisit(&mut day, historical)?;
         let remaining = sheet_notes.len() - day.notes.len();
@@ -2735,20 +2725,15 @@ impl NoteCompactor {
         Ok(())
     }
 
-    /// The span from the day the oldest of `notes` falls in -- or, with
-    /// none, the one `window_start` does, or with an `anchor` (see
-    /// `walk`), the one that does -- up to `now`, with its notes. It
-    /// starts when the night before that ends (or at the note, if it was
-    /// written before the wake-up time) and runs through its last night:
-    /// the end-of-day sleep that ends after `now` -- or, with more than
-    /// `max_days` days to `now`, the last that starts within them, its
-    /// end the span's `now`. Without one, it runs 24 hours past its
-    /// start, or to `now`. Its compaction window starts at
-    /// `window_start`, if given, or else no earlier than `last_stamped`.
-    /// `first`: whether it's shown the latest compacted note and the last
-    /// compaction, as context. `sleepless`: nights that don't end it, and
-    /// `overrun`: where its last night now ends, if that's later -- the
-    /// events up to then are its too (see `cut`).
+    /// The span from the start of the day the oldest of `notes` falls in
+    /// -- or, with an `anchor` (see `walk`), from there -- up to `now`, with its notes: or, with more
+    /// than `max_days` days to `now`, up to `max_days` days past its start,
+    /// that end the span's `now`. Its events are those that overlap it, and
+    /// those that start within `CANDIDATE_MINUTES` after it ends, as a note
+    /// near the end may be about to one of them. `taken`: where the
+    /// decisions put an event past that -- the events up to then are its
+    /// too (see `cut`). Its compaction window starts no earlier than
+    /// `last_stamped`.
     #[allow(clippy::too_many_arguments)]
     fn day(
         &self,
@@ -2756,54 +2741,34 @@ impl NoteCompactor {
         notes: &[SheetNote],
         last_stamped: Option<Moment>,
         latest_compacted: Option<NotedTime>,
-        sleepless: &[String],
-        overrun: Option<Moment>,
+        taken: Option<Moment>,
         anchor: Option<Moment>,
         max_days: i64,
     ) -> anyhow::Result<Day> {
-        let oldest = anchor.unwrap_or_else(|| notes.iter().map(|n| n.note.timestamp).min().unwrap());
-        let recent = self.span_events(oldest - Duration::hours(24), oldest + Duration::seconds(1))?;
-        let mut opening: Option<&Event> = None;
-        for e in recent.iter().filter(|e| e.is_end_of_day_sleep == Some(true) && !e.is_cancelled() && e.start() <= oldest) {
-            if opening.is_none_or(|o| e.start() > o.start()) {
-                opening = Some(e);
-            }
-        }
-        let day_start = match opening {
-            Some(o) => o.end().min(oldest),
-            None => oldest,
-        };
+        // The oldest note may end something that began before it, so it
+        // starts the day, in its own zone, from midnight.
+        let day_start = anchor.unwrap_or_else(|| {
+            let oldest = notes.iter().map(|n| n.note.timestamp).min().unwrap();
+            oldest.date_naive().and_time(chrono::NaiveTime::MIN).and_local_timezone(*oldest.offset()).unwrap()
+        });
         let compaction_window_start = match last_stamped {
             Some(l) => pmax(day_start, l),
             None => day_start,
         };
-        let limit = day_start + Duration::hours(24) * max_days as i32;
-        let capped = now > limit;
-        let until = if capped { limit } else { now };
-        let reach = Duration::hours(24) * (1 + sleepless.len() as i32);
-        let reach_end = pmax(pmax(day_start, until), overrun.unwrap_or(until)) + reach;
+        let until = now.min(day_start + Duration::hours(24) * max_days as i32);
+        let ahead = until + Duration::minutes(CANDIDATE_MINUTES);
+        let day_end = match taken {
+            Some(t) => pmax(ahead, t),
+            None => ahead,
+        };
         let mut fetched: Vec<Event> = self
-            .span_events(compaction_window_start - Duration::minutes(LOOKBACK_MINUTES), reach_end)?
+            .span_events(compaction_window_start - Duration::minutes(LOOKBACK_MINUTES), day_end)?
             .into_iter()
             .filter(|e| !e.is_cancelled())
             .collect();
         fetched.sort_by_key(|e| e.start());
         let earlier: Vec<Event> = fetched.iter().filter(|e| e.end() <= compaction_window_start).cloned().collect();
         let mut events: Vec<Event> = fetched.iter().filter(|e| e.end() > compaction_window_start).cloned().collect();
-        let is_night = |e: &Event| e.is_end_of_day_sleep == Some(true) && e.start() > day_start;
-        let nights: Vec<usize> = (0..events.len())
-            .filter(|i| is_night(&events[*i]) && !events[*i].id.as_ref().is_some_and(|id| sleepless.contains(id)))
-            .collect();
-        let closing = if capped {
-            nights.iter().rev().copied().find(|i| events[*i].start() < limit)
-        } else {
-            nights.iter().copied().find(|i| events[*i].end() > now)
-        };
-        if let Some(closing) = closing {
-            let runs_into: Vec<Event> = events[closing + 1..].iter().filter(|e| overrun.is_some_and(|o| e.start() < o)).cloned().collect();
-            events.truncate(closing + 1);
-            events.extend(runs_into);
-        }
         let mut previous: Option<Event> = None;
         for e in &earlier {
             if previous.as_ref().is_none_or(|p| e.end() > p.end()) {
@@ -2813,46 +2778,17 @@ impl NoteCompactor {
         if let Some(p) = &previous {
             events.insert(0, p.clone());
         }
-        let shift = if previous.is_some() { 1 } else { 0 };
-        let day_end = match closing {
-            Some(closing) => events[closing + shift].end(),
-            None => {
-                // The night indices from before `previous` went in front,
-                // as Python reads them.
-                let mut last_start = day_start;
-                for i in &nights {
-                    let end = events[*i].end();
-                    if end <= until && end > last_start {
-                        last_start = end;
-                    }
-                }
-                pmax(last_start + reach, until)
-            }
-        };
-        let span_now = now.min(day_end);
-        let mut night_ids: Vec<String> = Vec::new();
-        for e in &events {
-            if is_night(e) {
-                if let Some(id) = e.id.clone().filter(|i| !i.is_empty()) {
-                    if !night_ids.contains(&id) {
-                        night_ids.push(id);
-                    }
-                }
-            }
-        }
         Ok(Day {
-            notes: notes.iter().filter(|n| n.note.timestamp <= span_now).cloned().collect(),
-            closing: closing.map(|c| events[c + shift].clone()),
+            notes: notes.iter().filter(|n| n.note.timestamp <= until).cloned().collect(),
             events,
             day_start,
             compaction_window_start,
             day_end,
-            now: span_now,
+            now: until,
             previous,
             latest_compacted,
             last_compaction: last_stamped,
             history_until: None,
-            nights: night_ids,
             revisits: Vec::new(),
         })
     }
@@ -2904,8 +2840,7 @@ impl NoteCompactor {
         note_ids.sort();
         note_ids.dedup();
         let changes: Vec<CompactionChange> = days.iter().flat_map(|d| d.changes()).collect();
-        let night = |event_id: &str| decisions.iter().find(|d| d.event_id.as_deref() == Some(event_id)).cloned();
-        let (day, _remaining) = self.walk(days.last().unwrap().now, Some(&night), &decisions, MAX_DAYS)?;
+        let (day, _remaining) = self.walk(days.last().unwrap().now, &decisions, MAX_DAYS)?;
         let Some(day) = day else { return Err(anyhow::anyhow!("there's nothing to plan up to {}", iso(&days.last().unwrap().now))) };
         if strict {
             let mut ids: Vec<String> = day.notes.iter().map(SheetNote::id).collect();
@@ -2966,7 +2901,6 @@ impl NoteCompactor {
         let names = self.names(Some(additions))?;
         let notes = plan_notes(day);
         let previous = latest_compacted(day);
-        let closing_id = day.closing.as_ref().and_then(|c| c.id.clone());
         let mut plan = plan_compaction(
             &notes,
             decisions,
@@ -2974,15 +2908,11 @@ impl NoteCompactor {
             day.now,
             PlanOptions {
                 ignore_notes: Some(ignore_notes),
-                day_start: Some(day.day_start),
                 names: Some(&names),
                 previous_note: previous.as_ref(),
                 last_compaction: day.last_compaction,
-                next_day_follows: false,
                 history_until: day.history_until,
                 note_targets: Some(note_targets),
-                closing_id: closing_id.as_deref(),
-                nights: Some(&day.nights),
                 revisits: Some(&day.revisits),
             },
         )
@@ -3320,46 +3250,15 @@ fn require_not_being_applied(journal: &CompactionJournal, note_id: &str) -> anyh
     Ok(())
 }
 
-/// `_cut`: the span `day_for` reads, ended where the decision on its last
-/// night puts it. Where `decisions` move one of its events, or create
-/// one, past its end, it takes in the events up to there too, as a later
-/// night's end does, for the decisions to make room among -- and so on,
-/// for where they move those. What no decision reaches stays outside: a
-/// decision on an event outside it doesn't reach for it.
-fn cut(
-    day_for: &dyn Fn(&[String], Option<Moment>) -> anyhow::Result<Day>,
-    night: Option<&dyn Fn(&str) -> Option<EventDecision>>,
-    decisions: &[EventDecision],
-    times: &[(String, Moment)],
-) -> anyhow::Result<Day> {
-    let day_for = |sleepless: &[String], overrun: Option<Moment>| -> anyhow::Result<Day> {
-        let mut taken = overrun;
-        let mut day = day_for(sleepless, taken)?;
-        while let Some(reach) = reach(decisions, &day).filter(|r| *r > day.day_end && taken.is_none_or(|t| *r > t)) {
-            taken = Some(reach);
-            day = day_for(sleepless, taken)?;
-        }
-        Ok(day)
-    };
-    let mut sleepless: Vec<String> = Vec::new();
-    let mut overrun: Option<Moment> = None;
-    let mut day = day_for(&sleepless, overrun)?;
-    while let (Some(night), Some(closing)) = (night, day.closing.clone()) {
-        let closing_id = closing.id.clone().unwrap_or_default();
-        let Some(decision) = night(&closing_id) else { break };
-        if decision.action == "cancel" && !sleepless.contains(&closing_id) {
-            sleepless.push(closing_id);
-            overrun = None;
-        } else if decision.action == "keep" && overrun.is_none() {
-            let end = decision.end.or_else(|| decision.end_note.as_ref().and_then(|n| times.iter().rev().find(|(k, _)| k == n).map(|(_, t)| *t)));
-            match end {
-                Some(end) if end > closing.end() => overrun = Some(end),
-                _ => break,
-            }
-        } else {
-            break;
-        }
-        day = day_for(&sleepless, overrun)?;
+/// `_cut`: the span `day_for` reads. Where `decisions` move one of its
+/// events, or create one, past its end, it takes in the events up to there
+/// too, for the decisions to make room among -- and so on, for where they
+/// move those. What no decision reaches stays outside: a decision on an
+/// event outside it doesn't reach for it.
+fn cut(day_for: &dyn Fn(Option<Moment>) -> anyhow::Result<Day>, decisions: &[EventDecision]) -> anyhow::Result<Day> {
+    let mut day = day_for(None)?;
+    while let Some(reach) = reach(decisions, &day).filter(|r| *r > day.day_end) {
+        day = day_for(Some(reach))?;
     }
     Ok(day)
 }
@@ -3718,33 +3617,33 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
     events
 }
 
-/// `_day_starts`: where each of the days a span takes on starts.
-fn day_starts(day: &Day, decisions: &[EventDecision]) -> Vec<Moment> {
-    let sleepless: Vec<&String> = decisions.iter().filter(|d| d.action == "cancel").filter_map(|d| d.event_id.as_ref()).collect();
-    let mut ends: Vec<Moment> = day
-        .events
-        .iter()
-        .filter(|e| {
-            e.id.as_ref().is_some_and(|id| day.nights.contains(id) && !sleepless.contains(&id)) && day.day_start < e.end() && e.end() < day.now
-        })
-        .map(|e| e.end())
-        .collect();
-    ends.sort();
+/// `_day_starts`: where each of the days a span takes on starts: its own
+/// start, then each midnight up to its `now`, in the zone it's shown in.
+fn day_starts(day: &Day) -> Vec<Moment> {
+    let tz = display_offset(day);
     let mut starts = vec![day.day_start];
-    starts.extend(ends);
+    let mut date = day.day_start.with_timezone(&tz).date_naive();
+    while let Some(next) = date.succ_opt() {
+        date = next;
+        let midnight = date.and_time(chrono::NaiveTime::MIN).and_local_timezone(tz).unwrap();
+        if midnight >= day.now {
+            break;
+        }
+        starts.push(midnight);
+    }
     starts
 }
 
 fn joined(walked: &[Walked]) -> Timeline {
-    join_labelled(walked.iter().flat_map(|w| day_timelines(&w.day, &w.decisions, w.plan.timeline.as_ref().unwrap())).collect())
+    join_labelled(walked.iter().flat_map(|w| day_timelines(&w.day, w.plan.timeline.as_ref().unwrap())).collect())
 }
 
 /// `timeline`, of `day`, cut into its days, each with its heading's label
 /// -- after the days it revisits for historical notes (see `NoteCompactor::
 /// revisit`), each headed by its date, "revisited", ahead of the rest.
-fn day_timelines(day: &Day, decisions: &[EventDecision], timeline: &Timeline) -> Vec<(Moment, &'static str, Timeline)> {
+fn day_timelines(day: &Day, timeline: &Timeline) -> Vec<(Moment, &'static str, Timeline)> {
     let historical: Vec<String> = day.notes.iter().filter(|n| n.note.timestamp < day.compaction_window_start).map(SheetNote::id).collect();
-    let span = |timeline: &Timeline| split_days(timeline, &day_starts(day, decisions)).into_iter().map(|(start, t)| (start, "", t));
+    let span = |timeline: &Timeline| split_days(timeline, &day_starts(day)).into_iter().map(|(start, t)| (start, "", t));
     if historical.is_empty() {
         return span(timeline).collect();
     }
@@ -3770,18 +3669,11 @@ fn day_timelines(day: &Day, decisions: &[EventDecision], timeline: &Timeline) ->
 }
 
 /// `_befores`: the first note of each day a span takes on, with the event
-/// that ended just before that day.
+/// going on as that day began (usually the night), or else the first
+/// after -- for the span's first day, the one just before its compaction
+/// window.
 fn befores(day: &Day) -> Vec<(String, Event)> {
-    let starts = day_starts(day, &[]);
-    let mut nights: Vec<(Moment, Event)> = Vec::new();
-    for e in &day.events {
-        if e.id.as_ref().is_some_and(|id| day.nights.contains(id)) {
-            match nights.iter_mut().find(|(end, _)| *end == e.end()) {
-                Some(slot) => slot.1 = e.clone(),
-                None => nights.push((e.end(), e.clone())),
-            }
-        }
-    }
+    let starts = day_starts(day);
     let mut out: Vec<(String, Event)> = Vec::new();
     for (i, start) in starts.iter().enumerate() {
         let end = starts.get(i + 1);
@@ -3793,8 +3685,20 @@ fn befores(day: &Day) -> Vec<(String, Event)> {
                 first = Some(n);
             }
         }
-        let before = if i == 0 { day.previous.clone() } else { nights.iter().find(|(e, _)| e == start).map(|(_, ev)| ev.clone()) };
-        if let (Some(first), Some(before)) = (first, before) {
+        let Some(first) = first else { continue };
+        let before = if i == 0 {
+            day.previous.clone()
+        } else {
+            let t = first.note.timestamp;
+            let mut earliest: Option<&Event> = None;
+            for e in day.events.iter().filter(|e| e.end() > *start && e.start() < t) {
+                if earliest.is_none_or(|l| e.start() < l.start()) {
+                    earliest = Some(e);
+                }
+            }
+            earliest.cloned()
+        };
+        if let Some(before) = before {
             let id = first.id();
             match out.iter_mut().find(|(k, _)| *k == id) {
                 Some(slot) => slot.1 = before,
@@ -3813,7 +3717,7 @@ fn display_offset(day: &Day) -> chrono::FixedOffset {
 }
 
 fn context_days(day: &Day) -> Option<Vec<ContextDay>> {
-    let starts = day_starts(day, &[]);
+    let starts = day_starts(day);
     if starts.len() < 2 {
         return None;
     }

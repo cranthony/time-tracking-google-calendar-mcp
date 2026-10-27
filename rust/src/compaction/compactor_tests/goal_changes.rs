@@ -163,7 +163,8 @@ fn malformed_goal_changes_are_refused_naming_the_goal() {
     refused(one(change("nope", GoalStatus::Done, None)), "There's no goal with the id or title 'nope'");
     refused(one(change("g5", GoalStatus::Done, None)), r"goal g5 \('Read'\) is done already, not open");
     refused(one(change("g1", GoalStatus::Active, None)), r"goal g1 \('Recipe sent to Sam'\): a goal change marks it done, missed or obsolete, not active");
-    refused(one(change("g1", GoalStatus::Done, Some("08:00"))), r"its time \(2026-01-01T08:00:00\+00:00\) is outside the window");
+    let the_day_before = GoalChange { at: Some(time_at("08:00") - Duration::days(1)), ..change("g1", GoalStatus::Done, None) };
+    refused(one(the_day_before), r"its time \(2025-12-31T08:00:00\+00:00\) is outside the window");
     refused(one(GoalChange { retry_deadline: Some("2026-02-01".into()), ..change("g1", GoalStatus::Done, None) }), "retry_deadline goes with status missed");
     refused(one(GoalChange { note_ids: strings(&["nope"]), ..change("g1", GoalStatus::Done, None) }), "'nope' isn't one of the proposal's notes");
     refused(one(GoalChange { retry_deadline: Some("someday".into()), ..change("g1", GoalStatus::Missed, None) }), "'someday' isn't a date");

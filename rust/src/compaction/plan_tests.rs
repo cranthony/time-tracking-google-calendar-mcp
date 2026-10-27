@@ -60,7 +60,6 @@ fn create(summary: Option<&str>) -> EventDecision {
 struct Extra {
     ignore_notes: Vec<String>,
     names: Vec<(String, String)>,
-    day_start: Option<Moment>,
     history_until: Option<Moment>,
     last_compaction: Option<Moment>,
     note_targets: Vec<(String, Option<String>)>,
@@ -75,7 +74,6 @@ fn plan_with(notes: &[PlanNote], decisions: &[EventDecision], events: &[Event], 
         PlanOptions {
             ignore_notes: Some(&extra.ignore_notes),
             names: Some(&extra.names),
-            day_start: extra.day_start,
             history_until: extra.history_until,
             last_compaction: extra.last_compaction,
             note_targets: Some(&extra.note_targets),
@@ -354,7 +352,7 @@ fn a_note_cannot_silently_eat_into_last_nights_sleep() {
             &[EventDecision { start_note: Some("n1".into()), ..keep("gr") }],
             &overnight(),
             "09:00+1",
-            Extra { day_start: Some(time_at("06:40+1")), ..Default::default() },
+            Extra::default(),
         ),
         &regex::escape("'Sleep' (20:00–07:00) overlaps 'Getting Ready'"),
     );
@@ -367,7 +365,7 @@ fn waking_early_shortens_last_nights_sleep_when_asked() {
         &[EventDecision { end_note: Some("n1".into()), ..keep("s0") }, EventDecision { start_note: Some("n1".into()), ..keep("gr") }],
         &overnight(),
         "09:00+1",
-        Extra { day_start: Some(time_at("06:40+1")), ..Default::default() },
+        Extra::default(),
     )
     .unwrap();
     assert_eq!(changed(&plan, "s0").after.unwrap().end, Some(time_at("06:40+1")));
@@ -553,11 +551,12 @@ fn cannot_merge_into_a_cancelled_event() {
 }
 
 #[test]
-fn the_end_of_day_sleep_event_cannot_be_merged() {
-    refused_with(
-        plan_with(&[], &[EventDecision { event_id: Some("e4".into()), into: Some("s1".into()), ..EventDecision::new("merge") }], &day(), "16:00", Extra::default()),
-        "can't be merged",
-    );
+fn a_night_merges_like_any_other_event() {
+    let plan =
+        plan_with(&[], &[EventDecision { event_id: Some("e4".into()), into: Some("s1".into()), ..EventDecision::new("merge") }], &day(), "16:00", Extra::default())
+            .unwrap();
+    assert_eq!(changed(&plan, "e4").reason, "merged into 'Sleep'");
+    assert_eq!(span(changed(&plan, "s1").after.as_ref().unwrap()), (time_at("14:00"), time_at("07:00") + Duration::days(1)));
 }
 
 // -- notes added to events --------------------------------------------------------
@@ -930,11 +929,10 @@ fn an_earlier_bedtime_needs_what_starts_after_it_cancelled_first() {
 }
 
 #[test]
-fn moving_its_end_warns_that_the_next_day_is_not_adjusted() {
+fn moving_its_end_just_moves_it() {
     let plan = plan_with(&[], &[EventDecision { end: Some(time_at("08:00") + Duration::days(1)), ..keep("s1") }], &day(), "08:00", Extra::default()).unwrap();
     assert_eq!(plan.changes.iter().filter_map(|c| c.event_id.clone()).collect::<Vec<_>>(), strings(&["s1"]));
-    assert_eq!(plan.warnings.len(), 1);
-    assert!(plan.warnings[0].contains("doesn't adjust the next day"));
+    assert!(plan.warnings.is_empty());
 }
 
 #[test]
@@ -959,13 +957,13 @@ fn facts_before_it_still_reflow_into_the_day() {
 }
 
 #[test]
-fn with_a_day_start_last_nights_sleep_is_not_the_days_end() {
+fn moving_last_nights_wake_up_just_moves_it() {
     let plan = plan_with(
         &[note(1, "07:20+1", Some("up"))],
         &[EventDecision { end_note: Some("n1".into()), ..keep("s0") }, EventDecision { start_note: Some("n1".into()), ..keep("gr") }],
         &overnight(),
         "09:00+1",
-        Extra { day_start: Some(time_at("07:00+1")), ..Default::default() },
+        Extra::default(),
     )
     .unwrap();
     assert_eq!(changed(&plan, "s0").after.unwrap().end, Some(time_at("07:20+1")));
@@ -996,7 +994,6 @@ fn a_later_bedtime_makes_room_for_an_activity_before_it() {
     assert_eq!(span(changed(&plan, "s1").after.as_ref().unwrap()), at("00:01+1", "07:00+1"));
     let made: Vec<(Option<String>, (Moment, Moment))> = creates(&plan).iter().map(|c| (c.after.clone().unwrap().summary, span(c.after.as_ref().unwrap()))).collect();
     assert_eq!(made, vec![(Some("Get ready for bed".to_string()), at("23:47", "00:01+1"))]);
-    assert!(!plan.warnings.iter().any(|w| w.contains("doesn't adjust the next day")));
 }
 
 #[test]
