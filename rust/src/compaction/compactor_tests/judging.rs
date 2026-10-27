@@ -400,11 +400,11 @@ fn the_window_starts_at_the_last_compaction_not_the_first_note() {
 
     let context = setup.prepare();
 
-    let days = context.days.as_ref().unwrap();
-    assert_eq!(days.len(), 2);
-    assert_eq!(days[0].compaction_window_start, time_at("00:32+1"));
-    assert_eq!(days[0].note_ids, vec![setup.note_id(2), setup.note_id(3)]);
-    assert_eq!(days[1].note_ids, vec![setup.note_id(4)]);
+    // All one day, from just after midnight: the night is an event like
+    // any other, and doesn't start another.
+    assert!(context.days.is_none());
+    assert_eq!(context.compaction_window_start, Some(time_at("00:32+1")));
+    assert_eq!(ids(&context.notes, |n| n.id.as_str()), vec![setup.note_id(2), setup.note_id(3), setup.note_id(4)]);
     // The work going on at the last compaction, and the evening planned
     // after it, are offered -- and the work says how far it's settled.
     let offered = event_ids(&context);

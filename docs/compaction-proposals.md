@@ -320,9 +320,9 @@ proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`,
 - Rechecks: plans the revision again on the calendar as it is now, and
   compares the writes it comes to -- each one's action, event, and the
   event before and after -- and the notes in its window with the
-  revision's. The plan's events run past `through` to the span's last
-  night (the end-of-day sleep that ends after it), so a calendar change
-  up to then can count; one after it can't.
+  revision's. The plan's events run on past `through` (those starting
+  within the hour after it, and whatever the decisions reach), so a
+  calendar change to them can count; one after them can't.
   - Same writes, same notes: applies them (status `applying`), then
     makes the revision's goal changes (each as one update, sub-goals
     before parents; one the goal rules now refuse is dropped and added

@@ -505,14 +505,11 @@ impl EventChanges {
             return Ok(Ok(batch));
         }
         let since = spans.iter().map(|(s, _)| *s).min().unwrap();
-        // One listing, through a day past the latest change, for both the
-        // end of the night after it and the events from the first change
-        // to there.
+        // One listing, of the events from the first change through a day
+        // past the latest.
         let latest = spans.iter().map(|(_, e)| *e).max().unwrap();
-        let ahead = latest + Duration::hours(24);
-        let wide: Vec<Event> = self.client.list_events(&since, &ahead)?.into_iter().filter(|e| !e.is_cancelled()).collect();
-        let until = day_end(&wide, &latest);
-        let listed: Vec<Event> = wide.into_iter().filter(|e| e.start() < until).collect();
+        let until = latest + Duration::hours(24);
+        let listed: Vec<Event> = self.client.list_events(&since, &until)?.into_iter().filter(|e| !e.is_cancelled() && e.start() < until).collect();
         let mut placed: Vec<Placed> = Vec::new();
         for event in &listed {
             let change = changes.iter().rev().find(|c| c.before.as_ref().is_some_and(|b| b.id == event.id));
@@ -616,14 +613,6 @@ impl EventChanges {
 /// 5 to 1024 of a-v and 0-9.
 pub fn own_event_id(id: &str) -> bool {
     (5..=1024).contains(&id.len()) && id.chars().all(|c| matches!(c, 'a'..='v' | '0'..='9'))
-}
-
-/// The end of the night after `moment`, or a day on without one, of
-/// `listed` (listed through a day on).
-fn day_end(listed: &[Event], moment: &Moment) -> Moment {
-    let ahead = *moment + Duration::hours(24);
-    let nights = listed.iter().filter(|e| e.is_end_of_day_sleep == Some(true) && e.end() > *moment && e.start() < ahead).map(|e| e.end());
-    nights.min().unwrap_or(ahead)
 }
 
 /// The batch's changes beside the events around them, as compaction draws

@@ -56,14 +56,14 @@ fn every_day_lists_within_one_listing_made_first() {
 }
 
 #[test]
-fn each_day_starts_where_the_one_before_it_ends() {
+fn each_day_after_the_first_starts_at_midnight() {
     let context = setup().prepare();
 
     let days: Vec<(Moment, Moment)> = context.days.as_ref().unwrap().iter().map(|d| (d.compaction_window_start, d.day_end)).collect();
-    assert_eq!(days, vec![(time_at("09:05"), time_at("07:00+1")), (time_at("07:00+1"), time_at("23:30+1"))]);
+    assert_eq!(days, vec![(time_at("00:00"), time_at("00:00+1")), (time_at("00:00+1"), time_at("10:00+1"))]);
     // The night between them is offered once, and to the second day's first
-    // note, to end if it ran late.
-    assert_eq!(event_ids(&context), strings(&["e1", "s1", "gr1", "w1", "s2"]));
+    // note, to end if it ran late. The next night is too far off.
+    assert_eq!(event_ids(&context), strings(&["e1", "s1", "gr1", "w1"]));
     assert!(context.notes[1].candidates.contains(&"s1".to_string()));
 }
 
@@ -107,7 +107,7 @@ fn the_note_ending_the_night_ends_it_and_starts_the_morning() {
     let getting_ready = day.decisions.iter().find(|d| d.event_id.as_deref() == Some("gr1")).unwrap();
     assert_eq!(getting_ready.start_note, Some(setup.note_id(3)));
     assert_eq!(change(&planned, "gr1").after.as_ref().unwrap().start, Some(time_at("08:30+1")));
-    // The next day is in the span too, so there's nothing to warn of.
+    // The night's new end is just another change: nothing to warn of.
     assert!(!planned.warnings.iter().any(|w| w.contains("now ends at")));
 }
 
@@ -188,7 +188,7 @@ fn a_second_decision_on_the_night_is_refused() {
 }
 
 #[test]
-fn a_night_without_sleep_makes_one_long_day() {
+fn a_night_without_sleep_is_cancelled_like_any_event() {
     let setup = setup_with(&[("09:05", "email"), ("03:00+1", "still up, coding"), ("08:30+1", "breakfast")]);
 
     let planned = setup.dry_run(vec![EventDecision { event_id: Some("s1".into()), ..EventDecision::new("cancel") }]);
@@ -198,10 +198,10 @@ fn a_night_without_sleep_makes_one_long_day() {
     assert_eq!(day.now, time_at("09:00+1"));
     let cancelled: Vec<String> = day.changes().into_iter().filter(|c| c.action == "cancel").filter_map(|c| c.event_id).collect();
     assert_eq!(cancelled, strings(&["s1"]));
-    // The next morning is part of the same day: settled as planned, so
-    // nothing to write.
+    // The next morning is settled as planned, so there's nothing to write;
+    // the days are still headed by their dates.
     assert!(!day.changes().iter().any(|c| c.event_id.as_deref() == Some("gr1")));
-    assert!(!planned.timeline.unwrap().text.contains("━━ "));
+    assert_eq!(planned.timeline.unwrap().text.matches("━━ ").count(), 2);
 }
 
 #[test]
@@ -288,29 +288,53 @@ fn an_open_batch_is_reported_by_its_own_id() {
     refused(setup.try_dry_run(vec![], DryRun::default()), &format!("compaction {id} is applying"));
 }
 
-#[test]
-fn takes_on_at_most_a_week_at_a_time() {
-    let start = time_at("09:00");
-    let events: Vec<Event> = (0..10)
-        .map(|day| Event {
-            id: Some(format!("s{day}")),
-            summary: Some("Sleep".into()),
-            start: Some(start + Duration::days(day) + Duration::hours(13)),
-            end: Some(start + Duration::days(day + 1) - Duration::hours(2)),
-            priority: Some(0),
-            is_end_of_day_sleep: Some(true),
-            ..Default::default()
-        })
+/// A backlog: a round last compacted at 15:00 on the first day, then a
+/// note at 18:00 each of nine days, a night after each, and on the
+/// eighth day work from 14:00 to 16:00.
+fn a_backlog() -> Setup {
+    let midnight = time_at("00:00");
+    let at = |day: i64, hours: i64| midnight + Duration::days(day) + Duration::hours(hours);
+    let mut events: Vec<Event> = (0..10)
+        .map(|day| Event { id: Some(format!("s{day}")), summary: Some("Sleep".into()), start: Some(at(day, 22)), end: Some(at(day + 1, 7)), priority: Some(0), ..Default::default() })
         .collect();
+    events.push(Event { id: Some("w7".into()), summary: Some("Work".into()), start: Some(at(7, 14)), end: Some(at(7, 16)), priority: Some(2), ..Default::default() });
     let setup = Setup::new(&[], Some(events), "11:30");
+    setup.start_plain("prev", at(0, 15));
+    setup.set_status("prev", STAMPED);
     for day in 0..9 {
-        let note = NotedTime { timestamp: start + Duration::days(day), description: Some(format!("day {day}")), compaction_id: None };
+        let note = NotedTime { timestamp: at(day, 18), description: Some(format!("day {day}")), compaction_id: None };
         setup.call(|c| c.notes.append(&note, None).unwrap());
     }
-    setup.set_moment(start + Duration::days(8) + Duration::hours(1));
+    setup.set_moment(at(8, 19));
+    setup
+}
+
+#[test]
+fn takes_on_at_most_a_week_at_a_time() {
+    let setup = a_backlog();
 
     let context = setup.prepare();
 
-    assert_eq!(context.days.unwrap().len() as i64, MAX_DAYS);
-    assert_eq!(context.remaining_note_count as i64, 9 - MAX_DAYS);
+    // Exactly a week from its start, which takes in parts of eight days and
+    // seven of the notes.
+    assert_eq!(context.now, Some(time_at("15:00") + Duration::days(MAX_DAYS)));
+    assert_eq!(context.days.unwrap().len() as i64, MAX_DAYS + 1);
+    assert_eq!(context.remaining_note_count, 2);
+}
+
+#[test]
+fn a_capped_span_settles_what_is_going_on_up_to_the_cap() {
+    let setup = a_backlog();
+    let cap = time_at("15:00") + Duration::days(MAX_DAYS);
+    assert!(event_ids(&setup.prepare()).contains(&"w7".to_string()));
+
+    let id = setup.dry_run(vec![]).compaction_id.unwrap();
+    setup.commit(&id);
+
+    assert_eq!(setup.journal().last_stamped_now().unwrap(), Some(cap));
+    // The next round carries on from the cap, the work settled up to there.
+    let next = setup.prepare();
+    assert_eq!(next.compaction_window_start, Some(cap));
+    assert_eq!(next.events.iter().find(|e| e.id == "w7").unwrap().history_until, Some(cap));
+    assert_eq!(next.notes.len(), 2);
 }
