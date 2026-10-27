@@ -234,7 +234,7 @@ fn circles_are_created_listed_and_found() {
 
     assert_eq!(
         listed,
-        json!([{"id": family, "name": "Family", "note": "by blood or choice", "scoring": null, "kind": "circle", "member_ids": [sam], "version": 1}])
+        json!([{"id": family, "name": "Family", "note": "by blood or choice", "scoring": null, "kind": "circle", "member_ids": [sam], "traits": null, "facts": null, "cancelled_events": null, "version": 1}])
     );
     assert_eq!(json_of(f.people.get_circle("family").unwrap())["id"], json!(family));
 }
@@ -293,6 +293,22 @@ fn a_circle_index_has_each_circle_its_kind_and_who_is_in_it() {
     let index = f.people.circle_index().unwrap();
     assert_eq!(index.get(&family).unwrap().members, vec![sam.clone()]);
     assert_eq!(index.attendees(&[crate::attendees::Entry::new(family)]), vec![sam]);
+}
+
+#[test]
+fn a_community_is_a_subject_as_a_person_is_and_a_plain_circle_isnt() {
+    let f = fixture();
+    let dance = f.circle(json!({"name": "Dance", "kind": "community", "note": "Tuesdays", "traits": {"select": ["reliable"]}}));
+    f.circle(json!({"name": "Family"}));
+    let sam = f.create(json!({"name": "Sam"}));
+
+    let subjects = f.people.subjects(None).unwrap();
+    let found: Vec<(&str, bool)> = subjects.iter().map(|s| (s.id.as_str(), s.community)).collect();
+    assert_eq!(found, vec![("self", false), (sam.as_str(), false), (dance.as_str(), true)]);
+    let community = subjects.last().unwrap();
+    assert_eq!((community.context.as_deref(), community.traits.as_ref().map(|t| t["select"].clone())), (Some("Tuesdays"), Some(json!(["reliable"]))));
+    let _held = WRITE_LOCK.hold();
+    refused(f.people.create_circle(&circle(json!({"name": "Club", "kind": "community", "traits": {"select": ["kind"]}}))), r#"'s traits "select" names 'kind', which isn't a trait"#);
 }
 
 #[test]

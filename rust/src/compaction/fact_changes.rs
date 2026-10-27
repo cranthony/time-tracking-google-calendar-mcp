@@ -9,7 +9,7 @@ use super::proposals::{AdditionSettled, Dict};
 use crate::facts::{Facts, SELF_ID};
 use crate::py;
 use crate::stores::cancellations::traits_for;
-use crate::stores::people::Person;
+use crate::stores::people::Subject;
 use crate::stores::person_facts::{PersonFacts, SummariesByPerson, SummaryChange, MAX_SUMMARY_CHARS};
 use crate::stores::traits::{effective_prompts, Trait, TraitStatus, Traits, PROMPT_THE_TRAITS};
 use serde_json::{json, Map, Value};
@@ -100,12 +100,12 @@ fn every_fact(traits: &[Trait]) -> Vec<String> {
     facts_for(None, traits)
 }
 
-/// Each of `person`'s facts, with their summary of it if they have one --
-/// and, where they have prompts of their own for it, the prompts it's
-/// kept by for them (see traits::effective_prompts), each with where it
-/// came from.
-pub fn person_facts(person: &Person, traits: &[Trait], summaries: &SummariesByPerson) -> Vec<Value> {
-    let id = person.id.clone().unwrap_or_default();
+/// Each of `person`'s facts -- a person's or a community's -- with their
+/// summary of it if they have one -- and, where they have prompts of
+/// their own for it, the prompts it's kept by for them (see
+/// traits::effective_prompts), each with where it came from.
+pub fn person_facts(person: &Subject, traits: &[Trait], summaries: &SummariesByPerson) -> Vec<Value> {
+    let id = person.id.clone();
     let theirs = summaries.iter().find(|(p, _)| *p == id).map(|(_, s)| s.as_slice()).unwrap_or_default();
     let spec = person.traits.clone().map(Value::Object);
     let mut out = Vec::new();
@@ -134,13 +134,13 @@ pub fn person_facts(person: &Person, traits: &[Trait], summaries: &SummariesByPe
 /// `summaries` together: each log and summary a fact of its person's --
 /// anyone in `refs` (to be added) may have any active trait's -- and each
 /// summary changed beside a log of it, each log beside its summary.
-pub fn problems(decisions: &[EventDecision], summaries: &[ProposedSummary], people: &[Person], refs: &[String], traits: &[Trait]) -> Vec<String> {
+pub fn problems(decisions: &[EventDecision], summaries: &[ProposedSummary], people: &[Subject], refs: &[String], traits: &[Trait]) -> Vec<String> {
     let mut problems = Vec::new();
     let facts_of = |person: &str| -> Option<Vec<String>> {
         if refs.iter().any(|r| r == person) {
             return Some(every_fact(traits));
         }
-        people.iter().find(|p| p.id.as_deref() == Some(person)).map(|p| facts_for(p.traits.clone().map(Value::Object).as_ref(), traits))
+        people.iter().find(|p| p.id == person).map(|p| facts_for(p.traits.clone().map(Value::Object).as_ref(), traits))
     };
     let not_theirs = |person: &str, fact: &str, theirs: &[String]| {
         format!(
@@ -181,7 +181,7 @@ pub fn problems(decisions: &[EventDecision], summaries: &[ProposedSummary], peop
         given.push(pair.clone());
         match facts_of(&summary.person_id) {
             None if summary.person_id != SELF_ID => problems.push(format!(
-                "{who}: {} isn't a person (get_people lists them; add someone new with new_people)",
+                "{who}: {} isn't a person or a community (get_people and get_circles list them; add someone new with new_people)",
                 py::repr(&summary.person_id)
             )),
             Some(theirs) if !theirs.contains(&summary.fact) => problems.push(format!("{who}: {}", not_theirs(&summary.person_id, &summary.fact, &theirs))),

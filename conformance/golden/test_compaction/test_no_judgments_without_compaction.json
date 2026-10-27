@@ -408,6 +408,7 @@
         "note",
         "scoring",
         "kind",
+        "traits",
         "version"
        ]
       ]
@@ -2267,6 +2268,7 @@
         "note",
         "scoring",
         "kind",
+        "traits",
         "version"
        ]
       ]

@@ -574,7 +574,8 @@ fn stale(app: &App, error: anyhow::Error) -> ToolError {
 ///
 /// `person_id`: only the events whose facts name that person (with, for,
 /// or noted) -- or a plain circle they're in now, without them in its
-/// except -- an id, or a name get_person takes. Quick over any span,
+/// except -- an id, or a name get_person takes; or a community's id, for
+/// the events naming it. Quick over any span,
 /// years included: search a person's history with a wide range.
 #[tool]
 pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText, person_id: Option<String>) -> Result<Vec<PublicEvent>, ToolError> {
@@ -584,7 +585,11 @@ pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText, pe
     let listed = match person_id {
         Some(person) => {
             let people = app.people()?;
-            let id = people.get_person(&person).map_err(refused)?.id.unwrap_or(person);
+            let community = people.circles()?.into_iter().find(|c| c.id.as_deref() == Some(person.as_str()) && c.kind == Some(crate::stores::people::CircleKind::Community));
+            let id = match community {
+                Some(c) => c.id.unwrap_or(person),
+                None => people.get_person(&person).map_err(refused)?.id.unwrap_or(person),
+            };
             let circles = people.circle_index()?;
             // Each event naming them, or a plain circle of theirs: one
             // listing for each, as an event is indexed by what it names.

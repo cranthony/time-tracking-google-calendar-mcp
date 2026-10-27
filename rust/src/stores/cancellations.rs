@@ -172,8 +172,10 @@ impl Cancellations {
         let circles = self.people.circle_index()?;
         let (with, for_) = (circles.attendees(&facts.with_entries()), circles.attendees(&facts.for_entries()));
         let mut found = Vec::new();
-        for person in self.people.get_people(None)? {
-            let person_id = str_or_none(person.id.as_deref());
+        // The active people, and the communities: counted against as a
+        // person is.
+        for person in self.people.subjects(None)? {
+            let person_id = if person.id.is_empty() { "None".to_string() } else { person.id.clone() };
             let mut by_engagement: Vec<(String, Vec<String>, Vec<String>)> = Vec::new();
             let spec = person.traits.clone().map(Value::Object);
             for (t, parts) in traits_for(spec.as_ref(), &traits) {

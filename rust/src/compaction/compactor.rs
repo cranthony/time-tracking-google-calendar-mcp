@@ -582,7 +582,7 @@ impl NoteCompactor {
                             .map(|p| {
                                 let mut listed = json!({"id": p.id, "name": p.name, "context": p.context});
                                 if let Some((traits, summaries)) = &kept {
-                                    listed["facts"] = json!(fact_changes::person_facts(p, traits, summaries));
+                                    listed["facts"] = json!(fact_changes::person_facts(&crate::stores::people::Subject::of_person(p), traits, summaries));
                                 }
                                 listed
                             })
@@ -592,12 +592,27 @@ impl NoteCompactor {
                 None => None,
             },
             circles: match &self.people {
-                Some(p) => Some(
-                    p.get_circles()?
-                        .into_iter()
-                        .map(|c| json!({"id": c.id, "name": c.name, "kind": c.kind, "member_ids": c.member_ids.unwrap_or_default()}))
-                        .collect(),
-                ),
+                Some(p) => {
+                    let kept = match &self.facts {
+                        Some(f) => Some((f.traits.all()?, f.person_facts.by_person()?)),
+                        None => None,
+                    };
+                    let circles = p.circles()?;
+                    Some(
+                        p.get_circles()?
+                            .into_iter()
+                            .map(|c| {
+                                let mut listed = json!({"id": c.id, "name": c.name, "kind": c.kind, "member_ids": c.member_ids.unwrap_or_default()});
+                                // A community's facts, as a person's.
+                                let community = circles.iter().find(|k| k.id == c.id).and_then(crate::stores::people::Subject::of_circle);
+                                if let (Some(community), Some((traits, summaries))) = (community, &kept) {
+                                    listed["facts"] = json!(fact_changes::person_facts(&community, traits, summaries));
+                                }
+                                listed
+                            })
+                            .collect(),
+                    )
+                }
                 None => None,
             },
             trait_facts: match &self.facts {
@@ -2413,7 +2428,7 @@ impl NoteCompactor {
         };
         let mut refs: Vec<String> = additions.people.iter().map(|p| p.ref_.clone()).collect();
         refs.extend(settled.iter().cloned());
-        let problems = fact_changes::problems(decisions, summaries, &people.all()?, &refs, &keeping.traits.all()?);
+        let problems = fact_changes::problems(decisions, summaries, &people.all_subjects()?, &refs, &keeping.traits.all()?);
         if !problems.is_empty() {
             return Err(ce_of(&problems, "facts"));
         }

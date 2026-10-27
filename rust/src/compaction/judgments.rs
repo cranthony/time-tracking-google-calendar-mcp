@@ -14,7 +14,7 @@ use crate::stores::cancellations::{of_action, traits_for};
 use crate::stores::groups::{python_str, repr_or_none, str_or_none, truthy};
 use crate::stores::habits::{self, subject_id, Habit, Habits};
 use crate::stores::locations::Locations;
-use crate::stores::people::{People, Person};
+use crate::stores::people::People;
 use crate::stores::person_facts::PersonFacts;
 use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, trait_fact_id, Trait, TraitStatus, Traits};
 use chrono::Duration;
@@ -42,10 +42,11 @@ pub struct Subject {
 }
 
 impl Subject {
-    fn of(person: &Person) -> Subject {
+    /// A person's, or a community's (see stores::people::Subject).
+    fn of(person: &crate::stores::people::Subject) -> Subject {
         let text = |t: &Option<String>| t.clone().map(Value::String);
         Subject {
-            id: person.id.clone().unwrap_or_default(),
+            id: person.id.clone(),
             name: text(&person.name),
             context: text(&person.context),
             note: None,
@@ -335,8 +336,9 @@ impl Judging {
             Some(slot) => slot.1 = subject,
             None => people.push((key.to_string(), subject)),
         };
-        for person in self.people.all()? {
-            if person.id.as_deref().is_some_and(|i| !i.is_empty()) {
+        // People, and communities: judged as a person is.
+        for person in self.people.all_subjects()? {
+            if !person.id.is_empty() {
                 let subject = Subject::of(&person);
                 set(&mut people, &subject.id.clone(), subject);
             }
@@ -484,11 +486,9 @@ impl Judging {
         for event in events {
             let facts = event.facts.as_ref().unwrap();
             let mut about: Vec<(String, &str)> = vec![(SELF_ID.into(), "with")];
-            // A plain circle's members each, as if named; a community
-            // has no judgments of its own here.
-            let named = |entries: &[crate::attendees::Entry]| -> Vec<String> {
-                subjects.circles.attendees(entries).into_iter().filter(|p| subjects.circles.get(p).is_none()).collect()
-            };
+            // A plain circle's members each, as if named; a community as
+            // itself.
+            let named = |entries: &[crate::attendees::Entry]| -> Vec<String> { subjects.circles.attendees(entries) };
             about.extend(named(&facts.with_entries()).into_iter().map(|p| (p, "with")));
             about.extend(named(&facts.for_entries()).into_iter().map(|p| (p, "for")));
             for (h, _) in &subjects.scopes {

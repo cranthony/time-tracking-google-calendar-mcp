@@ -3,7 +3,7 @@
 //! TestDeleteRecurrence, TestSetTimeZone and TestWriteLock.
 
 use super::*;
-use crate::sheet::{ACTIONS, ACTION_GROUPS, PEOPLE};
+use crate::sheet::{CIRCLES, ACTIONS, ACTION_GROUPS, PEOPLE};
 
 fn part(action: &str) -> Value {
     json!({"kind": "count", "target": 1, "interval_days": 21, "noun": "visits", "action": action})
@@ -178,6 +178,41 @@ fn a_persons_trait_fact_summaries_are_listed_and_set_by_hand() {
     server.refused("update_person", json!({"person": {"id": id, "version": updated["version"]}, "facts": {"thoughtful": {"hobbies": "golf"}}}), "isn't one of thoughtful's facts");
     let cleared = server.ok("update_person", json!({"person": {"id": id, "version": updated["version"]}, "facts": {"thoughtful": {"what_matters": ""}}}));
     assert_eq!(cleared["facts"], json!({}));
+}
+
+#[test]
+fn a_community_has_traits_and_trait_facts_of_its_own_as_a_person_does_and_a_plain_circle_none() {
+    let server = Server::new();
+
+    let dance = server.ok(
+        "create_circle",
+        json!({"circle": {"name": "Dance", "kind": "community", "traits": {"select": ["thoughtful"]}}, "facts": {"thoughtful": {"what_matters": "- music"}}}),
+    );
+    assert_eq!(dance["circle"]["facts"], json!({"thoughtful": {"what_matters": "- music"}}));
+    assert_eq!(dance["circle"]["traits"]["select"], json!(["thoughtful"]));
+    let id = dance["created_id"].clone();
+    let listed = server.ok("get_circle", json!({"id_or_name": "Dance"}));
+    assert_eq!((listed["facts"].clone(), listed["cancelled_events"].clone()), (json!({"thoughtful": {"what_matters": "- music"}}), json!([])));
+    let updated = server.ok("update_circle", json!({"circle": {"id": id, "version": listed["version"]}, "facts": {"thoughtful": {"what_matters": "- salsa"}}}));
+    assert_eq!(updated["facts"]["thoughtful"]["what_matters"], json!("- salsa"));
+
+    server.refused("create_circle", json!({"circle": {"name": "Family"}, "facts": {"thoughtful": {"what_matters": "x"}}}), "only a community has trait facts of its own");
+    server.refused("create_circle", json!({"circle": {"name": "Family", "traits": {"select": ["thoughtful"]}}}), "is a plain circle: it stands for its members");
+    server.refused("create_circle", json!({"circle": {"name": "Club", "kind": "community", "traits": {"select": ["nope"]}}}), "traits");
+    let family = server.ok("create_circle", json!({"circle": {"name": "Family"}}));
+    assert_eq!(family["circle"]["facts"], Value::Null);
+}
+
+#[test]
+fn a_community_comes_with_the_events_the_user_cancelled_that_count_against_it() {
+    let server = Server::new();
+    server.t.app.people().unwrap();
+    server.t.seed(CIRCLES.1, &[json!({"id": "dance", "name": "Dance", "kind": "community"})]);
+    server.seed(&[Event { summary: Some("Social".into()), facts: Some(crate::testing::facts(json!({"with": ["dance"]}))), ..focus("social1", at(12, 0), at(13, 0)) }]);
+    server.ok("delete_event", json!({"cancels": [{"event_id": "social1", "counts_against_follow_through": true}]}));
+
+    let dance = server.ok("get_circle", json!({"id_or_name": "dance"}));
+    assert_eq!(dance["cancelled_events"][0]["event_id"], json!("social1"));
 }
 
 #[test]
