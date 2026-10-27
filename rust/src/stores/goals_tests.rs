@@ -639,6 +639,14 @@ fn a_goal_activated_waiting_takes_its_inactive_parents_and_by_hand_ignores_what_
     let later = f.create(json!({"title": "Later", "status": "inactive", "deadline": "2026-12-01", "activate_when": {"after": [{"at": "2026-11-20"}]}})).unwrap();
     f.change(&[], vec![edit(json!({"id": later, "status": "active"}))], vec![]).unwrap();
     assert_eq!((f.get(&later)["status"].clone(), f.get(&later)["activate_when"].clone()), (json!("active"), Value::Null));
+
+    // Closed while it waits, as a recurring goal's habit archived makes
+    // its waiting goal obsolete.
+    for status in ["obsolete", "done", "missed"] {
+        let waiting = f.create(json!({"title": "Waiting", "status": "inactive", "deadline": "2026-12-01", "activate_when": {"after": [{"at": "2026-11-20"}]}})).unwrap();
+        f.change(&[], vec![edit(json!({"id": waiting, "status": status}))], vec![]).unwrap();
+        assert_eq!((f.get(&waiting)["status"].clone(), f.get(&waiting)["activate_when"].clone()), (json!(status), Value::Null));
+    }
 }
 
 #[test]
