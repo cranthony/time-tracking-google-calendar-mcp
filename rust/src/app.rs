@@ -323,7 +323,10 @@ impl App {
         built(&self.goals, || {
             let (_, sheets, id) = self.spreadsheet()?;
             let me = self.me();
-            let people: crate::stores::goals::PersonIds = Arc::new(move || Ok(me.people()?.all()?.into_iter().filter_map(|p| p.id).collect()));
+            let people: crate::stores::goals::PersonIds = Arc::new(move || {
+                let people = me.people()?;
+                Ok((people.all()?.into_iter().filter_map(|p| p.id).collect(), people.circle_index()?))
+            });
             let me = self.me();
             let templates: crate::stores::goals::TemplatesFn = Arc::new(move || {
                 let templates = me.habits()?.templates()?;

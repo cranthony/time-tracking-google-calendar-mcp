@@ -326,3 +326,18 @@ fn a_note_written_before_the_planned_wake_up_starts_the_day_there() {
     assert_eq!(event_ids(&context), strings(&["s0", "gr", "w1", "w2", "s1"]));
     assert_eq!(context.day_end, Some(time_at("07:00+1") + Duration::days(1)));
 }
+
+#[test]
+fn offers_the_circles_with_their_kind_and_members() {
+    let people = vec![json!({"id": "sam", "name": "Sam", "status": "active", "circles": ["fam"]})];
+    let setup = Setup::with(&[("09:05", "email")], None, "11:30", Stores { people, ..Default::default() });
+    setup.t.app.people().unwrap();
+    setup.t.seed(crate::sheet::CIRCLES.1, &[json!({"id": "fam", "name": "Family"}), json!({"id": "dance", "name": "Dance", "kind": "community"})]);
+
+    let context = setup.prepare();
+
+    assert_eq!(
+        json!(context.circles),
+        json!([{"id": "fam", "name": "Family", "kind": "circle", "member_ids": ["sam"]}, {"id": "dance", "name": "Dance", "kind": "community", "member_ids": []}])
+    );
+}

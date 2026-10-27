@@ -386,7 +386,11 @@ pub fn get_fact_logs(app: &App, person_id: String, trait_id: Option<String>, fac
 /// Every circle: a group people belong to ("Close friends",
 /// "Family"), a person belonging to any number of them. Each has an id,
 /// name, note, scoring (how its people's scores combine into its own;
-/// see create_circle) and member_ids (the people in it). Read-only.
+/// see create_circle), kind and member_ids (the people in it). kind is
+/// "circle" -- a plain circle, standing for its members: naming it on an
+/// event or goal names each of them -- or "community": a group as such,
+/// standing for itself, like a person, none of its members assumed.
+/// Read-only.
 #[tool]
 pub fn get_circles(app: &App) -> Result<Vec<ListedCircle>, ToolError> {
     prefetch_stores(app)?;
@@ -402,11 +406,14 @@ pub fn get_circle(app: &App, id_or_name: String) -> Result<ListedCircle, ToolErr
 }
 
 /// Add a circle: a name (unique among circles, though a person may
-/// share it) and optionally a note and scoring: how its people's scores
-/// combine into its own, in place of the scoring defaults' circles -- an
-/// aggregation (see get_scoring_defaults), its weights by person id. id
-/// is assigned. Put people in it with update_person's circles. Returns
-/// the circle and its id as created_id.
+/// share it), its kind -- "circle" (the default: a plain circle, standing
+/// for its members) or "community" (a group standing for itself; see
+/// get_circles), set now and never changed -- and optionally a note and,
+/// for a plain circle, scoring: how its people's scores combine into its
+/// own, in place of the scoring defaults' circles -- an aggregation (see
+/// get_scoring_defaults), its weights by person id. A community takes no
+/// scoring. id is assigned. Put people in it with update_person's
+/// circles. Returns the circle and its id as created_id.
 #[tool(writes)]
 pub fn create_circle(app: &App, circle: Circle) -> Result<CreatedCircle, ToolError> {
     prefetch_stores(app)?;
@@ -415,7 +422,8 @@ pub fn create_circle(app: &App, circle: Circle) -> Result<CreatedCircle, ToolErr
 
 /// Rename a circle or change its note or scoring, by id. Fields left
 /// out keep their value; list one in clear_fields to blank it instead.
-/// Returns it as updated.
+/// Its kind never changes: given, it must be the one it has. Returns it
+/// as updated.
 #[tool(writes)]
 pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleField>>) -> Result<ListedCircle, ToolError> {
     prefetch_stores(app)?;

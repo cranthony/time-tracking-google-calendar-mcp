@@ -10,6 +10,7 @@
 //! goal_ids behind; these are kept apart from them: their own tab, and
 //! events' goal_shares.
 
+use crate::attendees::{named_entries, Named};
 use crate::contract::{DateTimeText, RowItem, Schema};
 use crate::event::{parse_iso, Moment};
 use crate::google::sheets::{SheetsClient, TabRange};
@@ -287,12 +288,15 @@ pub struct Goal {
     /// A guide for telling which events are for it.
     pub attribution_hints: Option<String>,
     /// The people it's done with: who the user works on it alongside
-    /// (person ids; never "self", and never also in for_ids).
-    pub with_ids: Option<Vec<String>>,
+    /// (person ids; never "self", and never also in for_ids). A circle's
+    /// id names a plain circle's members, or a community itself;
+    /// {circle_id, except} a plain circle's but those in except.
+    pub with_ids: Option<Vec<crate::attendees::Named>>,
     /// The people it's done for, who aren't part of doing it: a promise
     /// to them, a gift, a favor (person ids; never "self", and never also
-    /// in with_ids).
-    pub for_ids: Option<Vec<String>>,
+    /// in with_ids, a plain circle's members included). Circles as in
+    /// with_ids.
+    pub for_ids: Option<Vec<crate::attendees::Named>>,
     /// What its deadline is measured from, when it isn't a date given (see
     /// Deadline; never `at`): kept so while it's open, deadline following
     /// it. A deadline given without it unties it; so does moving a goal
@@ -336,8 +340,8 @@ pub struct ListedGoal {
     pub description: Option<String>,
     pub definition_of_done: Option<String>,
     pub attribution_hints: Option<String>,
-    pub with_ids: Option<Vec<String>>,
-    pub for_ids: Option<Vec<String>>,
+    pub with_ids: Option<Vec<crate::attendees::Named>>,
+    pub for_ids: Option<Vec<crate::attendees::Named>>,
     pub path: Vec<String>,
     /// The habit whose recurring goal it is, for one of its periods (its
     /// id is the habit's and the period's start: "<habit id>_2026-11-01").
@@ -784,8 +788,9 @@ fn shown(at: NaiveDateTime) -> String {
 
 // -- the store -------------------------------------------------------------------
 
-/// Every person's id, to check the people goals name against.
-pub type PersonIds = Arc<dyn Fn() -> anyhow::Result<Vec<String>> + Send + Sync>;
+/// Every person's id, and every circle with who's in it, to check the
+/// people and circles goals name against.
+pub type PersonIds = Arc<dyn Fn() -> anyhow::Result<(Vec<String>, crate::attendees::Circles)> + Send + Sync>;
 
 /// The active habits with a recurring goal, to make their goals from,
 /// and the calendar's time zone, their periods' -- none without any.
@@ -1057,7 +1062,9 @@ fn stamp_deadlines(goals: &mut [Goal], ids: &[String]) {
 }
 
 impl Goals {
-    /// The people `touched` goals name who aren't people (with `people`
+    /// What's wrong with the people and circles `touched` goals name: who
+    /// aren't people or circles, an except a circle can't take, and who
+    /// would be both with and for through a plain circle (with `people`
     /// to check against).
     fn people_problems(&self, goals: &[Goal], touched: &[String]) -> anyhow::Result<Vec<String>> {
         let Some(lookup) = &self.people else { return Ok(Vec::new()) };
@@ -1065,20 +1072,37 @@ impl Goals {
         if named.is_empty() {
             return Ok(Vec::new());
         }
-        let known = lookup()?;
-        Ok(named
-            .into_iter()
-            .filter_map(|g| {
-                let unknown: Vec<&String> = people_of(g).into_iter().filter(|p| p.as_str() != SELF_ID && !known.contains(p)).collect();
-                (!unknown.is_empty()).then(|| format!("{} names {}, who aren't people (get_people lists them)", label(g), py::repr_list(&unknown)))
-            })
-            .collect())
+        let (known, circles) = lookup()?;
+        let mut problems = Vec::new();
+        for g in named {
+            let is_person = |p: &str| known.iter().any(|k| k == p);
+            let naming = circles.naming(&named_entries(g.with_ids.as_deref()), &named_entries(g.for_ids.as_deref()), &is_person);
+            if !naming.unknown.is_empty() {
+                problems.push(format!("{} names {}, who aren't people or circles (get_people and get_circles list them)", label(g), py::repr_list(&naming.unknown)));
+            }
+            problems.extend(naming.other.iter().map(|p| format!("{}: {p}", label(g))));
+            if !naming.both.is_empty() {
+                problems.push(format!(
+                    "{} names {} both with (doing it alongside) and for (not part of doing it): a plain circle stands for its members",
+                    label(g),
+                    py::repr_list(&naming.both)
+                ));
+            }
+        }
+        Ok(problems)
     }
 }
 
-/// The people `goal` is done with, then those it's done for.
+/// The ids `goal` names -- people's and circles' -- it's done with, then
+/// those it's done for.
 pub fn people_of(goal: &Goal) -> Vec<&String> {
-    goal.with_ids.iter().chain(goal.for_ids.iter()).flatten().collect()
+    goal.with_ids.iter().chain(goal.for_ids.iter()).flatten().map(|n| &n.id).collect()
+}
+
+/// Who `goal` is with, then who it's for, its plain circles' members
+/// among them (see crate::attendees).
+pub fn attendees_of(goal: &Goal, circles: &crate::attendees::Circles) -> (Vec<String>, Vec<String>) {
+    (circles.attendees(&named_entries(goal.with_ids.as_deref())), circles.attendees(&named_entries(goal.for_ids.as_deref())))
 }
 
 fn dedup_listed(goals: Vec<ListedGoal>) -> Vec<ListedGoal> {
@@ -1176,8 +1200,9 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
             }
             Some(_) => {}
         }
-        let with = goal.with_ids.as_deref().unwrap_or_default();
-        let for_ = goal.for_ids.as_deref().unwrap_or_default();
+        let ids = |named: Option<&[Named]>| named.unwrap_or_default().iter().map(|n| n.id.clone()).collect::<Vec<String>>();
+        let (with, for_) = (ids(goal.with_ids.as_deref()), ids(goal.for_ids.as_deref()));
+        let for_ = &for_;
         if with.iter().chain(for_).any(|p| p == SELF_ID) {
             problems.push((me.clone(), format!("{name} can't name \"self\" in with_ids or for_ids: the user is part of every goal")));
         }

@@ -271,6 +271,7 @@ pub struct CompactionContext {
     pub timeline: Option<Timeline>,
     pub actions: Option<Vec<Value>>,
     pub people: Option<Vec<Value>>,
+    pub circles: Option<Vec<Value>>,
     pub locations: Option<Vec<Value>>,
     pub goals: Option<Vec<Value>>,
     pub previous_note: Option<NotedTime>,
@@ -350,6 +351,7 @@ impl CompactionContext {
         out.insert("timeline".into(), self.timeline.as_ref().map(Timeline::to_json).unwrap_or(Value::Null));
         out.insert("actions".into(), json!(self.actions));
         out.insert("people".into(), json!(self.people));
+        out.insert("circles".into(), json!(self.circles));
         out.insert("locations".into(), json!(self.locations));
         out.insert("goals".into(), json!(self.goals));
         out.insert("trait_facts".into(), json!(self.trait_facts));
@@ -594,6 +596,15 @@ impl NoteCompactor {
                 }
                 None => None,
             },
+            circles: match &self.people {
+                Some(p) => Some(
+                    p.get_circles()?
+                        .into_iter()
+                        .map(|c| json!({"id": c.id, "name": c.name, "kind": c.kind, "member_ids": c.member_ids.unwrap_or_default()}))
+                        .collect(),
+                ),
+                None => None,
+            },
             trait_facts: match &self.facts {
                 Some(f) => Some(fact_changes::trait_facts(&f.traits.all()?)),
                 None => None,
@@ -696,6 +707,10 @@ impl NoteCompactor {
             names.extend(p.all()?.into_iter().filter_map(|p| {
                 let id = p.id.filter(|i| !i.is_empty())?;
                 Some((id.clone(), p.name.filter(|n| !n.is_empty()).unwrap_or(id)))
+            }));
+            names.extend(p.circles()?.into_iter().filter_map(|c| {
+                let id = c.id.filter(|i| !i.is_empty())?;
+                Some((id.clone(), c.name.filter(|n| !n.is_empty()).unwrap_or(id)))
             }));
         }
         if let Some(l) = &self.locations {
@@ -2557,6 +2572,10 @@ impl NoteCompactor {
             Some(p) => Some(p.all()?.into_iter().map(|p| p.id.unwrap_or_else(|| "None".into())).collect()),
             None => None,
         };
+        let circles = match &self.people {
+            Some(p) => p.circle_index()?,
+            None => Default::default(),
+        };
         let locations: Option<Vec<String>> = match &self.locations {
             Some(l) => Some(l.all()?.into_iter().map(|l| l.id.unwrap_or_else(|| "None".into())).collect()),
             None => None,
@@ -2576,16 +2595,19 @@ impl NoteCompactor {
                     decision.action,
                     decision.event_id.as_ref().filter(|e| !e.is_empty()).map(|e| format!(" {e}")).unwrap_or_default()
                 );
-                problems.extend(fact_problems(&facts).into_iter().map(|p| format!("{label}: its facts {p}")));
+                problems.extend(fact_problems(&facts, &circles).into_iter().map(|p| format!("{label}: its facts {p}")));
                 if let Some(people) = &people {
+                    let is_person = |i: &str| people.iter().chain(&new_people).any(|p| p == i);
+                    let naming = circles.naming(&facts.with_entries(), &facts.for_entries(), &is_person);
+                    problems.extend(naming.other.iter().map(|p| format!("{label}: its facts' {p}")));
                     let unknown: Vec<String> = facts
                         .people()
                         .into_iter()
-                        .filter(|i| !people.contains(i) && !new_people.contains(i) && i != SELF_ID)
+                        .filter(|i| !is_person(i) && circles.get(i).is_none() && i != SELF_ID)
                         .collect();
                     if !unknown.is_empty() {
                         problems.push(format!(
-                            "{label}: its facts name {}, who aren't people (get_people lists them; add someone new with new_people)",
+                            "{label}: its facts name {}, who aren't people or circles (get_people and get_circles list them; add someone new with new_people)",
                             py::repr_list(&unknown)
                         ));
                     }

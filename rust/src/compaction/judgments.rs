@@ -3,6 +3,7 @@
 //! it was about, against the judgment parts of the traits that apply to
 //! them.
 
+use crate::attendees::Circles;
 use crate::event::{Event, Moment};
 use crate::facts::SELF_ID;
 use crate::py;
@@ -251,13 +252,14 @@ fn facts_locations(event: &Event) -> Vec<String> {
 }
 
 /// `_with`: whether `person_id` took part in `event` -- the user always
-/// did; anyone else if it was with or for them.
-fn with(event: &Event, person_id: &str) -> bool {
+/// did; anyone else if it was with or for them, or a plain circle of
+/// theirs (see crate::attendees).
+fn with(event: &Event, person_id: &str, circles: &Circles) -> bool {
     if person_id == SELF_ID {
         return true;
     }
     let Some(facts) = &event.facts else { return false };
-    facts.with().iter().any(|p| p == person_id) || facts.for_().iter().any(|p| p == person_id)
+    circles.attendees(&facts.with_entries()).iter().chain(&circles.attendees(&facts.for_entries())).any(|p| p == person_id)
 }
 
 /// Whether `event` is for one of habit `habit_id`'s recurring goal's
@@ -291,6 +293,9 @@ pub struct Judging {
 struct Subjects {
     people: Vec<(String, Subject)>,
     scopes: Vec<(String, Value)>,
+    /// Who each circle stands for: a plain one's members are judged as
+    /// if each were named.
+    circles: Circles,
 }
 
 impl Subjects {
@@ -307,7 +312,7 @@ impl Subjects {
             // A recurring goal's habit: the events for its goals.
             Some(Value::Object(scope)) => scope.get("habit").and_then(Value::as_str).is_some_and(|habit| for_habit(event, habit)),
             Some(scope) => !of_action(std::slice::from_ref(event), Some(scope), tree).is_empty(),
-            None => with(event, subject),
+            None => with(event, subject, &self.circles),
         }
     }
 }
@@ -372,7 +377,7 @@ impl Judging {
                 }
             }
         }
-        Ok(Subjects { people, scopes })
+        Ok(Subjects { people, scopes, circles: self.people.circle_index()? })
     }
 
     fn active_traits(&self) -> anyhow::Result<Vec<Trait>> {
@@ -479,8 +484,13 @@ impl Judging {
         for event in events {
             let facts = event.facts.as_ref().unwrap();
             let mut about: Vec<(String, &str)> = vec![(SELF_ID.into(), "with")];
-            about.extend(facts.with().into_iter().map(|p| (p, "with")));
-            about.extend(facts.for_().into_iter().map(|p| (p, "for")));
+            // A plain circle's members each, as if named; a community
+            // has no judgments of its own here.
+            let named = |entries: &[crate::attendees::Entry]| -> Vec<String> {
+                subjects.circles.attendees(entries).into_iter().filter(|p| subjects.circles.get(p).is_none()).collect()
+            };
+            about.extend(named(&facts.with_entries()).into_iter().map(|p| (p, "with")));
+            about.extend(named(&facts.for_entries()).into_iter().map(|p| (p, "for")));
             for (h, _) in &subjects.scopes {
                 if subjects.part_of(tree.as_ref(), event, h) {
                     about.push((h.clone(), "with"));

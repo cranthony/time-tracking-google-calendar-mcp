@@ -439,6 +439,7 @@
    "content": {
     "circle": {
      "id": "s3wod9",
+     "kind": "circle",
      "member_ids": [],
      "name": "Friends",
      "note": null,
@@ -452,7 +453,7 @@
     "created_id": "s3wod9"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"s3wod9\",\n    \"name\": \"Friends\",\n    \"note\": null,\n    \"scoring\": {\n      \"weights\": {\n        \"lejxa2\": 2\n      }\n    },\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"s3wod9\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"s3wod9\",\n    \"name\": \"Friends\",\n    \"note\": null,\n    \"scoring\": {\n      \"weights\": {\n        \"lejxa2\": 2\n      }\n    },\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"s3wod9\"\n}",
    "tool": "create_circle"
   },
   {
@@ -467,6 +468,7 @@
    },
    "content": {
     "id": "s3wod9",
+    "kind": "circle",
     "member_ids": [],
     "name": "Friends",
     "note": null,
@@ -474,7 +476,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"s3wod9\",\n  \"name\": \"Friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"s3wod9\",\n  \"name\": \"Friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [],\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -1290,6 +1292,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ]
       ]
@@ -2072,6 +2075,7 @@
         "Friends",
         "",
         "{\"weights\":{\"lejxa2\":2}}",
+        "circle",
         "1"
        ]
       ]
@@ -2104,6 +2108,7 @@
         "Friends",
         "",
         "",
+        "circle",
         "2"
        ]
       ]
@@ -2517,6 +2522,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ],
        [
@@ -2524,6 +2530,7 @@
         "Friends",
         "",
         "",
+        "circle",
         "2"
        ]
       ]

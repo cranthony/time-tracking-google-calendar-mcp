@@ -2,7 +2,7 @@
 //! TestFollowThrough and TestPrioritiesKept.
 
 use super::*;
-use crate::sheet::{ACTIONS, HABITS};
+use crate::sheet::{ACTIONS, CIRCLES, HABITS};
 use crate::testing::facts;
 
 fn sam() -> Vec<Value> {
@@ -138,6 +138,24 @@ fn applying_asks_for_the_judgments_and_isnt_complete_until_theyre_made() {
     assert!(applied.message.contains("isn't complete yet: make the 2 judgment(s)"), "{}", applied.message);
     assert!(due.to_json()["instructions"].as_str().unwrap().contains("JUDGE EACH ONE YOURSELF"));
     assert_eq!(setup.prepare().judgments_pending, applied.compaction_id);
+}
+
+#[test]
+fn a_plain_circles_members_are_judged_as_if_named_but_those_its_except_leaves_out_and_a_community_arent() {
+    let people = vec![
+        json!({"id": "sam", "name": "Sam", "status": "active", "circles": ["fam"]}),
+        json!({"id": "ana", "name": "Ana", "status": "active", "circles": ["fam", "dance"]}),
+    ];
+    let setup = judged(people, vec![heard()]);
+    setup.t.app.people().unwrap();
+    setup.t.seed(CIRCLES.1, &[json!({"id": "fam", "name": "Family"}), json!({"id": "dance", "name": "Dance", "kind": "community"})]);
+
+    let id = setup.dry_run(with_sam(json!({"with": [{"circle_id": "fam", "except": ["ana"]}, "dance"]}))).compaction_id.unwrap();
+    let applied = setup.commit(&id);
+
+    let due = applied.judgments.as_ref().unwrap();
+    let people: Vec<&str> = due.events[0].people.iter().map(|(p, _)| p.as_str()).collect();
+    assert_eq!(people, vec!["self", "sam"]);
 }
 
 #[test]

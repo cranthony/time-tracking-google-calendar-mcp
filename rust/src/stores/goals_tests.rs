@@ -483,7 +483,7 @@ fn a_goal_keeps_its_sort_order_until_cleared() {
 #[test]
 fn a_goal_names_the_people_its_done_with_and_for() {
     let mut f = fixture();
-    f.goals = f.goals.clone().with_people(Arc::new(|| Ok(vec!["self".into(), "sam".into(), "ana".into()])));
+    f.goals = f.goals.clone().with_people(Arc::new(|| Ok((vec!["self".into(), "sam".into(), "ana".into()], Default::default()))));
     let id = f.create(json!({"title": "Help Sam move", "deadline": "2026-11-01", "with_ids": ["sam"], "for_ids": ["ana"]})).unwrap();
     assert_eq!((f.get(&id)["with_ids"].clone(), f.get(&id)["for_ids"].clone()), (json!(["sam"]), json!(["ana"])));
 
@@ -495,6 +495,28 @@ fn a_goal_names_the_people_its_done_with_and_for() {
     cleared.clear_fields = vec!["for_ids".into()];
     f.change(&[], vec![cleared], vec![]).unwrap();
     assert_eq!((f.get(&id)["with_ids"].clone(), f.get(&id)["for_ids"].clone()), (json!(["sam"]), Value::Null));
+}
+
+#[test]
+fn a_goal_names_a_circle_bare_or_with_its_except() {
+    use crate::attendees::{Circles, Members};
+    use crate::stores::people::CircleKind;
+    let mut f = fixture();
+    f.goals = f.goals.clone().with_people(Arc::new(|| {
+        let circles = Circles(vec![
+            Members { id: "fam".into(), kind: CircleKind::Circle, members: vec!["roger".into(), "cecile".into()] },
+            Members { id: "dance".into(), kind: CircleKind::Community, members: vec![] },
+        ]);
+        Ok((vec!["self".into(), "roger".into(), "cecile".into()], circles))
+    }));
+    let id = f
+        .create(json!({"title": "Plan the reunion", "deadline": "2026-11-01", "with_ids": [{"circle_id": "fam", "except": ["cecile"]}], "for_ids": ["dance"]}))
+        .unwrap();
+    assert_eq!(f.get(&id)["with_ids"], json!([{"circle_id": "fam", "except": ["cecile"]}]));
+
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "with_ids": ["roger"], "for_ids": ["fam"]})), r"names \['roger'\] both with .* a plain circle stands for its members");
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "with_ids": [{"circle_id": "dance", "except": ["roger"]}]})), r"'dance' is a community");
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "with_ids": ["bo"]})), r"names \['bo'\], who aren't people or circles");
 }
 
 fn set_now(text: &str) {

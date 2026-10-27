@@ -911,6 +911,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ]
       ]
@@ -1976,6 +1977,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ]
       ]

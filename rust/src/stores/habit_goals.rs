@@ -76,9 +76,9 @@ pub struct RecurringGoal {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attribution_hints: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub with_ids: Option<Vec<String>>,
+    pub with_ids: Option<Vec<crate::attendees::Named>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub for_ids: Option<Vec<String>>,
+    pub for_ids: Option<Vec<crate::attendees::Named>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_periods: Option<i64>,
 }

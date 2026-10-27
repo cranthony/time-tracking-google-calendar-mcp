@@ -234,7 +234,7 @@ fn circles_are_created_listed_and_found() {
 
     assert_eq!(
         listed,
-        json!([{"id": family, "name": "Family", "note": "by blood or choice", "scoring": null, "member_ids": [sam], "version": 1}])
+        json!([{"id": family, "name": "Family", "note": "by blood or choice", "scoring": null, "kind": "circle", "member_ids": [sam], "version": 1}])
     );
     assert_eq!(json_of(f.people.get_circle("family").unwrap())["id"], json!(family));
 }
@@ -256,6 +256,43 @@ fn updating_a_circle_renames_and_clears() {
     let listed = f.held(|p| p.update_circle(&circle(json!({"id": family, "name": "Kin"})), &strings(&["note"]))).unwrap();
 
     assert_eq!((listed["name"].clone(), listed["note"].clone()), (json!("Kin"), Value::Null));
+}
+
+#[test]
+fn a_circles_kind_is_set_when_its_made_and_never_changed() {
+    let f = fixture();
+    let dance = f.circle(json!({"name": "Dance", "kind": "community"}));
+    let family = f.circle(json!({"name": "Family"}));
+
+    assert_eq!(json_of(f.people.get_circle(&dance).unwrap())["kind"], json!("community"));
+    assert_eq!(json_of(f.people.get_circle(&family).unwrap())["kind"], json!("circle"));
+    let _held = WRITE_LOCK.hold();
+    refused(
+        f.people.update_circle(&circle(json!({"id": dance, "kind": "circle", "version": 1})), &[]),
+        "'Dance''s kind is 'community': a circle's kind is set when it's made, and never changed",
+    );
+    assert!(f.people.update_circle(&circle(json!({"id": dance, "kind": "community", "note": "Tuesdays", "version": 1})), &[]).is_ok());
+}
+
+#[test]
+fn a_community_takes_no_scoring() {
+    let f = fixture();
+    let _held = WRITE_LOCK.hold();
+    refused(
+        f.people.create_circle(&circle(json!({"name": "Dance", "kind": "community", "scoring": {"aggregation": "mean"}}))),
+        "is a community: its score is its own, not its members', so it takes no scoring",
+    );
+}
+
+#[test]
+fn a_circle_index_has_each_circle_its_kind_and_who_is_in_it() {
+    let f = fixture();
+    let family = f.circle(json!({"name": "Family"}));
+    let sam = f.create(json!({"name": "Sam", "circles": [family]}));
+
+    let index = f.people.circle_index().unwrap();
+    assert_eq!(index.get(&family).unwrap().members, vec![sam.clone()]);
+    assert_eq!(index.attendees(&[crate::attendees::Entry::new(family)]), vec![sam]);
 }
 
 #[test]

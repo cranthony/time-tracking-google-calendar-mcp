@@ -168,6 +168,9 @@ impl Cancellations {
         let traits = self.traits.all()?;
         let tree = self.actions.tree()?;
         let facts = event.facts.clone().unwrap_or_default();
+        // A plain circle's members each, as if named (see crate::attendees).
+        let circles = self.people.circle_index()?;
+        let (with, for_) = (circles.attendees(&facts.with_entries()), circles.attendees(&facts.for_entries()));
         let mut found = Vec::new();
         for person in self.people.get_people(None)? {
             let person_id = str_or_none(person.id.as_deref());
@@ -180,9 +183,9 @@ impl Cancellations {
                     }
                     let engagement = part.get("engagement_type").and_then(Value::as_str).unwrap_or("with").to_string();
                     let there = if engagement == "with" {
-                        person_id == SELF_ID || facts.with().contains(&person_id)
+                        person_id == SELF_ID || with.contains(&person_id)
                     } else {
-                        facts.for_().contains(&person_id)
+                        for_.contains(&person_id)
                     };
                     if !there || of_action(std::slice::from_ref(event), part.get("action"), Some(&tree)).is_empty() {
                         continue;

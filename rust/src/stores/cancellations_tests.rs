@@ -3,7 +3,7 @@
 use super::*;
 use crate::sheet::rows::{Row, RowItem};
 use crate::facts::Facts;
-use crate::sheet::{ACTIONS, ACTION_GROUPS, HABITS, PEOPLE, TRAITS};
+use crate::sheet::{ACTIONS, ACTION_GROUPS, CIRCLES, HABITS, PEOPLE, TRAITS};
 use crate::testing::app::{test_app, TestApp};
 use crate::write_lock::WRITE_LOCK;
 
@@ -93,6 +93,21 @@ fn a_with_part_counts_the_user_and_everyone_it_was_planned_with() {
         vec![("self".to_string(), "with".to_string(), part.clone(), names.clone()), ("sam".to_string(), "with".to_string(), part, names)]
     );
     assert!(f.t.fake.tab_titles(&f.t.spreadsheet()).contains(&CANCELLATIONS.1.to_string()));
+}
+
+#[test]
+fn a_plain_circle_counts_against_each_member_but_those_its_except_leaves_out() {
+    let people = vec![
+        json!({"id": "roger", "name": "Roger", "status": "active", "circles": ["fam"]}),
+        json!({"id": "cecile", "name": "Cécile", "status": "active", "circles": ["fam"]}),
+        json!({"id": "ulyssie", "name": "Ulyssie", "status": "active", "circles": ["fam"]}),
+    ];
+    let f = fixture(json!([{"kind": "follow_through"}]), people);
+    f.t.seed(CIRCLES.1, &[json!({"id": "fam", "name": "Family"})]);
+    let mut dinner = event("c1", &["eat"], &[], &[]);
+    dinner.facts = Some(Facts { with_ids: Some(json!([{"circle_id": "fam", "except": ["ulyssie"]}])), ..Default::default() });
+
+    assert_eq!(f.people(&dinner), strings(&["self", "roger", "cecile"]));
 }
 
 #[test]

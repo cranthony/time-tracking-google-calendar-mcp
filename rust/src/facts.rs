@@ -6,7 +6,10 @@
 //! Each place and person is an id, or, with a share of the event
 //! (`LocationShare`, `PersonShare`), an object: {location_id or
 //! person_id, minutes?, percent?, remaining?}. Ids stored before shares
-//! were are read as they always were.
+//! were are read as they always were. With and for can name a circle too
+//! -- its id, or {circle_id, except?, minutes?, percent?, remaining?} --
+//! a plain one standing for its members, but those its except leaves out
+//! (see crate::attendees, which says who an event's facts name).
 //!
 //! The fields hold JSON values rather than typed ones: facts read back
 //! from an event someone edited by hand can be any shape, and the checks
@@ -24,14 +27,155 @@ pub const MAX_LOG_CHARS: usize = 500;
 
 static SPACES: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\s+").unwrap());
 
-crate::stores::shares::id_share! {
-    /// A person an event was with or for, and how much of the event they
-    /// take: minutes (a fixed share), percent (of what the minutes leave),
-    /// or neither -- the remaining time, what the minutes and percents
-    /// leave, all of it, as each person with neither takes it.
-    PersonShare, PersonSplit, person_id, "person", "people's", "the remaining time",
-    "A person's id: they take the remaining time, what the minutes and percents leave.",
-    "A person and how much of the event they take: minutes (a fixed\nshare), or percent (of what the minutes leave)."
+/// A person or circle an event was with or for, and how much of the
+/// event they take: minutes (a fixed share), percent (of what the
+/// minutes leave), or neither -- the remaining time, what the minutes and
+/// percents leave, all of it, as each person with neither takes it. A
+/// plain circle's members each take its share whole, as a person does,
+/// but those its `except` leaves out; a circle given by `circle_id` keeps
+/// it (see crate::attendees).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PersonShare {
+    /// The person's or circle's id.
+    pub person_id: String,
+    pub minutes: Option<i64>,
+    pub percent: Option<i64>,
+    pub remaining: bool,
+    /// Whether it was given as a circle's: by circle_id.
+    pub circle: bool,
+    /// A plain circle's members who weren't.
+    pub except: Vec<String>,
+}
+
+impl PersonShare {
+    /// It with neither minutes nor percent.
+    pub fn whole(id: impl Into<String>) -> PersonShare {
+        PersonShare { person_id: id.into(), ..Default::default() }
+    }
+}
+
+impl From<&str> for PersonShare {
+    fn from(id: &str) -> PersonShare {
+        PersonShare::whole(id)
+    }
+}
+
+impl From<String> for PersonShare {
+    fn from(id: String) -> PersonShare {
+        PersonShare::whole(id)
+    }
+}
+
+impl crate::stores::shares::Share for PersonShare {
+    const KIND: &'static str = "person";
+    const THEIRS: &'static str = "people's";
+    const NEITHER: &'static str = "the remaining time";
+
+    fn new(id: String, minutes: Option<i64>, percent: Option<i64>, remaining: bool) -> Self {
+        PersonShare { person_id: id, minutes, percent, remaining: remaining && (minutes.is_some() || percent.is_some()), ..Default::default() }
+    }
+    fn id(&self) -> &str {
+        &self.person_id
+    }
+    fn minutes(&self) -> Option<i64> {
+        self.minutes
+    }
+    fn percent(&self) -> Option<i64> {
+        self.percent
+    }
+    fn remaining(&self) -> bool {
+        self.remaining
+    }
+}
+
+/// A person and how much of the event they take: minutes (a fixed
+/// share), or percent (of what the minutes leave).
+#[derive(serde::Serialize, serde::Deserialize, crate::contract::Schema)]
+#[serde(deny_unknown_fields)]
+#[schema(deny_unknown)]
+pub struct PersonSplit {
+    person_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    minutes: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    percent: Option<i64>,
+    /// The remaining time too, what the minutes and percents
+    /// leave, as one given as a bare id takes.
+    #[schema(default = "false")]
+    #[serde(default, skip_serializing_if = "crate::stores::shares::is_false")]
+    remaining: bool,
+}
+
+/// A circle and how much of the event its members each take, as a person
+/// takes it -- a plain circle's but those in except, who weren't there; a
+/// community stands for itself, so takes no except.
+#[derive(serde::Serialize, serde::Deserialize, crate::contract::Schema)]
+#[serde(deny_unknown_fields)]
+#[schema(deny_unknown)]
+pub struct CircleSplit {
+    circle_id: String,
+    /// A plain circle's members who weren't, by person id.
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    except: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    minutes: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    percent: Option<i64>,
+    /// The remaining time too, what the minutes and percents
+    /// leave, as one given as a bare id takes.
+    #[schema(default = "false")]
+    #[serde(default, skip_serializing_if = "crate::stores::shares::is_false")]
+    remaining: bool,
+}
+
+impl serde::Serialize for PersonShare {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        if self.circle || !self.except.is_empty() {
+            return CircleSplit {
+                circle_id: self.person_id.clone(),
+                except: self.except.clone(),
+                minutes: self.minutes,
+                percent: self.percent,
+                remaining: self.remaining,
+            }
+            .serialize(serializer);
+        }
+        if self.minutes.is_none() && self.percent.is_none() {
+            return serializer.serialize_str(&self.person_id);
+        }
+        PersonSplit { person_id: self.person_id.clone(), minutes: self.minutes, percent: self.percent, remaining: self.remaining }.serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for PersonShare {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        use crate::stores::shares::Share;
+        #[derive(serde::Deserialize)]
+        #[serde(untagged)]
+        enum Given {
+            Id(String),
+            Split(PersonSplit),
+            Circle(CircleSplit),
+        }
+        Ok(match Given::deserialize(deserializer)? {
+            Given::Id(id) => PersonShare::whole(id),
+            Given::Split(s) => PersonShare::new(s.person_id, s.minutes, s.percent, s.remaining),
+            Given::Circle(c) => PersonShare { circle: true, except: c.except, ..PersonShare::new(c.circle_id, c.minutes, c.percent, c.remaining) },
+        })
+    }
+}
+
+impl crate::contract::Schema for PersonShare {
+    fn schema(defs: &mut crate::contract::Defs) -> serde_json::Value {
+        let split = <PersonSplit as crate::contract::Schema>::schema(defs);
+        let circle = <CircleSplit as crate::contract::Schema>::schema(defs);
+        serde_json::json!({"anyOf": [
+            {"description": "A person's or circle's id: they take the remaining time, what the minutes and percents leave (a plain circle's members each, as a person).", "type": "string"},
+            split,
+            circle,
+        ]})
+    }
 }
 
 crate::stores::shares::id_share! {
@@ -45,10 +189,10 @@ crate::stores::shares::id_share! {
 }
 
 /// The keys an id is under in a list's objects.
-const ID_KEYS: [&str; 2] = ["person_id", "location_id"];
+const ID_KEYS: [&str; 3] = ["person_id", "circle_id", "location_id"];
 
 /// The id of an item of a facts list: the item, or its object's
-/// person_id or location_id.
+/// person_id, circle_id or location_id.
 pub fn item_id(item: &Value) -> Option<&str> {
     match item {
         Value::String(s) => Some(s),
@@ -281,12 +425,25 @@ impl Facts {
         problems
     }
 
+    /// The ids it's with, as given: people's and circles'.
     pub fn with(&self) -> Vec<String> {
         Self::strings(&self.with_ids)
     }
 
+    /// The ids it's for, as given: people's and circles'.
     pub fn for_(&self) -> Vec<String> {
         Self::strings(&self.for_ids)
+    }
+
+    /// Its with_ids' entries: who it was with, to tell who that is (see
+    /// crate::attendees).
+    pub fn with_entries(&self) -> Vec<crate::attendees::Entry> {
+        crate::attendees::entries(self.with_ids.as_ref())
+    }
+
+    /// Its for_ids' entries.
+    pub fn for_entries(&self) -> Vec<crate::attendees::Entry> {
+        crate::attendees::entries(self.for_ids.as_ref())
     }
 
     pub fn note_people(&self) -> Vec<String> {
@@ -296,7 +453,7 @@ impl Facts {
         }
     }
 
-    /// Every person named: with, for, then noted.
+    /// Every person (or circle) named: with, for, then noted.
     pub fn people(&self) -> Vec<String> {
         let mut all: Vec<String> = Vec::new();
         for id in self.with().into_iter().chain(self.for_()).chain(self.note_people()) {
@@ -370,17 +527,23 @@ impl Facts {
 }
 
 /// Whether `value` is a list of ids, each a non-empty id, or an object
-/// with one under `key` and a share (see `PersonShare`).
+/// with one under `key` and a share (see `PersonShare`) -- or, for
+/// people, under circle_id, with a share and an except.
 fn is_id_list(value: &Value, key: &str) -> bool {
+    let circles = key == "person_id";
     match value {
         Value::Array(items) => items.iter().all(|i| match i {
             Value::String(s) => !s.is_empty(),
             Value::Object(map) => {
-                map.get(key).and_then(Value::as_str).is_some_and(|s| !s.is_empty())
+                let id = if circles && map.contains_key("circle_id") { "circle_id" } else { key };
+                map.get(id).and_then(Value::as_str).is_some_and(|s| !s.is_empty())
                     && map.iter().all(|(k, v)| match k.as_str() {
                         "minutes" | "percent" => v.is_null() || v.is_i64(),
                         "remaining" => v.is_boolean(),
-                        _ => k == key,
+                        "except" if id == "circle_id" => {
+                            v.as_array().is_some_and(|ids| ids.iter().all(|e| e.as_str().is_some_and(|s| !s.is_empty())))
+                        }
+                        _ => k == id,
                     })
             }
             _ => false,
@@ -389,15 +552,20 @@ fn is_id_list(value: &Value, key: &str) -> bool {
     }
 }
 
-/// Everything wrong with `facts`' shape, as phrases following "its facts".
-pub fn fact_problems(facts: &Facts) -> Vec<String> {
+/// Everything wrong with `facts`' shape, as phrases following "its
+/// facts", `circles` telling who a circle it names stands for.
+pub fn fact_problems(facts: &Facts, circles: &crate::attendees::Circles) -> Vec<String> {
     let mut problems = Vec::new();
     for (name, value, of) in
         [("location_ids", &facts.location_ids, "location"), ("with_ids", &facts.with_ids, "person"), ("for_ids", &facts.for_ids, "person")]
     {
         if let Some(v) = value {
             if !v.is_null() && !is_id_list(v, &format!("{of}_id")) {
-                problems.push(format!("\"{name}\" must be a list of {of} ids, each an id or {{{of}_id, minutes?, percent?, remaining?}}"));
+                problems.push(if of == "person" {
+                    format!("\"{name}\" must be a list of person or circle ids, each an id, {{person_id, minutes?, percent?, remaining?}} or {{circle_id, except?, minutes?, percent?, remaining?}}")
+                } else {
+                    format!("\"{name}\" must be a list of {of} ids, each an id or {{{of}_id, minutes?, percent?, remaining?}}")
+                });
             }
         }
     }
@@ -414,7 +582,16 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
         if !both.is_empty() {
             problems.push(format!("{} can't be both \"with\" (there) and \"for\" (not there)", py::repr_list(&both)));
         }
+        let through = circles.naming(&facts.with_entries(), &facts.for_entries(), &|_| true).both;
+        if !through.is_empty() {
+            problems.push(format!(
+                "{} can't be both \"with\" (there) and \"for\" (not there): a plain circle stands for its members",
+                py::repr_list(&through)
+            ));
+        }
     }
+    // Who it was with, its plain circles' members among them.
+    let there = circles.attendees(&facts.with_entries());
     if let Some(notes) = &facts.notes {
         if !notes.is_null() {
             match notes {
@@ -431,9 +608,8 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
                             py::repr_list(&long)
                         ));
                     }
-                    let with = facts.with();
                     let mut absent: Vec<String> =
-                        map.keys().filter(|k| !with.contains(k) && k.as_str() != SELF_ID).cloned().collect();
+                        map.keys().filter(|k| !there.contains(k) && k.as_str() != SELF_ID).cloned().collect();
                     absent.sort();
                     if !absent.is_empty() {
                         problems.push(format!(
@@ -450,7 +626,7 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
         problems.push("\"commute\" must be true or false".to_string());
     }
     if let Some(logs) = facts.logs.as_ref().filter(|l| !l.is_null()) {
-        problems.extend(log_problems(logs, facts));
+        problems.extend(log_problems(logs, &there, &circles.attendees(&facts.for_entries())));
     }
     if problems.is_empty() && facts.to_json().chars().count() > MAX_FACTS_CHARS {
         problems.push(format!("are longer than {MAX_FACTS_CHARS} characters as JSON"));
@@ -461,11 +637,10 @@ pub fn fact_problems(facts: &Facts) -> Vec<String> {
 /// What's wrong with `logs`' shape: each for a person it was with or for
 /// (or "self"), each of their facts "<trait id>/<fact id>", each log
 /// non-empty and at most MAX_LOG_CHARS.
-fn log_problems(logs: &Value, facts: &Facts) -> Vec<String> {
+fn log_problems(logs: &Value, with: &[String], for_: &[String]) -> Vec<String> {
     const SHAPE: &str = "\"logs\" must be {person id: {\"<trait id>/<fact id>\": a log of what changed}}";
     let Value::Object(by_person) = logs else { return vec![SHAPE.to_string()] };
     let mut problems = Vec::new();
-    let (with, for_) = (facts.with(), facts.for_());
     let mut absent: Vec<String> = Vec::new();
     for (person, logged) in by_person {
         let Value::Object(logged) = logged else {
@@ -511,7 +686,7 @@ mod tests {
         assert_eq!(given.normalized().logs, Some(json!({"sam": {"thoughtful/what_matters": "starts a new job"}})));
         assert_eq!(given.to_json(), r#"{"with":["sam"],"logs":{"sam":{"thoughtful/what_matters":"  starts a  new job "}}}"#);
         assert_eq!(Facts::from_json(&given.to_json()), Some(given.clone()));
-        assert!(fact_problems(&given).is_empty());
+        assert!(fact_problems(&given, &Default::default()).is_empty());
         assert_eq!(given.log_entries(), vec![("sam".into(), "thoughtful/what_matters".into(), "  starts a  new job ".into())]);
         let long = "x".repeat(MAX_LOG_CHARS + 1);
         for (given, problem) in [
@@ -521,10 +696,10 @@ mod tests {
             (json!({"logs": {"self": {"a/b": long}}}), "\"logs\" for 'self': the log of a/b must be at most"),
             (json!({"logs": {"self": {"a/b": 3}}}), "\"logs\" for 'self': the log of 'a/b' must be non-empty"),
         ] {
-            let found = fact_problems(&facts(given.clone()));
+            let found = fact_problems(&facts(given.clone()), &Default::default());
             assert!(found.first().is_some_and(|f| f.starts_with(problem)), "{given}: {found:?}");
         }
-        assert!(fact_problems(&facts(json!({"for_ids": ["mom"], "logs": {"mom": {"a/b": "x"}}}))).is_empty());
+        assert!(fact_problems(&facts(json!({"for_ids": ["mom"], "logs": {"mom": {"a/b": "x"}}})), &Default::default()).is_empty());
     }
 
     fn facts(value: Value) -> Facts {
@@ -547,7 +722,7 @@ mod tests {
         // Not a commute is no fact at all.
         assert!(facts(json!({"commute": false})).is_empty());
         assert_eq!(facts(json!({"commute": false, "with_ids": ["sam"]})).to_json(), r#"{"with":["sam"]}"#);
-        assert_eq!(fact_problems(&facts(json!({"commute": "yes"}))), vec!["\"commute\" must be true or false"]);
+        assert_eq!(fact_problems(&facts(json!({"commute": "yes"})), &Default::default()), vec!["\"commute\" must be true or false"]);
     }
 
     #[test]
@@ -585,16 +760,47 @@ mod tests {
         let long = "x".repeat(MAX_NOTE_CHARS + 1);
         for (given, problem) in [
             (json!({"location_ids": "home"}), "\"location_ids\" must be a list of location ids"),
-            (json!({"with_ids": "sam"}), "\"with_ids\" must be a list of person ids"),
+            (json!({"with_ids": "sam"}), "\"with_ids\" must be a list of person or circle ids"),
             (json!({"with_ids": ["self"]}), "\"with_ids\" never names \"self\""),
             (json!({"with_ids": ["sam"], "for_ids": ["sam"]}), "['sam'] can't be both \"with\" (there) and \"for\" (not there)"),
             (json!({"notes": ["x"]}), "\"notes\" must be {person id: a note}"),
             (json!({"notes": {"self": long}}), "\"notes\" for ['self'] must be at most"),
             (json!({"for_ids": ["mom"], "notes": {"mom": "x"}}), "\"notes\" are for the people who were there"),
         ] {
-            let found = fact_problems(&facts(given.clone()));
+            let found = fact_problems(&facts(given.clone()), &Default::default());
             assert!(found.first().is_some_and(|f| f.starts_with(problem)), "{given}: {found:?}");
         }
+    }
+
+    fn family() -> crate::attendees::Circles {
+        use crate::attendees::{Circles, Members};
+        use crate::stores::people::CircleKind;
+        Circles(vec![Members { id: "fam".into(), kind: CircleKind::Circle, members: vec!["roger".into(), "cecile".into(), "ulyssie".into()] }])
+    }
+
+    #[test]
+    fn a_circle_is_named_with_its_except_and_a_share_and_stands_for_its_members() {
+        let given = facts(json!({
+            "with_ids": [{"circle_id": "fam", "except": ["ulyssie"], "minutes": 30}],
+            "notes": {"roger": "chatty"},
+            "logs": {"cecile": {"kind/patience": "waited"}},
+        }));
+        assert_eq!(fact_problems(&given, &family()), Vec::<String>::new());
+        let share = &given.with_shares()[0];
+        assert_eq!((share.person_id.as_str(), share.circle, share.except.clone(), share.minutes), ("fam", true, vec!["ulyssie".to_string()], Some(30)));
+        assert_eq!(serde_json::to_value(share).unwrap(), json!({"circle_id": "fam", "except": ["ulyssie"], "minutes": 30}));
+        // Ulyssie wasn't there: no note for her.
+        let absent = facts(json!({"with_ids": [{"circle_id": "fam", "except": ["ulyssie"]}], "notes": {"ulyssie": "x"}}));
+        assert!(fact_problems(&absent, &family())[0].starts_with("\"notes\" are for the people who were there"));
+    }
+
+    #[test]
+    fn a_member_cant_be_with_while_their_circle_is_for() {
+        let found = fact_problems(&facts(json!({"with_ids": ["roger"], "for_ids": ["fam"]})), &family());
+        assert_eq!(found, vec!["['roger'] can't be both \"with\" (there) and \"for\" (not there): a plain circle stands for its members"]);
+        let except = fact_problems(&facts(json!({"with_ids": ["roger"], "for_ids": [{"circle_id": "fam", "except": ["roger"]}]})), &family());
+        assert!(except.is_empty(), "{except:?}");
+        assert!(!fact_problems(&facts(json!({"with_ids": [{"circle_id": "fam", "except": [""]}]})), &family()).is_empty());
     }
 
     #[test]
@@ -609,7 +815,7 @@ mod tests {
         assert_eq!(given.with(), vec!["sam", "kim"]);
         assert_eq!(given.location_shares(), vec![LocationShare::whole("home"), LocationShare { location_id: "park".into(), minutes: Some(20), ..Default::default() }]);
         assert_eq!(given.with_shares()[0], PersonShare { person_id: "sam".into(), percent: Some(50), remaining: true, ..Default::default() });
-        assert!(fact_problems(&given).is_empty());
+        assert!(fact_problems(&given, &Default::default()).is_empty());
         assert_eq!(Facts::from_json(&given.to_json()), Some(given));
     }
 
@@ -627,7 +833,7 @@ mod tests {
             json!({"location_ids": [{"location_id": "home", "minutes": "ten"}]}),
             json!({"with_ids": [{"person_id": "self", "minutes": 5}]}),
         ] {
-            assert!(!fact_problems(&facts(given.clone())).is_empty(), "{given}");
+            assert!(!fact_problems(&facts(given.clone()), &Default::default()).is_empty(), "{given}");
         }
         let long = facts(json!({"with_ids": [{"person_id": "sam", "minutes": 40}, {"person_id": "kim", "minutes": 30}], "for_ids": [{"person_id": "mom", "minutes": 60}]}));
         assert_eq!(long.share_problems(60), vec!["\"with_ids\": its people's minutes add up to 70, more than the event's 60"]);
@@ -646,7 +852,7 @@ mod tests {
     #[test]
     fn well_formed_facts_have_no_problems() {
         let given = facts(json!({"location_ids": ["home", "park"], "with_ids": ["sam"], "for_ids": ["mom"], "notes": {"self": "a", "sam": "b"}}));
-        assert!(fact_problems(&given).is_empty());
+        assert!(fact_problems(&given, &Default::default()).is_empty());
 
     }
 }

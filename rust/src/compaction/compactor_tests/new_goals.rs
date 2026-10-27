@@ -4,6 +4,11 @@
 
 use super::*;
 
+/// The ids a goal list names.
+fn ids(named: &Option<Vec<crate::attendees::Named>>) -> Option<Vec<String>> {
+    named.as_ref().map(|n| n.iter().map(|n| n.id.clone()).collect())
+}
+
 fn people() -> Vec<Value> {
     vec![json!({"id": "sam", "name": "Sam", "status": "active"})]
 }
@@ -70,7 +75,7 @@ fn a_new_goal_is_created_inactive_with_its_people_when_the_proposal_is() {
 
     let made = goal_titled(&setup, "Help Sam move");
     assert_eq!(made.status, Some(crate::stores::goals::GoalStatus::Inactive));
-    assert_eq!((made.for_ids, made.with_ids), (Some(strings(&["sam"])), Some(vec![person_id(&setup, "alex")])));
+    assert_eq!((ids(&made.for_ids), ids(&made.with_ids)), (Some(strings(&["sam"])), Some(vec![person_id(&setup, "alex")])));
     assert_eq!(made.attribution_hints.as_deref(), Some("helping Sam move"));
 }
 
@@ -132,7 +137,7 @@ fn a_goal_settled_now_waits_for_the_new_people_it_names() {
     let proposal = settle(1, vec![activated, json!({"ref": "new:alex", "use": "create"})]).unwrap();
 
     let made = goal_titled(&setup, "Help Sam pack");
-    assert_eq!(made.with_ids, Some(vec![person_id(&setup, "alex")]));
+    assert_eq!(ids(&made.with_ids), Some(vec![person_id(&setup, "alex")]));
     assert_eq!((made.status, made.deadline.as_deref()), (Some(crate::stores::goals::GoalStatus::Active), Some("2099-05-01")));
     assert!(proposal.settled_additions.iter().any(|s| s.ref_ == "new:help-sam" && s.id == made.id));
 }
@@ -147,5 +152,5 @@ fn a_dropped_person_is_left_out_of_the_new_goal() {
     setup.call(|c| c.confirm(&p, 2)).unwrap();
 
     let made = goal_titled(&setup, "Help Sam move");
-    assert_eq!((made.with_ids, made.for_ids), (None, Some(strings(&["sam"]))));
+    assert_eq!((ids(&made.with_ids), ids(&made.for_ids)), (None, Some(strings(&["sam"]))));
 }

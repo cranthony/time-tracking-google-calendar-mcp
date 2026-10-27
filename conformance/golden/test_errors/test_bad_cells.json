@@ -76,6 +76,7 @@
    "content": {
     "circle": {
      "id": "a0g0jc",
+     "kind": "circle",
      "member_ids": [],
      "name": "Family",
      "note": null,
@@ -85,7 +86,7 @@
     "created_id": "a0g0jc"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_circle"
   },
   {
@@ -338,6 +339,7 @@
    "content": [
     {
      "id": "a0g0jc",
+     "kind": "circle",
      "member_ids": [
       "rs21so"
      ],
@@ -348,7 +350,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
    "tool": "get_circles"
   },
   {
@@ -785,6 +787,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ]
       ]
@@ -1413,6 +1416,7 @@
         "Family",
         "",
         "",
+        "circle",
         "1"
        ]
       ]
@@ -3505,6 +3509,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ],
        [
@@ -3512,6 +3517,7 @@
         "Family",
         "",
         "",
+        "circle",
         "1"
        ]
       ]

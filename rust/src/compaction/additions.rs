@@ -8,7 +8,7 @@ use crate::facts::Facts;
 use crate::stores::actions::{action_problems, Action, ActionShare, ActionStatus, Actions};
 use crate::stores::goals::{goal_problems, people_of, Goal, GoalStatus, Goals, StatusChange};
 use crate::stores::locations::{location_problems, Location, Locations};
-use crate::stores::people::{person_problems, People, Person, Status, SELF_ID};
+use crate::stores::people::{person_problems, People, Person, Status};
 use crate::py;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -201,8 +201,9 @@ fn new_location(l: &Addition<Location>) -> Location {
 /// it'll be given, its parent and people named as `rename` gives them
 /// (none, left out).
 fn new_goal(g: &Addition<Goal>, rename: &dyn Fn(&str) -> Option<String>) -> Goal {
-    let people = |ids: &Option<Vec<String>>| -> Option<Vec<String>> {
-        let kept: Vec<String> = ids.iter().flatten().filter_map(|i| rename(i)).collect();
+    let people = |named: &Option<Vec<crate::attendees::Named>>| -> Option<Vec<crate::attendees::Named>> {
+        let kept: Vec<crate::attendees::Named> =
+            named.iter().flatten().filter_map(|n| rename(&n.id).map(|id| crate::attendees::Named { id, except: n.except.clone() })).collect();
         (!kept.is_empty()).then_some(kept)
     };
     Goal {
@@ -317,19 +318,33 @@ fn goal_addition_problems(
     problems.extend(
         goal_problems(&all, zone).into_iter().filter(|(ids, _)| ids.iter().any(|i| refs.contains(i))).map(|(_, p)| format!("new goals: {p}")),
     );
-    let mut known: Vec<String> = match people {
-        Some(p) => p.all()?.into_iter().filter_map(|p| p.id).collect(),
-        None => Vec::new(),
+    let (mut known, circles): (Vec<String>, crate::attendees::Circles) = match people {
+        Some(p) => (p.all()?.into_iter().filter_map(|p| p.id).collect(), p.circle_index()?),
+        None => Default::default(),
     };
     known.extend(additions.people.iter().map(|p| p.ref_.clone()));
     known.extend(settled.iter().map(|(r, _)| r.clone()));
     for g in &additions.goals {
-        let unknown: Vec<&String> = people_of(&g.item).into_iter().filter(|p| p.as_str() != SELF_ID && !known.contains(p)).collect();
+        let is_person = |p: &str| known.iter().any(|k| k == p);
+        let naming = circles.naming(
+            &crate::attendees::named_entries(g.item.with_ids.as_deref()),
+            &crate::attendees::named_entries(g.item.for_ids.as_deref()),
+            &is_person,
+        );
+        let unknown: Vec<&String> = people_of(&g.item).into_iter().filter(|p| naming.unknown.contains(p)).collect();
         if !unknown.is_empty() {
             problems.push(format!(
-                "new goals: {} names {}, who aren't people (get_people lists them; add someone new with new_people)",
+                "new goals: {} names {}, who aren't people or circles (get_people and get_circles list them; add someone new with new_people)",
                 py::repr(&g.ref_),
                 py::repr_list(&unknown)
+            ));
+        }
+        problems.extend(naming.other.iter().map(|p| format!("new goals: {}: {p}", py::repr(&g.ref_))));
+        if !naming.both.is_empty() {
+            problems.push(format!(
+                "new goals: {} names {} both with and for: a plain circle stands for its members",
+                py::repr(&g.ref_),
+                py::repr_list(&naming.both)
             ));
         }
     }

@@ -1236,15 +1236,23 @@ fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(Strin
 
 /// `facts_lines`: where, who with and who for in one, then each person's note.
 /// A person who takes only part of the event has it after their name:
-/// "for Sam (3m)".
+/// "for Sam (3m)"; a circle, those its except leaves out: "with Family
+/// (except Ulyssie)".
 pub fn facts_lines(facts: Option<&Facts>, names: &[(String, String)]) -> Vec<String> {
     let Some(facts) = facts.filter(|f| !f.is_empty()) else { return Vec::new() };
     let named = |shares: &[crate::facts::PersonShare]| {
         shares
             .iter()
-            .map(|s| match crate::stores::shares::amount_text(s) {
-                Some(amount) => format!("{} ({amount})", name_of(names, &s.person_id)),
-                None => name_of(names, &s.person_id),
+            .map(|s| {
+                let mut said: Vec<String> = s.except.iter().map(|e| name_of(names, e)).collect();
+                if !said.is_empty() {
+                    said = vec![format!("except {}", said.join(", "))];
+                }
+                said.extend(crate::stores::shares::amount_text(s));
+                match said.is_empty() {
+                    true => name_of(names, &s.person_id),
+                    false => format!("{} ({})", name_of(names, &s.person_id), said.join(", ")),
+                }
             })
             .collect::<Vec<_>>()
             .join(", ")

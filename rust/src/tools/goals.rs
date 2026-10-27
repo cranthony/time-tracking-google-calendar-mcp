@@ -72,12 +72,15 @@ pub struct GoalInput {
     /// A guide for telling which events are for it.
     pub attribution_hints: Option<String>,
     /// The people it's done with: who the user works on it alongside
-    /// (person ids; never "self", and never also in for_ids).
-    pub with_ids: Option<Vec<String>>,
+    /// (person ids; never "self", and never also in for_ids). A circle's
+    /// id names a plain circle's members, or a community itself;
+    /// {circle_id, except} a plain circle's but those in except.
+    pub with_ids: Option<Vec<crate::attendees::Named>>,
     /// The people it's done for, who aren't part of doing it: a promise
     /// to them, a gift, a favor (person ids; never "self", and never also
-    /// in with_ids).
-    pub for_ids: Option<Vec<String>>,
+    /// in with_ids, a plain circle's members included). Circles as in
+    /// with_ids.
+    pub for_ids: Option<Vec<crate::attendees::Named>>,
     /// The version you last read (see get_goals), to change one.
     pub version: Option<i64>,
 }
@@ -190,7 +193,11 @@ pub struct GoalDelete {
 /// with_ids are the people it's done with (who the user works on it
 /// alongside) and for_ids those it's done for, who aren't part of doing
 /// it (a promise to them, a gift, a favor): person ids from get_people,
-/// never "self", and no one in both.
+/// never "self", and no one in both -- or circles from get_circles: a
+/// plain circle's id for all its members, {circle_id, except: [person
+/// ids]} for all but those, and a community's for the community itself.
+/// A plain circle's member can't be in one while their circle is in the
+/// other.
 /// Events are tagged with goals, apart from their actions (see
 /// list_events' goals): tag an event with a goal only when the goal was
 /// open (inactive or active) when the event started -- open now, or

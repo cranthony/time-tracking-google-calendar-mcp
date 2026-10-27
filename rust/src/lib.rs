@@ -3,6 +3,7 @@
 
 pub mod allocator;
 pub mod app;
+pub mod attendees;
 pub mod auth_mode;
 pub mod cli;
 pub mod compaction;

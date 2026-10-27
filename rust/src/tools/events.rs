@@ -38,7 +38,9 @@ pub enum EventField {
 /// What compaction established about an event: where it was
 /// (location_ids, usually one place; several when it moved between
 /// them), who was there with the user (with_ids), who it was for
-/// (for_ids), a note on how it was for each person there (notes),
+/// (for_ids) -- people, or circles: a plain circle for its members (but
+/// those its except leaves out), a community for itself -- a note on how
+/// it was for each person there (notes),
 /// whether it was a commute, getting from one place to another (commute),
 /// and what it changed in people's trait facts (logs: {person id --
 /// "self", or one it was with or for: {"<trait id>/<fact id>": a log of
@@ -123,7 +125,15 @@ pub struct Facts {
 /// and remaining true for the rest too. One given as a bare id takes the
 /// remaining time, what the minutes and percents leave: each person all of
 /// it, and the places an even part each. Each list's minutes must fit in
-/// the event, and its percents add up to no more than 100.
+/// the event, and its percents add up to no more than 100. with_ids and
+/// for_ids can name circles (get_circles) too, by id or as {circle_id,
+/// except?, minutes?, percent?, remaining?}: a plain circle (kind
+/// "circle") stands for its members now, each there (or it for each)
+/// unless except names them, each taking its share whole, as a person
+/// does; a community stands for itself, none of its members assumed, so
+/// list those there too, and it takes no except. Notes and logs are for
+/// the people there, a plain circle's members included; no one is both
+/// with and for, through a circle or not.
 ///
 /// judgments are how the event went for each person, judged after
 /// compaction against each judgment part of the traits that apply to them
@@ -393,14 +403,23 @@ pub fn check_goal_ids(app: &App, goals: Option<&[GoalShare]>) -> Result<(), Tool
 pub fn check_facts(app: &App, facts: Option<&Facts>) -> Result<(), ToolError> {
     let Some(given) = facts else { return Ok(()) };
     let facts = EventFacts::from(given).normalized();
-    let problems = fact_problems(&facts);
+    let circles = app.people()?.circle_index()?;
+    let problems = fact_problems(&facts, &circles);
     if !problems.is_empty() {
         return Err(ToolError::Message(format!("Its facts {}", problems.join("; "))));
     }
-    let people: Vec<Value> = app.people()?.all()?.into_iter().map(|p| json!(p.id)).collect();
-    let unknown: Vec<String> = facts.people().into_iter().filter(|i| !people.contains(&json!(i))).collect();
+    let people: Vec<String> = app.people()?.all()?.into_iter().filter_map(|p| p.id).collect();
+    let is_person = |i: &str| people.iter().any(|p| p == i);
+    let unknown: Vec<String> = facts.people().into_iter().filter(|i| !is_person(i) && circles.get(i).is_none()).collect();
     if !unknown.is_empty() {
-        return Err(ToolError::Message(format!("Its facts name {}, who aren't people (get_people lists them)", py::repr_list(&unknown))));
+        return Err(ToolError::Message(format!(
+            "Its facts name {}, who aren't people or circles (get_people and get_circles list them)",
+            py::repr_list(&unknown)
+        )));
+    }
+    let naming = circles.naming(&facts.with_entries(), &facts.for_entries(), &is_person);
+    if !naming.other.is_empty() {
+        return Err(ToolError::Message(format!("Its facts' {}", naming.other.join("; "))));
     }
     let locations = facts.locations();
     if !locations.is_empty() {
@@ -554,7 +573,8 @@ fn stale(app: &App, error: anyhow::Error) -> ToolError {
 /// create_event ignore them. repeat is write-only, and never listed.
 ///
 /// `person_id`: only the events whose facts name that person (with, for,
-/// or noted) -- an id, or a name get_person takes. Quick over any span,
+/// or noted) -- or a plain circle they're in now, without them in its
+/// except -- an id, or a name get_person takes. Quick over any span,
 /// years included: search a person's history with a wide range.
 #[tool]
 pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText, person_id: Option<String>) -> Result<Vec<PublicEvent>, ToolError> {
@@ -563,9 +583,33 @@ pub fn list_events(app: &App, min_time: DateTimeText, max_time: DateTimeText, pe
     let calendar = app.calendar_client()?;
     let listed = match person_id {
         Some(person) => {
-            let id = app.people()?.get_person(&person).map_err(refused)?.id.unwrap_or(person);
-            let property = format!("{}={}", crate::event::person_key(&id), crate::event::PERSON_INDEXED);
-            calendar.list_event_resources(&min, &max, Some(&property))?.iter().map(Event::from_api).collect::<anyhow::Result<Vec<_>>>()?
+            let people = app.people()?;
+            let id = people.get_person(&person).map_err(refused)?.id.unwrap_or(person);
+            let circles = people.circle_index()?;
+            // Each event naming them, or a plain circle of theirs: one
+            // listing for each, as an event is indexed by what it names.
+            let mut keys = vec![id.clone()];
+            keys.extend(circles.containing(&id).into_iter().map(|c| c.id.clone()));
+            let mut found: Vec<Event> = Vec::new();
+            for key in keys {
+                let property = format!("{}={}", crate::event::person_key(&key), crate::event::PERSON_INDEXED);
+                for resource in calendar.list_event_resources(&min, &max, Some(&property))? {
+                    let event = Event::from_api(&resource)?;
+                    if !found.iter().any(|f| f.id == event.id) {
+                        found.push(event);
+                    }
+                }
+            }
+            let names = |e: &Event| {
+                e.facts.as_ref().is_some_and(|f| {
+                    f.people().contains(&id)
+                        || circles.attendees(&f.with_entries()).contains(&id)
+                        || circles.attendees(&f.for_entries()).contains(&id)
+                })
+            };
+            found.retain(names);
+            found.sort_by_key(|e| e.start());
+            found
         }
         None => calendar.list_events(&min, &max)?,
     };

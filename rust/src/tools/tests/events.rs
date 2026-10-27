@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::facts::Facts;
-use crate::sheet::{ACTIONS, LOCATIONS, PEOPLE};
+use crate::sheet::{ACTIONS, CIRCLES, LOCATIONS, PEOPLE};
 use crate::stores::actions::{ActionTree, ACTION_ROW};
 use crate::stores::groups::{palette, GroupTree};
 use crate::tools::events::{public_event, PublicEvent};
@@ -633,6 +633,68 @@ fn lists_just_the_events_a_persons_named_in() {
     assert_eq!(listed_with(&server, "sam"), vec![json!("abc123")]);
     assert_eq!(listed_with(&server, "Sam"), vec![json!("abc123")]);
     server.refused("list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00", "person_id": "kim"}), "kim");
+}
+
+/// Roger and Cécile's family, plain, and the dance community, with Sam.
+fn with_circles(server: &Server) {
+    // The Circles tab, made with the people's.
+    server.t.app.people().unwrap();
+    server.t.seed(PEOPLE.1, &[
+        json!({"id": "sam", "name": "Sam", "status": "active", "circles": ["dance"]}),
+        json!({"id": "roger", "name": "Roger", "status": "active", "circles": ["fam"]}),
+        json!({"id": "cecile", "name": "Cécile", "status": "active", "circles": ["fam"]}),
+    ]);
+    server.t.seed(CIRCLES.1, &[json!({"id": "fam", "name": "Family"}), json!({"id": "dance", "name": "Dance", "kind": "community"})]);
+}
+
+#[test]
+fn an_event_names_a_circle_bare_or_with_its_except_and_a_share() {
+    let server = two();
+    with_circles(&server);
+
+    server.ok(
+        "update_event",
+        json!({"updates": [update("abc123", json!({"facts": {"with_ids": [{"circle_id": "fam", "except": ["cecile"], "minutes": 20}, "dance"], "notes": {"roger": "chatty"}}}))]}),
+    );
+
+    let got = server.ok("get_event", json!({"id": "abc123"}));
+    assert_eq!(got["facts"]["with_ids"], json!([{"circle_id": "fam", "except": ["cecile"], "minutes": 20}, "dance"]));
+}
+
+#[test]
+fn refuses_an_except_a_circle_cant_take_and_a_circle_that_isnt_one() {
+    let server = two();
+    with_circles(&server);
+
+    for (facts, message) in [
+        (json!({"with_ids": ["nobody"]}), r"Its facts name \['nobody'\], who aren't people or circles"),
+        (json!({"with_ids": [{"circle_id": "fam", "except": ["sam"]}]}), r"Its facts' 'fam''s except names \['sam'\], who aren't in it"),
+        (json!({"with_ids": [{"circle_id": "dance", "except": ["sam"]}]}), r"'dance' is a community: it stands for itself"),
+        (json!({"with_ids": ["roger"], "for_ids": ["fam"]}), r"\['roger'\] can't be both .with. \(there\) and .for. \(not there\): a plain circle stands for its members"),
+        (json!({"with_ids": [{"circle_id": "fam", "except": ["cecile"]}], "notes": {"cecile": "x"}}), r#""notes" are for the people who were there"#),
+    ] {
+        server.refused("update_event", json!({"updates": [update("abc123", json!({"facts": facts}))]}), message);
+    }
+    assert_eq!(server.event_writes(), 0);
+}
+
+#[test]
+fn a_persons_events_include_those_naming_a_plain_circle_of_theirs_unless_it_leaves_them_out() {
+    let server = two();
+    with_circles(&server);
+    server.ok(
+        "update_event",
+        json!({"updates": [
+            update("abc123", json!({"facts": {"with_ids": ["fam"]}})),
+            update("def456", json!({"facts": {"with_ids": [{"circle_id": "fam", "except": ["roger"]}]}})),
+        ]}),
+    );
+
+    assert_eq!(listed_with(&server, "roger"), vec![json!("abc123")]);
+    assert_eq!(listed_with(&server, "cecile"), vec![json!("abc123"), json!("def456")]);
+    // A community stands for itself: its members aren't named by it.
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"facts": {"with_ids": ["dance"]}}))]}));
+    assert_eq!(listed_with(&server, "sam"), Vec::<Value>::new());
 }
 
 #[test]
