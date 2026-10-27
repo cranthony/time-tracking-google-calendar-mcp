@@ -23,7 +23,7 @@ pub const PERSON_STATUSES: [&str; 3] = ["active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 1] = ["active"];
 pub const MAX_NAME_LENGTH: usize = 100;
 pub const PERSON_CLEARABLE_FIELDS: [&str; 3] = ["context", "circles", "traits"];
-pub const CIRCLE_CLEARABLE_FIELDS: [&str; 2] = ["note", "scoring"];
+pub const CIRCLE_CLEARABLE_FIELDS: [&str; 3] = ["note", "scoring", "traits"];
 
 // -- the types -------------------------------------------------------------------
 
@@ -50,6 +50,44 @@ pub enum CircleKind {
     Circle,
     #[serde(rename = "community")]
     Community,
+}
+
+/// Who traits are about, judged and scored as a person is: a person, or
+/// a community, which has traits, trait facts, judgments and cancelled
+/// events of its own as a person does (see CircleKind). A plain circle
+/// isn't one: it stands for its members.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Subject {
+    pub id: String,
+    pub name: Option<String>,
+    /// A person's context, a community's note.
+    pub context: Option<String>,
+    pub traits: Option<Map<String, Value>>,
+    /// Whether it's a community's.
+    pub community: bool,
+}
+
+impl Subject {
+    pub fn of_person(person: &Person) -> Subject {
+        Subject {
+            id: person.id.clone().unwrap_or_default(),
+            name: person.name.clone(),
+            context: person.context.clone(),
+            traits: person.traits.clone(),
+            community: false,
+        }
+    }
+
+    /// `circle`'s, if it's a community.
+    pub fn of_circle(circle: &Circle) -> Option<Subject> {
+        (circle.kind == Some(CircleKind::Community)).then(|| Subject {
+            id: circle.id.clone().unwrap_or_default(),
+            name: circle.name.clone(),
+            context: circle.note.clone(),
+            traits: circle.traits.clone(),
+            community: true,
+        })
+    }
 }
 
 /// A person as the people tools return them: plus their circles'
@@ -99,6 +137,13 @@ pub struct ListedCircle {
     pub scoring: Option<Map<String, Value>>,
     pub kind: CircleKind,
     pub member_ids: Option<Vec<String>>,
+    /// A community's traits, as a person's (see get_people).
+    pub traits: Option<Map<String, Value>>,
+    /// A community's trait facts' summaries, as a person's.
+    pub facts: Option<IndexMap<String, IndexMap<String, String>>>,
+    /// The events the user cancelled that count against a community's
+    /// follow-through, as a person's.
+    pub cancelled_events: Option<Vec<CancelledEvent>>,
     pub version: Option<i64>,
 }
 
@@ -117,6 +162,10 @@ pub struct Circle {
     /// when it's made, never changed.
     #[row(text)]
     pub kind: Option<CircleKind>,
+    /// A community's traits: which apply to it, its own parts, scoring and
+    /// fact prompts, as a person's (see create_person). A plain circle
+    /// has none: it's scored by its members.
+    pub traits: Option<Map<String, Value>>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -228,6 +277,24 @@ impl People {
         Ok(crate::attendees::Circles::of(&self.circles()?, &self.all()?))
     }
 
+    /// Everyone traits are about: the people of `statuses` (by default
+    /// the active ones), then every community.
+    pub fn subjects(&self, statuses: Option<&[String]>) -> anyhow::Result<Vec<Subject>> {
+        let statuses = check_statuses(statuses)?;
+        let mut out: Vec<Subject> =
+            self.all()?.iter().filter(|p| statuses.iter().any(|s| Some(s) == status_of(p).as_ref())).map(Subject::of_person).collect();
+        out.extend(self.circles()?.iter().filter_map(Subject::of_circle));
+        Ok(out)
+    }
+
+    /// Everyone traits are about, whatever their status: every person,
+    /// then every community.
+    pub fn all_subjects(&self) -> anyhow::Result<Vec<Subject>> {
+        let mut out: Vec<Subject> = self.all()?.iter().map(Subject::of_person).collect();
+        out.extend(self.circles()?.iter().filter_map(Subject::of_circle));
+        Ok(out)
+    }
+
     pub fn all(&self) -> anyhow::Result<Vec<Person>> {
         self.prefetch(&self.whole_tabs())?;
         let people = self.read_people()?;
@@ -237,9 +304,11 @@ impl People {
         Ok(out)
     }
 
+    /// The Circles tab's circles, a community's traits settled, as a
+    /// person's (see read_people).
     pub fn circles(&self) -> anyhow::Result<Vec<Circle>> {
         self.prefetch(&self.whole_tabs())?;
-        self.circle_sheet.read_items()
+        Ok(self.circle_sheet.read_items::<Circle>()?.into_iter().map(|c| Circle { traits: c.traits.clone().map(settled_spec), ..c }).collect())
     }
 
     pub fn get_people(&self, statuses: Option<&[String]>) -> anyhow::Result<Vec<ListedPerson>> {
@@ -336,7 +405,14 @@ impl People {
                 return Ok(CreatedCircle { circle: listed_circle(&made, &self.all()?), created_id: made.id.clone().unwrap_or_default() })
             }
         };
-        let new = Circle { id: Some(id.clone()), kind: Some(circle.kind.unwrap_or_default()), version: None, ..circle.clone() };
+        let mut new = Circle {
+            id: Some(id.clone()),
+            kind: Some(circle.kind.unwrap_or_default()),
+            traits: circle.traits.as_ref().map(spec_with_new_part_ids),
+            version: None,
+            ..circle.clone()
+        };
+        self.settle_circle_overrides(&mut new, None)?;
         let mut all = circles.clone();
         all.push(new.clone());
         self.write_circles(&all)?;
@@ -362,7 +438,10 @@ impl People {
                 py::repr(&wire_text(&kind))
             );
         }
-        circles[index] = rows::updated_item(&circles[index], circle, clear_fields, &["id"])?;
+        let given = Circle { traits: circle.traits.as_ref().map(spec_with_new_part_ids), ..circle.clone() };
+        let mut changed = rows::updated_item(&circles[index], &given, clear_fields, &["id"])?;
+        self.settle_circle_overrides(&mut changed, Some(&circles[index]))?;
+        circles[index] = changed;
         let people = self.all()?;
         self.write_circles(&circles)?;
         Ok(listed_circle(&circles[index], &people))
@@ -403,8 +482,29 @@ impl People {
         Ok(DeletedCircle { deleted, left })
     }
 
+    /// A community's own fact prompts settled, as a person's (see
+    /// settle_fact_overrides).
+    fn settle_circle_overrides(&self, circle: &mut Circle, before: Option<&Circle>) -> anyhow::Result<()> {
+        let (Some(spec), Some(lookup)) = (&circle.traits, &self.traits) else { return Ok(()) };
+        if !spec.contains_key("facts") {
+            return Ok(());
+        }
+        let traits = lookup()?;
+        let problems = fact_override_problems(spec, before.and_then(|b| b.traits.as_ref()), &traits);
+        if !problems.is_empty() {
+            let label = set(circle.id.as_deref()).map(|i| format!("circle {i}")).unwrap_or_else(|| "the circle".into());
+            bail!("{}", problems.iter().map(|p| format!("{label}'s traits {p}")).collect::<Vec<_>>().join("; "));
+        }
+        circle.traits = Some(settled_fact_overrides(spec, Some(&traits)));
+        Ok(())
+    }
+
     fn write_circles(&self, circles: &[Circle]) -> anyhow::Result<()> {
-        let problems = circle_problems(circles);
+        let trait_ids = match &self.trait_ids {
+            Some(lookup) if circles.iter().any(|c| c.traits.is_some()) => Some(lookup()?),
+            _ => None,
+        };
+        let problems = circle_problems(circles, trait_ids.as_deref());
         if !problems.is_empty() {
             bail!("{}", problems.join("; "));
         }
@@ -559,7 +659,7 @@ pub fn person_problems(people: &[Person], circles: &[Circle], trait_ids: Option<
     problems
 }
 
-pub fn circle_problems(circles: &[Circle]) -> Vec<String> {
+pub fn circle_problems(circles: &[Circle], trait_ids: Option<&[String]>) -> Vec<String> {
     let mut problems = Vec::new();
     let mut names: Vec<(String, &Circle)> = Vec::new();
     for circle in circles {
@@ -581,7 +681,19 @@ pub fn circle_problems(circles: &[Circle]) -> Vec<String> {
         }
         names.retain(|(k, _)| *k != key);
         names.push((key, circle));
-        if circle.kind == Some(CircleKind::Community) && circle.scoring.is_some() {
+        let community = circle.kind == Some(CircleKind::Community);
+        match (&circle.traits, community) {
+            (Some(_), false) => {
+                problems.push(format!("{label} is a plain circle: it stands for its members, scored as they are, so it takes no traits (a community does)"))
+            }
+            (Some(traits), true) => {
+                for p in person_traits_problems(&Value::Object(traits.clone()), trait_ids, SpecOf::Person) {
+                    problems.push(format!("{label}'s traits {p}"));
+                }
+            }
+            (None, _) => {}
+        }
+        if community && circle.scoring.is_some() {
             problems.push(format!("{label} is a community: its score is its own, not its members', so it takes no scoring"));
         } else if let Some(scoring) = &circle.scoring {
             for p in aggregation_problems(&Value::Object(scoring.clone()), None) {
@@ -627,6 +739,9 @@ pub fn listed_circle(circle: &Circle, people: &[Person]) -> ListedCircle {
         scoring: circle.scoring.clone(),
         kind: circle.kind.unwrap_or_default(),
         member_ids: Some(members),
+        traits: circle.traits.clone(),
+        facts: None,
+        cancelled_events: None,
         version: circle.version,
     }
 }

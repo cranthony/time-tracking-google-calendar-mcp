@@ -9,18 +9,21 @@
    },
    "content": {
     "circle": {
+     "cancelled_events": null,
+     "facts": null,
      "id": "co2yzn",
      "kind": "circle",
      "member_ids": [],
      "name": "Close friends",
      "note": "the inner ring",
      "scoring": null,
+     "traits": null,
      "version": 1
     },
     "created_id": "co2yzn"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": \"the inner ring\",\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": \"the inner ring\",\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"traits\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_circle"
   },
   {
@@ -31,18 +34,21 @@
    },
    "content": {
     "circle": {
+     "cancelled_events": null,
+     "facts": null,
      "id": "3dnjav",
      "kind": "circle",
      "member_ids": [],
      "name": "Family",
      "note": null,
      "scoring": null,
+     "traits": null,
      "version": 1
     },
     "created_id": "3dnjav"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"traits\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_circle"
   },
   {
@@ -109,6 +115,8 @@
    "arguments": {},
    "content": [
     {
+     "cancelled_events": null,
+     "facts": null,
      "id": "co2yzn",
      "kind": "circle",
      "member_ids": [
@@ -117,9 +125,12 @@
      "name": "Close friends",
      "note": "the inner ring",
      "scoring": null,
+     "traits": null,
      "version": 1
     },
     {
+     "cancelled_events": null,
+     "facts": null,
      "id": "3dnjav",
      "kind": "circle",
      "member_ids": [
@@ -128,11 +139,12 @@
      "name": "Family",
      "note": null,
      "scoring": null,
+     "traits": null,
      "version": 1
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": \"the inner ring\",\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": \"the inner ring\",\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"traits\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"traits\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 1\n}",
    "tool": "get_circles"
   },
   {
@@ -166,6 +178,8 @@
     "id_or_name": "family"
    },
    "content": {
+    "cancelled_events": null,
+    "facts": null,
     "id": "3dnjav",
     "kind": "circle",
     "member_ids": [
@@ -174,10 +188,11 @@
     "name": "Family",
     "note": null,
     "scoring": null,
+    "traits": null,
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"traits\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 1\n}",
    "tool": "get_circle"
   },
   {
@@ -199,6 +214,8 @@
     "clear_fields": []
    },
    "content": {
+    "cancelled_events": null,
+    "facts": null,
     "id": "3dnjav",
     "kind": "circle",
     "member_ids": [
@@ -207,10 +224,11 @@
     "name": "Relatives",
     "note": null,
     "scoring": null,
+    "traits": null,
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Relatives\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Relatives\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"traits\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -224,6 +242,8 @@
     ]
    },
    "content": {
+    "cancelled_events": null,
+    "facts": null,
     "id": "co2yzn",
     "kind": "circle",
     "member_ids": [
@@ -232,10 +252,11 @@
     "name": "Close friends",
     "note": null,
     "scoring": null,
+    "traits": null,
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"traits\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -250,6 +271,7 @@
      "name": "Close friends",
      "note": null,
      "scoring": null,
+     "traits": null,
      "version": 2
     },
     "left": [
@@ -257,7 +279,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"deleted\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": null,\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"version\": 2\n  },\n  \"left\": [\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"deleted\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": null,\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"traits\": null,\n    \"version\": 2\n  },\n  \"left\": [\n    \"rs21so\"\n  ]\n}",
    "tool": "delete_circle"
   },
   {
@@ -684,6 +706,7 @@
         "note",
         "scoring",
         "kind",
+        "traits",
         "version"
        ]
       ]
@@ -1025,6 +1048,7 @@
         "the inner ring",
         "",
         "circle",
+        "",
         "1"
        ]
       ]
@@ -1058,6 +1082,7 @@
         "",
         "",
         "circle",
+        "",
         "1"
        ]
       ]
@@ -1710,6 +1735,7 @@
         "",
         "",
         "circle",
+        "",
         "2"
        ]
       ]
@@ -1743,6 +1769,7 @@
         "",
         "",
         "circle",
+        "",
         "2"
        ]
       ]
@@ -1799,9 +1826,11 @@
         "",
         "",
         "circle",
+        "",
         "2"
        ],
        [
+        "",
         "",
         "",
         "",
@@ -2055,6 +2084,7 @@
         "note",
         "scoring",
         "kind",
+        "traits",
         "version"
        ],
        [
@@ -2063,6 +2093,7 @@
         "",
         "",
         "circle",
+        "",
         "2"
        ]
       ]

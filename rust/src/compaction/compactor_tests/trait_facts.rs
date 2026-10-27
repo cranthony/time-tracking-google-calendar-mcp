@@ -153,3 +153,21 @@ fn a_person_with_prompts_of_their_own_is_given_them() {
     assert_eq!(sam[1], json!({"fact": "caring/joys", "summary": null}));
     assert!(context["instructions"].as_str().unwrap().contains("follow the prompts given for that person, not the trait's"));
 }
+
+#[test]
+fn a_communitys_facts_are_shown_logged_and_summarized_as_a_persons() {
+    let setup = setup();
+    setup.t.app.people().unwrap();
+    setup.t.seed(crate::sheet::CIRCLES.1, &[json!({"id": "dance", "name": "Dance", "kind": "community"})]);
+
+    let context = setup.prepare().to_json();
+    let dance = context["circles"].as_array().unwrap().iter().find(|c| c["id"] == json!("dance")).unwrap().clone();
+    assert_eq!(dance["facts"], json!([{"fact": "caring/worries", "summary": null}, {"fact": "caring/joys", "summary": null}]));
+
+    let decisions = vec![EventDecision {
+        facts: Some(facts(json!({"with": ["dance"], "logs": {"dance": {"caring/worries": "the hall may close"}}}))),
+        ..keep("e1")
+    }];
+    let planned = setup.try_dry_run(decisions, proposing(vec![summary("dance", "caring/worries", "- the hall")]));
+    assert!(planned.is_ok(), "{:?}", planned.err());
+}

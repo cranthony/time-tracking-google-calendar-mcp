@@ -438,6 +438,8 @@
    },
    "content": {
     "circle": {
+     "cancelled_events": null,
+     "facts": null,
      "id": "s3wod9",
      "kind": "circle",
      "member_ids": [],
@@ -448,12 +450,13 @@
        "lejxa2": 2
       }
      },
+     "traits": null,
      "version": 1
     },
     "created_id": "s3wod9"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"s3wod9\",\n    \"name\": \"Friends\",\n    \"note\": null,\n    \"scoring\": {\n      \"weights\": {\n        \"lejxa2\": 2\n      }\n    },\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"s3wod9\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"s3wod9\",\n    \"name\": \"Friends\",\n    \"note\": null,\n    \"scoring\": {\n      \"weights\": {\n        \"lejxa2\": 2\n      }\n    },\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"traits\": null,\n    \"facts\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"s3wod9\"\n}",
    "tool": "create_circle"
   },
   {
@@ -467,16 +470,19 @@
     ]
    },
    "content": {
+    "cancelled_events": null,
+    "facts": null,
     "id": "s3wod9",
     "kind": "circle",
     "member_ids": [],
     "name": "Friends",
     "note": null,
     "scoring": null,
+    "traits": null,
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"s3wod9\",\n  \"name\": \"Friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"s3wod9\",\n  \"name\": \"Friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [],\n  \"traits\": null,\n  \"facts\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -1293,6 +1299,7 @@
         "note",
         "scoring",
         "kind",
+        "traits",
         "version"
        ]
       ]
@@ -2076,6 +2083,7 @@
         "",
         "{\"weights\":{\"lejxa2\":2}}",
         "circle",
+        "",
         "1"
        ]
       ]
@@ -2109,6 +2117,7 @@
         "",
         "",
         "circle",
+        "",
         "2"
        ]
       ]
@@ -2523,6 +2532,7 @@
         "note",
         "scoring",
         "kind",
+        "traits",
         "version"
        ],
        [
@@ -2531,6 +2541,7 @@
         "",
         "",
         "circle",
+        "",
         "2"
        ]
       ]

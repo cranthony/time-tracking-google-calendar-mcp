@@ -141,7 +141,7 @@ fn applying_asks_for_the_judgments_and_isnt_complete_until_theyre_made() {
 }
 
 #[test]
-fn a_plain_circles_members_are_judged_as_if_named_but_those_its_except_leaves_out_and_a_community_arent() {
+fn a_plain_circles_members_are_judged_as_if_named_but_those_its_except_leaves_out_and_a_community_as_itself() {
     let people = vec![
         json!({"id": "sam", "name": "Sam", "status": "active", "circles": ["fam"]}),
         json!({"id": "ana", "name": "Ana", "status": "active", "circles": ["fam", "dance"]}),
@@ -155,7 +155,9 @@ fn a_plain_circles_members_are_judged_as_if_named_but_those_its_except_leaves_ou
 
     let due = applied.judgments.as_ref().unwrap();
     let people: Vec<&str> = due.events[0].people.iter().map(|(p, _)| p.as_str()).collect();
-    assert_eq!(people, vec!["self", "sam"]);
+    // Ana, in both, is judged only as the community's member she isn't
+    // named as: the community is judged as itself.
+    assert_eq!(people, vec!["self", "sam", "dance"]);
 }
 
 #[test]

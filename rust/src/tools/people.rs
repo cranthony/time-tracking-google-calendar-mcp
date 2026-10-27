@@ -6,7 +6,7 @@ use crate::app::App;
 use crate::contract::{tool, Schema};
 use crate::stores::habits::subject_id;
 pub use crate::stores::habits::{CreatedHabit, Habit, ListedHabit};
-pub use crate::stores::people::{Circle, CreatedCircle, CreatedPerson, DeletedCircle, ListedCircle, ListedPerson, Person, Status};
+pub use crate::stores::people::{Circle, CircleKind, CreatedCircle, CreatedPerson, DeletedCircle, ListedCircle, ListedPerson, Person, Status};
 pub use crate::stores::person_facts::LoggedChange;
 use crate::stores::person_facts::SummaryChange;
 use indexmap::IndexMap;
@@ -30,21 +30,58 @@ fn habits_with_cancellations(app: &App, mut habits: Vec<ListedHabit>) -> anyhow:
 /// their follow-through, and their trait facts' summaries (of the facts
 /// the traits still have).
 fn people_with_cancellations(app: &App, mut people: Vec<ListedPerson>) -> anyhow::Result<Vec<ListedPerson>> {
-    let by_person = app.cancellations()?.by_person()?;
-    let summaries = app.person_facts()?.by_person()?;
-    let traits = app.traits()?.all()?;
+    let theirs = Theirs::read(app)?;
     for person in people.iter_mut() {
         let id = person.id.clone().unwrap_or_else(|| "None".into());
-        person.cancelled_events = Some(by_person.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or_default());
+        person.cancelled_events = Some(theirs.cancelled(&id));
+        person.facts = Some(theirs.facts(&id));
+    }
+    Ok(people)
+}
+
+/// Each community, with the events the user cancelled that count against
+/// its follow-through and its trait facts' summaries, as a person's; a
+/// plain circle has neither.
+fn circles_with_cancellations(app: &App, mut circles: Vec<ListedCircle>) -> anyhow::Result<Vec<ListedCircle>> {
+    if !circles.iter().any(|c| c.kind == CircleKind::Community) {
+        return Ok(circles);
+    }
+    let theirs = Theirs::read(app)?;
+    for circle in circles.iter_mut().filter(|c| c.kind == CircleKind::Community) {
+        let id = circle.id.clone().unwrap_or_else(|| "None".into());
+        circle.cancelled_events = Some(theirs.cancelled(&id));
+        circle.facts = Some(theirs.facts(&id));
+    }
+    Ok(circles)
+}
+
+/// What's kept of each person's and community's own: the events cancelled
+/// that count against them, and their trait facts' summaries.
+struct Theirs {
+    by_person: Vec<(String, Vec<crate::stores::cancellations::CancelledEvent>)>,
+    summaries: crate::stores::person_facts::SummariesByPerson,
+    traits: Vec<crate::stores::traits::Trait>,
+}
+
+impl Theirs {
+    fn read(app: &App) -> anyhow::Result<Theirs> {
+        Ok(Theirs { by_person: app.cancellations()?.by_person()?, summaries: app.person_facts()?.by_person()?, traits: app.traits()?.all()? })
+    }
+
+    fn cancelled(&self, id: &str) -> Vec<crate::stores::cancellations::CancelledEvent> {
+        self.by_person.iter().find(|(k, _)| *k == id).map(|(_, v)| v.clone()).unwrap_or_default()
+    }
+
+    /// `id`'s summaries, of the facts the traits still have.
+    fn facts(&self, id: &str) -> IndexMap<String, IndexMap<String, String>> {
         let mut facts: IndexMap<String, IndexMap<String, String>> = IndexMap::new();
-        for (trait_id, fact, summary) in summaries.iter().find(|(k, _)| *k == id).map(|(_, v)| v.as_slice()).unwrap_or_default() {
-            if traits.iter().any(|t| t.id.as_deref() == Some(trait_id.as_str()) && t.fact(fact).is_some()) {
+        for (trait_id, fact, summary) in self.summaries.iter().find(|(k, _)| *k == id).map(|(_, v)| v.as_slice()).unwrap_or_default() {
+            if self.traits.iter().any(|t| t.id.as_deref() == Some(trait_id.as_str()) && t.fact(fact).is_some()) {
                 facts.entry(trait_id.clone()).or_default().insert(fact.clone(), summary.clone());
             }
         }
-        person.facts = Some(facts);
+        facts
     }
-    Ok(people)
 }
 
 /// Set `person_id`'s summaries in `facts` ({trait id: {fact id:
@@ -123,6 +160,8 @@ pub enum CircleField {
     Note,
     #[serde(rename = "scoring")]
     Scoring,
+    #[serde(rename = "traits")]
+    Traits,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
@@ -389,12 +428,17 @@ pub fn get_fact_logs(app: &App, person_id: String, trait_id: Option<String>, fac
 /// see create_circle), kind and member_ids (the people in it). kind is
 /// "circle" -- a plain circle, standing for its members: naming it on an
 /// event or goal names each of them -- or "community": a group as such,
-/// standing for itself, like a person, none of its members assumed.
+/// standing for itself, like a person, none of its members assumed (its
+/// member_ids are just who's in it). A community is judged and scored as
+/// a person is, by its own traits, never its members': it has traits,
+/// facts (its trait facts' summaries) and cancelled_events as get_people
+/// lists a person's, and can have habits (create_habit's circle_id).
 /// Read-only.
 #[tool]
 pub fn get_circles(app: &App) -> Result<Vec<ListedCircle>, ToolError> {
     prefetch_stores(app)?;
-    app.people()?.get_circles().map_err(refused)
+    let circles = app.people()?.get_circles().map_err(refused)?;
+    Ok(circles_with_cancellations(app, circles)?)
 }
 
 /// One circle, by id or else by name (ignoring case), as get_circles
@@ -402,7 +446,8 @@ pub fn get_circles(app: &App) -> Result<Vec<ListedCircle>, ToolError> {
 #[tool]
 pub fn get_circle(app: &App, id_or_name: String) -> Result<ListedCircle, ToolError> {
     prefetch_stores(app)?;
-    app.people()?.get_circle(&id_or_name).map_err(refused)
+    let circle = app.people()?.get_circle(&id_or_name).map_err(refused)?;
+    Ok(circles_with_cancellations(app, vec![circle])?.remove(0))
 }
 
 /// Add a circle: a name (unique among circles, though a person may
@@ -412,23 +457,62 @@ pub fn get_circle(app: &App, id_or_name: String) -> Result<ListedCircle, ToolErr
 /// for a plain circle, scoring: how its people's scores combine into its
 /// own, in place of the scoring defaults' circles -- an aggregation (see
 /// get_scoring_defaults), its weights by person id. A community takes no
-/// scoring. id is assigned. Put people in it with update_person's
-/// circles. Returns the circle and its id as created_id.
+/// scoring: its score is its own traits' -- traits, as a person's (see
+/// create_person), which a plain circle doesn't take -- and facts sets
+/// its trait facts' summaries, as create_person's do. id is assigned.
+/// Put people in it with update_person's circles. Returns the circle and
+/// its id as created_id.
 #[tool(writes)]
-pub fn create_circle(app: &App, circle: Circle) -> Result<CreatedCircle, ToolError> {
+pub fn create_circle(app: &App, circle: Circle, facts: Option<IndexMap<String, IndexMap<String, String>>>) -> Result<CreatedCircle, ToolError> {
     prefetch_stores(app)?;
-    app.people()?.create_circle(&circle).map_err(refused)
+    check_part_actions(app, parts_of(&circle.traits))?;
+    check_community_facts(circle.kind, facts.as_ref())?;
+    check_summaries(app, facts.as_ref())?;
+    let mut created = app.people()?.create_circle(&circle).map_err(refused)?;
+    if let Some(facts) = &facts {
+        set_summaries(app, &created.created_id, facts)?;
+        created.circle = circles_with_cancellations(app, vec![created.circle])?.remove(0);
+    }
+    Ok(created)
 }
 
-/// Rename a circle or change its note or scoring, by id. Fields left
-/// out keep their value; list one in clear_fields to blank it instead.
-/// Its kind never changes: given, it must be the one it has. Returns it
-/// as updated.
+/// Refuse facts for a plain circle: only a community has its own.
+fn check_community_facts(kind: Option<CircleKind>, facts: Option<&IndexMap<String, IndexMap<String, String>>>) -> Result<(), ToolError> {
+    if facts.is_some_and(|f| !f.is_empty()) && kind != Some(CircleKind::Community) {
+        return Err(ToolError::Message(
+            "only a community has trait facts of its own: a plain circle stands for its members, who have theirs".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// Rename a circle or change its note or scoring -- or a community's
+/// traits (replaced whole) -- by id. Fields left out keep their value;
+/// list one in clear_fields to blank it instead. Its kind never changes:
+/// given, it must be the one it has. facts sets a community's summaries
+/// of the trait facts it names, as update_person's do. Returns it as
+/// updated.
 #[tool(writes)]
-pub fn update_circle(app: &App, circle: Circle, clear_fields: Option<Vec<CircleField>>) -> Result<ListedCircle, ToolError> {
+pub fn update_circle(
+    app: &App,
+    circle: Circle,
+    clear_fields: Option<Vec<CircleField>>,
+    facts: Option<IndexMap<String, IndexMap<String, String>>>,
+) -> Result<ListedCircle, ToolError> {
     prefetch_stores(app)?;
+    check_part_actions(app, parts_of(&circle.traits))?;
+    check_summaries(app, facts.as_ref())?;
     let clear = texts(&clear_fields.unwrap_or_default());
-    app.people()?.update_circle(&circle, &clear).map_err(refused)
+    let people = app.people()?;
+    if facts.is_some() {
+        let kind = people.circles()?.iter().find(|c| c.id == circle.id).and_then(|c| c.kind);
+        check_community_facts(kind, facts.as_ref())?;
+    }
+    let updated = people.update_circle(&circle, &clear).map_err(refused)?;
+    if let Some(facts) = &facts {
+        set_summaries(app, updated.id.as_deref().unwrap_or("None"), facts)?;
+    }
+    Ok(circles_with_cancellations(app, vec![updated])?.remove(0))
 }
 
 /// Delete a circle, by id. Its people aren't deleted: they just leave
