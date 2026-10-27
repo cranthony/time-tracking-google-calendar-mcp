@@ -7,10 +7,10 @@ use super::*;
 fn events() -> Vec<Event> {
     vec![
         event_at("09:00-10:00").id("e1").summary("Email").priority(2).build(),
-        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
         event_at("07:00+1-08:00+1").id("gr1").summary("Getting Ready").priority(2).build(),
         event_at("08:00+1-12:00+1").id("w1").summary("Work").priority(3).build(),
-        event_at("22:00+1-23:30+1").id("s2").summary("Sleep").priority(0).sleep().build(),
+        event_at("22:00+1-23:30+1").id("s2").summary("Sleep").priority(0).build(),
     ]
 }
 
@@ -273,7 +273,7 @@ fn getting_a_proposal_over_two_days_shows_both() {
     assert_eq!(proposal.timeline.as_ref().unwrap().text.matches("━━ ").count(), 2);
     let events = proposal.events.unwrap();
     let night = events.iter().find(|e| e.id == "s1").unwrap();
-    assert_eq!((night.status.as_str(), night.end, night.is_end_of_day_sleep), ("adjusted", Some(time_at("08:30+1")), true));
+    assert_eq!((night.status.as_str(), night.end), ("adjusted", Some(time_at("08:30+1"))));
     let notes: Vec<String> = proposal.notes.iter().map(|n| n.id.clone()).collect();
     assert_eq!(notes, vec![setup.note_id(2), setup.note_id(3), setup.note_id(4)]);
 }

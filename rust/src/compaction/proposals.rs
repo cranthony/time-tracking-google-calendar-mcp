@@ -366,7 +366,6 @@ pub struct ProposalEvent {
     pub facts: Option<Facts>,
     pub decided_by: Option<String>,
     pub history_until: Option<Moment>,
-    pub is_end_of_day_sleep: bool,
     pub counts_against_follow_through: Option<bool>,
     pub follow_through: Vec<String>,
     /// Settled by an earlier compaction, and revisited for a historical note.
@@ -391,7 +390,6 @@ impl ProposalEvent {
         out.insert("facts".into(), self.facts.as_ref().map(Facts::to_public).unwrap_or(Value::Null));
         out.insert("decided_by".into(), json!(self.decided_by));
         out.insert("history_until".into(), when(&self.history_until));
-        out.insert("is_end_of_day_sleep".into(), json!(self.is_end_of_day_sleep));
         out.insert("counts_against_follow_through".into(), json!(self.counts_against_follow_through));
         out.insert("follow_through".into(), json!(self.follow_through));
         if self.revisited {

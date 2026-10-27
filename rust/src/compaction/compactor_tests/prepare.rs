@@ -129,7 +129,7 @@ fn reports_an_open_compaction() {
 pub(super) fn window_events() -> Vec<Event> {
     vec![
         event_at("19:00-20:00").id("r0").summary("Reading").priority(2).build(),
-        event_at("20:00-07:00+1").id("s0").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s0").summary("Sleep").priority(0).build(),
         event_at("07:00+1-08:00+1").id("gr").summary("Getting Ready").priority(2).build(),
         event_at("09:00+1-10:00+1").id("w1").summary("Work").priority(2).build(),
         event_at("10:00+1-11:00+1").id("w2").summary("Email").priority(2).build(),
@@ -139,7 +139,6 @@ pub(super) fn window_events() -> Vec<Event> {
             start: Some(time_at("22:00+1")),
             end: Some(time_at("07:00+1") + Duration::days(1)),
             priority: Some(0),
-            is_end_of_day_sleep: Some(true),
             ..Default::default()
         },
     ]

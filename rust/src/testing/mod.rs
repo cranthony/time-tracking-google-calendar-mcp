@@ -45,10 +45,6 @@ impl EventBuilder {
         self.0.priority = Some(priority);
         self
     }
-    pub fn sleep(mut self) -> Self {
-        self.0.is_end_of_day_sleep = Some(true);
-        self
-    }
     pub fn description(mut self, description: &str) -> Self {
         self.0.description = Some(description.into());
         self

@@ -45,7 +45,7 @@ fn filled() -> Filled {
     s.seed(&[
         event_at("08:00-09:00").id("walked").summary("Walk").actions(&[&walk]).facts(facts(json!({"locations": [home], "with": [sam]}))).build(),
         event_at("20:00-22:00").id("evening").summary("Evening").priority(2).build(),
-        event_at("22:00-06:00+1").id("sleep").summary("Sleep").priority(0).sleep().build(),
+        event_at("22:00-06:00+1").id("sleep").summary("Sleep").priority(0).build(),
     ]);
     s.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:30:00+00:00", "description": "walked"}}));
     // Finding a tab is a one-time read, whichever tool's first.
