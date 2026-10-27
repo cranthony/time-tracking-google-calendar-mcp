@@ -90,12 +90,8 @@ pub struct Facts {
 /// the event itself, which would stop it following later changes to the
 /// actions. An update ignores it.
 ///
-/// is_end_of_day_sleep/recurring_event_id are read-only too, and an
-/// update ignores them as well. is_end_of_day_sleep decides where a day
-/// ends for compaction, so a wrong mark would quietly change what later
-/// updates shrink, move or cancel; it's only set by hand, with
-/// calendar_cli. recurring_event_id is assigned by Google and can't be
-/// set at all.
+/// recurring_event_id is read-only too, and an update ignores it as
+/// well: it's assigned by Google and can't be set at all.
 ///
 /// goals are the goals the event is for (see get_goals): each a goal_id,
 /// with minutes (a fixed share of the event), percent (of what the
@@ -171,7 +167,6 @@ pub struct PublicEvent {
     #[serde(default)]
     pub is_cancelled: bool,
     pub effective_priority: Option<i64>,
-    pub is_end_of_day_sleep: Option<bool>,
     pub recurring_event_id: Option<String>,
     pub facts: Option<Facts>,
     pub judgments: Option<Map<String, Value>>,
@@ -296,7 +291,6 @@ pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Op
     out.insert("event_label_id".into(), json!(event.event_label_id));
     out.insert("is_cancelled".into(), json!(event.is_cancelled()));
     out.insert("effective_priority".into(), json!(event.effective_priority()));
-    out.insert("is_end_of_day_sleep".into(), json!(event.is_end_of_day_sleep));
     out.insert("recurring_event_id".into(), json!(event.recurring_event_id));
     out.insert("facts".into(), event.facts.as_ref().map(EventFacts::to_public).unwrap_or(Value::Null));
     out.insert("judgments".into(), event.judgments.clone().map(Value::Object).unwrap_or(Value::Null));
@@ -562,13 +556,12 @@ fn stale(app: &App, error: anyhow::Error) -> ToolError {
 /// their names). effective_priority is the priority that applies:
 /// the event's own priority, falling back to the highest priority of its
 /// actions.
-/// is_end_of_day_sleep marks the sleep event that
-/// ends a day; recurring_event_id is the id of an instance's recurring
+/// recurring_event_id is the id of an instance's recurring
 /// series (see get_recurrence and update_recurrence to read and edit the
 /// series as a whole); event_label_id is the calendar label derived from
 /// its first action. facts are what compaction established about a past
 /// event: where, who with, who for, and a note on each person there (see
-/// PublicEvent). action_names, effective_priority, is_end_of_day_sleep,
+/// PublicEvent). action_names, effective_priority,
 /// recurring_event_id and event_label_id are read-only: update_event and
 /// create_event ignore them. repeat is write-only, and never listed.
 ///

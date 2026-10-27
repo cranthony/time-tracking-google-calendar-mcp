@@ -974,8 +974,6 @@ pub struct ProposalEvent {
     pub facts: Option<PublicFacts>,
     pub decided_by: Option<ProposalEventDecidedBy>,
     pub history_until: Option<DateTimeText>,
-    #[schema(default = "false")]
-    pub is_end_of_day_sleep: bool,
     pub counts_against_follow_through: Option<bool>,
     #[schema(optional)]
     #[serde(default)]
@@ -1100,7 +1098,6 @@ pub struct ProposalCreate {
     #[schema(default = "false")]
     pub is_cancelled: bool,
     pub effective_priority: Option<i64>,
-    pub is_end_of_day_sleep: Option<bool>,
     pub recurring_event_id: Option<String>,
     pub facts: Option<PublicFacts>,
     pub goals: Option<Vec<GoalShare>>,
@@ -1409,7 +1406,6 @@ fn proposed_event(c: &ProposalCreate) -> PublicEvent {
         event_label_id: c.event_label_id.clone(),
         is_cancelled: c.is_cancelled,
         effective_priority: c.effective_priority,
-        is_end_of_day_sleep: c.is_end_of_day_sleep,
         recurring_event_id: c.recurring_event_id.clone(),
         facts: c.facts.clone(),
         goals: c.goals.clone(),

@@ -69,7 +69,7 @@ fn an_event_moved_after_now_isnt_judged() {
 fn one_moved_after_now_loses_the_facts_and_judgments_it_had() {
     let mut email = event_at("09:00-10:00").id("e1").summary("Email").priority(2).facts(facts(json!({"with": ["sam"]}))).build();
     email.judgments = json!({"sam": {"heard/judgment": {"rating": 1}}}).as_object().cloned();
-    let events = vec![email, event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build()];
+    let events = vec![email, event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build()];
     let setup = Setup::with(&[("09:05", "email")], Some(events), "11:30", Stores { people: sam(), traits: Some(vec![heard()]), ..Default::default() });
 
     let id = setup.dry_run(vec![email_after_lunch()]).compaction_id.unwrap();
@@ -370,7 +370,7 @@ fn staying_up() -> Setup {
         event_at("22:22-23:07").id("dinner").summary("Dinner").priority(2).build(),
         event_at("23:07-00:47+1").id("work").summary("Working").priority(2).build(),
         event_at("00:47+1-01:17+1").id("gr").summary("Get ready for bed").priority(2).build(),
-        event_at("01:17+1-07:00+1").id("s0").summary("Sleep").priority(0).sleep().build(),
+        event_at("01:17+1-07:00+1").id("s0").summary("Sleep").priority(0).build(),
         event_at("07:00+1-08:00+1").id("up").summary("Get up").priority(2).build(),
         event_at("08:00+1-12:00+1").id("w1").summary("Work").priority(3).build(),
         Event {
@@ -379,7 +379,6 @@ fn staying_up() -> Setup {
             start: Some(time_at("23:00+1")),
             end: Some(time_at("07:00+1") + Duration::days(1)),
             priority: Some(0),
-            is_end_of_day_sleep: Some(true),
             ..Default::default()
         },
     ];

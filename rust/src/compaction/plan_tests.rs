@@ -13,7 +13,7 @@ fn day() -> Vec<Event> {
         event_at("10:00-11:00").id("e2").summary("Report").priority(2).build(),
         event_at("12:00-13:00").id("e3").summary("Lunch").priority(1).build(),
         event_at("14:00-15:00").id("e4").summary("Review").priority(3).build(),
-        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
     ]
 }
 
@@ -24,18 +24,18 @@ fn evening() -> Vec<Event> {
         event_at("18:30-19:30").id("salsa").summary("Google Salsa class").priority(2).build(),
         event_at("19:30-20:00").id("dinner").summary("Dinner").priority(2).build(),
         event_at("20:00-21:00").id("read").summary("Reading").priority(3).build(),
-        event_at("22:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("22:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
     ]
 }
 
 /// Last night's sleep, then the next day.
 fn overnight() -> Vec<Event> {
     vec![
-        event_at("20:00-07:00+1").id("s0").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s0").summary("Sleep").priority(0).build(),
         event_at("07:00+1-08:00+1").id("gr").summary("Getting Ready").priority(2).build(),
         Event {
             end: Some(time_at("07:00+1") + Duration::days(1)),
-            ..event_at("22:00+1-23:00+1").id("s1").summary("Sleep").priority(0).sleep().build()
+            ..event_at("22:00+1-23:00+1").id("s1").summary("Sleep").priority(0).build()
         },
     ]
 }
@@ -285,7 +285,7 @@ fn moving_a_future_event_reschedules_it_and_what_it_runs_into_must_move_too() {
 fn nothing_is_split_to_make_room() {
     let events = vec![
         event_at("12:00-14:00").id("work").summary("Work").priority(2).build(),
-        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
     ];
     refused_with(
         plan_with(
@@ -884,7 +884,7 @@ fn with_nothing_to_change_it_says_so() {
 fn bedtime_evening(extra: Option<Event>) -> Vec<Event> {
     let mut events = vec![event_at("17:00-18:00").id("e1").summary("Dinner").priority(1).build()];
     events.extend(extra);
-    events.push(event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build());
+    events.push(event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build());
     events
 }
 
@@ -938,7 +938,7 @@ fn moving_its_end_just_moves_it() {
 #[test]
 fn facts_before_it_still_reflow_into_the_day() {
     let events = vec![
-        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
         event_at("17:00-19:00").id("e5").summary("Reading").priority(3).build(),
     ];
     let plan = plan_with(
@@ -975,7 +975,7 @@ fn moving_last_nights_wake_up_just_moves_it() {
 fn late_day() -> Vec<Event> {
     vec![
         event_at("21:00-23:30").id("e1").summary("Reading").priority(3).build(),
-        event_at("00:00+1-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("00:00+1-07:00+1").id("s1").summary("Sleep").priority(0).build(),
     ]
 }
 

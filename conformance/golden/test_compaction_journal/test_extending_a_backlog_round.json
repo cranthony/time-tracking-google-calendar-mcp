@@ -5717,11 +5717,6 @@
        "dateTime": "2026-10-03T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "01dd0fc34d6f05295a7a77f96a@google.com",
       "id": "01dd0fc34d6f05295a7a77f96a",
       "kind": "calendar#event",
@@ -5782,11 +5777,6 @@
        "dateTime": "2026-10-05T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "1a358c7457582906a16de6a46c@google.com",
       "id": "1a358c7457582906a16de6a46c",
       "kind": "calendar#event",
@@ -5816,11 +5806,6 @@
       "end": {
        "dateTime": "2026-10-07T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "2165b8ffd6f75ba498e68e904f@google.com",
       "id": "2165b8ffd6f75ba498e68e904f",
@@ -5972,11 +5957,6 @@
        "dateTime": "2026-10-08T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "380aa207c57570221b7b7c4473@google.com",
       "id": "380aa207c57570221b7b7c4473",
       "kind": "calendar#event",
@@ -6036,11 +6016,6 @@
       "end": {
        "dateTime": "2026-10-01T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "4cecca144bbc6aec218b28e089@google.com",
       "id": "4cecca144bbc6aec218b28e089",
@@ -6207,11 +6182,6 @@
        "dateTime": "2026-09-30T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "87255f0fd683a5a8618e32577d@google.com",
       "id": "87255f0fd683a5a8618e32577d",
       "kind": "calendar#event",
@@ -6287,11 +6257,6 @@
        "dateTime": "2026-09-28T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "983cc1ee90e3562d53bf2811fa@google.com",
       "id": "983cc1ee90e3562d53bf2811fa",
       "kind": "calendar#event",
@@ -6352,11 +6317,6 @@
        "dateTime": "2026-09-29T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "afaf1b5f5b5363588c57736ee3@google.com",
       "id": "afaf1b5f5b5363588c57736ee3",
       "kind": "calendar#event",
@@ -6371,11 +6331,6 @@
       "end": {
        "dateTime": "2026-09-27T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "b0beb355f2460d88416e307a4a@google.com",
       "id": "b0beb355f2460d88416e307a4a",
@@ -6422,11 +6377,6 @@
        "dateTime": "2026-10-02T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "b600e835bce237d64e9c45443f@google.com",
       "id": "b600e835bce237d64e9c45443f",
       "kind": "calendar#event",
@@ -6456,11 +6406,6 @@
       "end": {
        "dateTime": "2026-10-04T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "ba8bdd397520cfe2ee80468597@google.com",
       "id": "ba8bdd397520cfe2ee80468597",
@@ -6731,11 +6676,6 @@
       "end": {
        "dateTime": "2026-10-06T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "ec694f7851269b4564feecaf61@google.com",
       "id": "ec694f7851269b4564feecaf61",

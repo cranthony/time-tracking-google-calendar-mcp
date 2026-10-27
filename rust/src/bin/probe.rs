@@ -2325,14 +2325,11 @@ fn seed_planned_days(raw: &Raw) -> anyhow::Result<Vec<PlannedDay>> {
             ("Sleep", "22:30", "06:30", true),
         ] {
             let end_day = if sleep { day + Duration::days(1) } else { day };
-            let mut body = json!({
+            let body = json!({
                 "summary": summary,
                 "start": {"dateTime": format!("{day}T{start}:00"), "timeZone": TIME_ZONE},
                 "end": {"dateTime": format!("{end_day}T{end}:00"), "timeZone": TIME_ZONE},
             });
-            if sleep {
-                body["extendedProperties"] = json!({"private": {key("is_end_of_day_sleep"): "true"}});
-            }
             let id = raw.insert(body)?["id"].as_str().unwrap_or_default().to_string();
             ids.insert(summary, id);
         }

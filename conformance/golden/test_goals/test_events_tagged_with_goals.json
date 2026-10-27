@@ -87,7 +87,6 @@
       ],
       "id": "9c3c1046e8cb7fa96f6b8bd88d",
       "is_cancelled": false,
-      "is_end_of_day_sleep": null,
       "judgments": null,
       "location": null,
       "priority": null,
@@ -99,7 +98,7 @@
     "timeline": "09:00 ┌ Read the book · new\n10:00 └ Read the book ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Read the book\",\n      \"start\": \"2026-10-17T05:00:00-04:00\",\n      \"end\": \"2026-10-17T06:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": [\n        {\n          \"goal_id\": \"co2yzn\",\n          \"minutes\": 45,\n          \"percent\": null\n        }\n      ],\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Read the book · new\\n10:00 └ Read the book ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Read the book\",\n      \"start\": \"2026-10-17T05:00:00-04:00\",\n      \"end\": \"2026-10-17T06:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": [\n        {\n          \"goal_id\": \"co2yzn\",\n          \"minutes\": 45,\n          \"percent\": null\n        }\n      ],\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Read the book · new\\n10:00 └ Read the book ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -184,7 +183,6 @@
       ],
       "id": "9c3c1046e8cb7fa96f6b8bd88d",
       "is_cancelled": false,
-      "is_end_of_day_sleep": null,
       "judgments": null,
       "location": null,
       "priority": null,
@@ -196,7 +194,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Read the book\",\n      \"start\": \"2026-10-17T05:00:00-04:00\",\n      \"end\": \"2026-10-17T06:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": [\n        {\n          \"goal_id\": \"co2yzn\",\n          \"minutes\": null,\n          \"percent\": 50\n        }\n      ],\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Read the book\",\n      \"start\": \"2026-10-17T05:00:00-04:00\",\n      \"end\": \"2026-10-17T06:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": [\n        {\n          \"goal_id\": \"co2yzn\",\n          \"minutes\": null,\n          \"percent\": 50\n        }\n      ],\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -222,7 +220,6 @@
     ],
     "id": "9c3c1046e8cb7fa96f6b8bd88d",
     "is_cancelled": false,
-    "is_end_of_day_sleep": null,
     "judgments": null,
     "location": null,
     "priority": null,
@@ -231,7 +228,7 @@
     "summary": "Read the book"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n  \"summary\": \"Read the book\",\n  \"start\": \"2026-10-17T05:00:00-04:00\",\n  \"end\": \"2026-10-17T06:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": [\n    {\n      \"goal_id\": \"co2yzn\",\n      \"minutes\": null,\n      \"percent\": 50\n    }\n  ],\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
+   "text": "{\n  \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n  \"summary\": \"Read the book\",\n  \"start\": \"2026-10-17T05:00:00-04:00\",\n  \"end\": \"2026-10-17T06:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": [\n    {\n      \"goal_id\": \"co2yzn\",\n      \"minutes\": null,\n      \"percent\": 50\n    }\n  ],\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
    "tool": "get_event"
   }
  ],

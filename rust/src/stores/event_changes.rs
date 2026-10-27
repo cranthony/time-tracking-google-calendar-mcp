@@ -169,9 +169,6 @@ pub fn rejection(problems: &[Problem], listing: &[Placed], since: &Moment, until
     sorted.sort_by_key(|p| (p.event.start(), p.event.end()));
     for p in sorted {
         let mut notes: Vec<String> = Vec::new();
-        if p.event.is_end_of_day_sleep == Some(true) {
-            notes.push("end of day".into());
-        }
         if let Some(history) = history_until {
             if p.event.start() < *history {
                 notes.push(format!("history until {}", hm(&p.event.end().min(*history), &tz)));
@@ -682,7 +679,7 @@ pub fn patched(before: &Event, patch: &Event) -> Event {
         ($($field:ident),*) => { $( if patch.$field.is_some() { after.$field = patch.$field.clone(); } )* };
     }
     take!(summary, start, end, description, location, status, recurring_event_id, recurrence, time_zone, original_start,
-          priority, is_end_of_day_sleep, event_label_id, action_ids, goals, facts, judgments, action_priority);
+          priority, event_label_id, action_ids, goals, facts, judgments, action_priority);
     if patch.actions_from_label {
         after.actions_from_label = true;
     }

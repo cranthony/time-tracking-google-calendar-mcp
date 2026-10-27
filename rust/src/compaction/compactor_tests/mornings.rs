@@ -16,10 +16,10 @@ fn cancel(event_id: &str) -> EventDecision {
 fn night_setup() -> Setup {
     let events = vec![
         event_at("21:00-22:00").id("e1").summary("Reading").priority(2).build(),
-        event_at("22:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("22:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
         event_at("07:00+1-08:00+1").id("gr1").summary("Getting Ready").priority(2).build(),
         event_at("09:15+1-12:00+1").id("w1").summary("Work").priority(3).build(),
-        event_at("22:00+1-23:30+1").id("s2").summary("Sleep").priority(0).sleep().build(),
+        event_at("22:00+1-23:30+1").id("s2").summary("Sleep").priority(0).build(),
     ];
     Setup::new(&[("21:05", "reading")], Some(events), "05:30+1")
 }
@@ -154,10 +154,10 @@ fn a_move_past_the_span_takes_no_facts_there() {
 fn slept_in() -> Setup {
     let events = vec![
         event_at("09:00-10:00").id("e1").summary("Email").priority(2).build(),
-        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
         event_at("07:00+1-08:00+1").id("gr1").summary("Getting Ready").priority(2).build(),
         event_at("08:00+1-12:00+1").id("w1").summary("Work").priority(3).build(),
-        event_at("22:00+1-23:30+1").id("s2").summary("Sleep").priority(0).sleep().build(),
+        event_at("22:00+1-23:30+1").id("s2").summary("Sleep").priority(0).build(),
     ];
     let setup = Setup::new(&[("09:05", "email")], Some(events), "07:00+1");
     let id = setup.dry_run(vec![]).compaction_id.unwrap();

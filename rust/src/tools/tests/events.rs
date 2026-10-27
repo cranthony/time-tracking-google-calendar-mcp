@@ -53,15 +53,14 @@ fn a_public_event_shows_just_its_public_fields() {
         fields,
         vec![
             "id", "summary", "start", "end", "description", "location", "priority", "action_ids", "action_names", "actions_from_label",
-            "goals", "event_label_id", "is_cancelled", "effective_priority", "is_end_of_day_sleep", "recurring_event_id", "facts", "judgments", "etag",
+            "goals", "event_label_id", "is_cancelled", "effective_priority", "recurring_event_id", "facts", "judgments", "etag",
         ]
     );
 }
 
 #[test]
-fn shows_but_never_writes_back_sleep_series_label_and_effective_priority() {
+fn shows_but_never_writes_back_series_label_and_effective_priority() {
     let event = Event {
-        is_end_of_day_sleep: Some(true),
         recurring_event_id: Some("series-1".into()),
         event_label_id: Some("label-1".into()),
         priority: Some(1),
@@ -70,13 +69,13 @@ fn shows_but_never_writes_back_sleep_series_label_and_effective_priority() {
 
     let public = public_event(&event, None);
 
-    assert_eq!((public["is_end_of_day_sleep"].clone(), public["recurring_event_id"].clone(), public["event_label_id"].clone()), (json!(true), json!("series-1"), json!("label-1")));
+    assert_eq!((public["recurring_event_id"].clone(), public["event_label_id"].clone()), (json!("series-1"), json!("label-1")));
     assert_eq!(public["effective_priority"], 1);
     let mut sent = public.clone();
     sent["effective_priority"] = json!(0);
     let back = to_event(&sent, &[]).ok().unwrap();
     assert_eq!((back.id.as_deref(), back.priority), (Some("abc123"), Some(1)));
-    assert_eq!((back.is_end_of_day_sleep, back.recurring_event_id, back.event_label_id), (None, None, None));
+    assert_eq!((back.recurring_event_id, back.event_label_id), (None, None));
 }
 
 #[test]
@@ -125,10 +124,10 @@ fn listed(server: &Server) -> Vec<Value> {
 }
 
 #[test]
-fn lists_the_calendars_events_with_sleep_and_series() {
+fn lists_the_calendars_events_with_series() {
     let server = Server::new();
     server.seed(&[
-        Event { is_end_of_day_sleep: Some(true), ..focus("abc123", day_at(9), day_at(10)) },
+        focus("abc123", day_at(9), day_at(10)),
         Event { recurrence: Some(strings(&["RRULE:FREQ=DAILY"])), time_zone: Some("UTC".into()), ..focus("series1", day_at(12), day_at(13)) },
     ]);
 
@@ -136,7 +135,6 @@ fn lists_the_calendars_events_with_sleep_and_series() {
 
     assert_eq!(events.len(), 2);
     assert_eq!(events[0], public_event(&server.event("abc123"), Some(&server.t.app.actions().unwrap().tree().unwrap())));
-    assert_eq!(events[0]["is_end_of_day_sleep"], true);
     assert_eq!(events[1]["recurring_event_id"], "series1");
 }
 
@@ -179,11 +177,11 @@ fn an_events_own_priority_wins_over_its_actions() {
 fn gets_an_event_filled_in_from_its_actions() {
     let server = Server::new();
     with_actions(&server, &[action("g1", "Focus", Some(0))]);
-    server.seed(&[Event { action_ids: Some(crate::testing::shares(&["g1"])), is_end_of_day_sleep: Some(true), ..focus("abc123", day_at(9), day_at(10)) }]);
+    server.seed(&[Event { action_ids: Some(crate::testing::shares(&["g1"])), ..focus("abc123", day_at(9), day_at(10)) }]);
 
     let event = server.ok("get_event", json!({"id": "abc123"}));
 
-    assert_eq!((event["is_end_of_day_sleep"].clone(), event["effective_priority"].clone(), event["priority"].clone()), (json!(true), json!(0), Value::Null));
+    assert_eq!((event["effective_priority"].clone(), event["priority"].clone()), (json!(0), Value::Null));
 }
 
 #[test]
