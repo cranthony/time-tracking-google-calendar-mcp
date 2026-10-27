@@ -128,9 +128,9 @@
      }
     ]
    },
-   "content": "Error executing tool create_event: Its facts name ['nobody'], who aren't people (get_people lists them)",
+   "content": "Error executing tool create_event: Its facts name ['nobody'], who aren't people or circles (get_people and get_circles list them)",
    "is_error": true,
-   "text": "Error executing tool create_event: Its facts name ['nobody'], who aren't people (get_people lists them)",
+   "text": "Error executing tool create_event: Its facts name ['nobody'], who aren't people or circles (get_people and get_circles list them)",
    "tool": "create_event"
   },
   {
@@ -737,6 +737,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ]
       ]
@@ -2150,6 +2151,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ]
       ]

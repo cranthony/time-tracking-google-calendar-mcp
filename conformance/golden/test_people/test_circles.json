@@ -10,6 +10,7 @@
    "content": {
     "circle": {
      "id": "co2yzn",
+     "kind": "circle",
      "member_ids": [],
      "name": "Close friends",
      "note": "the inner ring",
@@ -19,7 +20,7 @@
     "created_id": "co2yzn"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": \"the inner ring\",\n    \"scoring\": null,\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": \"the inner ring\",\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_circle"
   },
   {
@@ -31,6 +32,7 @@
    "content": {
     "circle": {
      "id": "3dnjav",
+     "kind": "circle",
      "member_ids": [],
      "name": "Family",
      "note": null,
@@ -40,7 +42,7 @@
     "created_id": "3dnjav"
    },
    "is_error": false,
-   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"circle\": {\n    \"id\": \"3dnjav\",\n    \"name\": \"Family\",\n    \"note\": null,\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"member_ids\": [],\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_circle"
   },
   {
@@ -108,6 +110,7 @@
    "content": [
     {
      "id": "co2yzn",
+     "kind": "circle",
      "member_ids": [
       "rs21so"
      ],
@@ -118,6 +121,7 @@
     },
     {
      "id": "3dnjav",
+     "kind": "circle",
      "member_ids": [
       "rs21so"
      ],
@@ -128,7 +132,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": \"the inner ring\",\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": \"the inner ring\",\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}\n{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
    "tool": "get_circles"
   },
   {
@@ -163,6 +167,7 @@
    },
    "content": {
     "id": "3dnjav",
+    "kind": "circle",
     "member_ids": [
      "rs21so"
     ],
@@ -172,7 +177,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Family\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 1\n}",
    "tool": "get_circle"
   },
   {
@@ -195,6 +200,7 @@
    },
    "content": {
     "id": "3dnjav",
+    "kind": "circle",
     "member_ids": [
      "rs21so"
     ],
@@ -204,7 +210,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Relatives\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"name\": \"Relatives\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -219,6 +225,7 @@
    },
    "content": {
     "id": "co2yzn",
+    "kind": "circle",
     "member_ids": [
      "rs21so"
     ],
@@ -228,7 +235,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"name\": \"Close friends\",\n  \"note\": null,\n  \"scoring\": null,\n  \"kind\": \"circle\",\n  \"member_ids\": [\n    \"rs21so\"\n  ],\n  \"version\": 2\n}",
    "tool": "update_circle"
   },
   {
@@ -239,6 +246,7 @@
    "content": {
     "deleted": {
      "id": "co2yzn",
+     "kind": "circle",
      "name": "Close friends",
      "note": null,
      "scoring": null,
@@ -249,7 +257,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"deleted\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": null,\n    \"scoring\": null,\n    \"version\": 2\n  },\n  \"left\": [\n    \"rs21so\"\n  ]\n}",
+   "text": "{\n  \"deleted\": {\n    \"id\": \"co2yzn\",\n    \"name\": \"Close friends\",\n    \"note\": null,\n    \"scoring\": null,\n    \"kind\": \"circle\",\n    \"version\": 2\n  },\n  \"left\": [\n    \"rs21so\"\n  ]\n}",
    "tool": "delete_circle"
   },
   {
@@ -675,6 +683,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ]
       ]
@@ -1015,6 +1024,7 @@
         "Close friends",
         "the inner ring",
         "",
+        "circle",
         "1"
        ]
       ]
@@ -1047,6 +1057,7 @@
         "Family",
         "",
         "",
+        "circle",
         "1"
        ]
       ]
@@ -1698,6 +1709,7 @@
         "Relatives",
         "",
         "",
+        "circle",
         "2"
        ]
       ]
@@ -1730,6 +1742,7 @@
         "Close friends",
         "",
         "",
+        "circle",
         "2"
        ]
       ]
@@ -1785,9 +1798,11 @@
         "Relatives",
         "",
         "",
+        "circle",
         "2"
        ],
        [
+        "",
         "",
         "",
         "",
@@ -2039,6 +2054,7 @@
         "name",
         "note",
         "scoring",
+        "kind",
         "version"
        ],
        [
@@ -2046,6 +2062,7 @@
         "Relatives",
         "",
         "",
+        "circle",
         "2"
        ]
       ]

@@ -37,6 +37,21 @@ pub enum Status {
     Deleted,
 }
 
+/// What a circle is: a plain "circle" stands for its members -- naming it
+/// on an event or goal names every one of them (but those its entry's
+/// except leaves out) -- while a "community" stands for itself, a group
+/// as such, like a person: naming it assumes none of its members (see
+/// crate::attendees). Set when it's made, and never changed: the two
+/// mean different things.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, Schema)]
+pub enum CircleKind {
+    #[default]
+    #[serde(rename = "circle")]
+    Circle,
+    #[serde(rename = "community")]
+    Community,
+}
+
 /// A person as the people tools return them: plus their circles'
 /// names, their trait facts' summaries ({trait id: {fact id: summary}}),
 /// and the events the user cancelled that count against their
@@ -82,6 +97,7 @@ pub struct ListedCircle {
     pub name: Option<String>,
     pub note: Option<String>,
     pub scoring: Option<Map<String, Value>>,
+    pub kind: CircleKind,
     pub member_ids: Option<Vec<String>>,
     pub version: Option<i64>,
 }
@@ -94,8 +110,13 @@ pub struct Circle {
     pub note: Option<String>,
     /// How its people's scores combine into its own: an aggregation (see
     /// get_scoring_defaults), its weights by person id. Without it, the
-    /// default's (scoring defaults' circles).
+    /// default's (scoring defaults' circles). Only a plain circle's:
+    /// a community's score is its own.
     pub scoring: Option<Map<String, Value>>,
+    /// "circle" (the default) or "community" (see CircleKind): given
+    /// when it's made, never changed.
+    #[row(text)]
+    pub kind: Option<CircleKind>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -201,6 +222,12 @@ impl People {
     }
 
     /// Every person, self first, then in sheet order.
+    /// Every circle, with who's in it now: to tell who an event's or a
+    /// goal's with and for name (see crate::attendees).
+    pub fn circle_index(&self) -> anyhow::Result<crate::attendees::Circles> {
+        Ok(crate::attendees::Circles::of(&self.circles()?, &self.all()?))
+    }
+
     pub fn all(&self) -> anyhow::Result<Vec<Person>> {
         self.prefetch(&self.whole_tabs())?;
         let people = self.read_people()?;
@@ -309,7 +336,7 @@ impl People {
                 return Ok(CreatedCircle { circle: listed_circle(&made, &self.all()?), created_id: made.id.clone().unwrap_or_default() })
             }
         };
-        let new = Circle { id: Some(id.clone()), version: None, ..circle.clone() };
+        let new = Circle { id: Some(id.clone()), kind: Some(circle.kind.unwrap_or_default()), version: None, ..circle.clone() };
         let mut all = circles.clone();
         all.push(new.clone());
         self.write_circles(&all)?;
@@ -327,6 +354,14 @@ impl People {
             find_circle(&circles, &id)?;
             unreachable!()
         };
+        let kind = circles[index].kind.unwrap_or_default();
+        if circle.kind.is_some_and(|k| k != kind) {
+            bail!(
+                "{}'s kind is {}: a circle's kind is set when it's made, and never changed -- a plain circle and a community mean different things; make a new one instead",
+                repr_or_none(circles[index].name.as_deref()),
+                py::repr(&wire_text(&kind))
+            );
+        }
         circles[index] = rows::updated_item(&circles[index], circle, clear_fields, &["id"])?;
         let people = self.all()?;
         self.write_circles(&circles)?;
@@ -546,7 +581,9 @@ pub fn circle_problems(circles: &[Circle]) -> Vec<String> {
         }
         names.retain(|(k, _)| *k != key);
         names.push((key, circle));
-        if let Some(scoring) = &circle.scoring {
+        if circle.kind == Some(CircleKind::Community) && circle.scoring.is_some() {
+            problems.push(format!("{label} is a community: its score is its own, not its members', so it takes no scoring"));
+        } else if let Some(scoring) = &circle.scoring {
             for p in aggregation_problems(&Value::Object(scoring.clone()), None) {
                 problems.push(format!("{label}'s scoring: {p}"));
             }
@@ -588,6 +625,7 @@ pub fn listed_circle(circle: &Circle, people: &[Person]) -> ListedCircle {
         name: circle.name.clone(),
         note: circle.note.clone(),
         scoring: circle.scoring.clone(),
+        kind: circle.kind.unwrap_or_default(),
         member_ids: Some(members),
         version: circle.version,
     }
