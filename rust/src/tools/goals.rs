@@ -179,7 +179,8 @@ pub struct GoalDelete {
 /// priority are active, its own parents and sub-goals not counted)}.
 /// Ready and not held, it's activated -- dated when it became ready --
 /// with its inactive parents; activating it by hand ignores it, and
-/// either way it's cleared. expected_start is when one waiting is
+/// either way it's cleared -- as it is when the goal is closed (done,
+/// missed or obsolete) while it waits. expected_start is when one waiting is
 /// expected to be: when what it waits for is due, then its delay; none
 /// while it's held, or what it waits for has no due yet. A status (inactive, active, done, missed -- its
 /// deadline passed without it -- or obsolete) and its history (each change of

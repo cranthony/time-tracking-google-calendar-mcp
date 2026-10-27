@@ -233,7 +233,8 @@ pub struct Hold {
 /// What an inactive goal waits for before the server activates it: every
 /// trigger in after (none, it's ready now), then the delay, if any; and
 /// while any of hold_while holds, it waits on. Activated, by the server or
-/// by hand (which ignores it), it's cleared.
+/// by hand (which ignores it), it's cleared -- as it is when the goal is
+/// closed while it waits.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
 pub struct ActivateWhen {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -977,10 +978,13 @@ impl Goals {
                     stamped.push(id.clone());
                 }
             }
-            // Activated by hand: what it waited for no longer matters.
+            // Activated or closed by hand: what it waited for no longer
+            // matters.
             if after.status == Some(GoalStatus::Active) && before.status != Some(GoalStatus::Active) {
                 after.activate_when = None;
                 started.push(id.clone());
+            } else if before.status == Some(GoalStatus::Inactive) && after.status.is_some_and(|s| s.is_closed()) && edit.goal.activate_when.is_none() {
+                after.activate_when = None;
             }
             goals[index] = after;
             touched.push(id);
