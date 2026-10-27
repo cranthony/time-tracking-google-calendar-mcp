@@ -52,10 +52,8 @@ macro_rules! wln {
 pub type Moment = DateTime<FixedOffset>;
 
 const DEFAULT_WINDOW: &str = "1h";
-const EVENT_ATTRIBUTES: [&str; 12] = [
-    "action_ids", "description", "end", "event_label_id", "facts", "is_end_of_day_sleep", "judgments", "location", "priority", "start",
-    "status", "summary",
-];
+const EVENT_ATTRIBUTES: [&str; 11] =
+    ["action_ids", "description", "end", "event_label_id", "facts", "judgments", "location", "priority", "start", "status", "summary"];
 const RAW_LABEL_ATTRIBUTES: [&str; 2] = ["background_color", "name"];
 const ACTION_ATTRIBUTES: [&str; 7] = ["background_color", "commute", "group_id", "name", "note", "priority", "status"];
 
@@ -217,7 +215,6 @@ fn set_event_attribute(event: &mut Event, pair: &str) -> Result<String, Failure>
             event.priority =
                 Some(raw.trim().parse().map_err(|_| invalid(key, format!("invalid literal for int() with base 10: {}", py::repr(raw))))?)
         }
-        "is_end_of_day_sleep" => event.is_end_of_day_sleep = Some(parse_bool(raw).map_err(|e| invalid(key, e))?),
         "event_label_id" => event.event_label_id = Some(raw.into()),
         "action_ids" => event.action_ids = Some(raw.split(',').flat_map(crate::stores::shares::parse_shares).collect()),
         "facts" => event.facts = Some(parse_facts(raw).map_err(|e| invalid(key, e))?),
@@ -283,7 +280,6 @@ fn event_details(event: &Event) -> String {
     put("time_zone", event.time_zone.clone());
     put("original_start", event.original_start.as_ref().map(str_datetime));
     put("priority", event.priority.map(|p| p.to_string()));
-    put("is_end_of_day_sleep", event.is_end_of_day_sleep.map(|b| if b { "True" } else { "False" }.to_string()));
     put("event_label_id", event.event_label_id.clone());
     put("action_ids", event.action_ids.as_ref().map(|shares| py::repr_list(&shares.iter().map(|s| crate::stores::shares::shares_text(std::slice::from_ref(s))).collect::<Vec<_>>())));
     put("facts", event.facts.as_ref().map(facts_repr));
@@ -718,8 +714,6 @@ mod tests {
         let mut event = Event::default();
         set_event_attribute(&mut event, "action_ids= a, ,b").ok().unwrap();
         assert_eq!(event.action_ids, Some(crate::testing::shares(&["a", "b"])));
-        set_event_attribute(&mut event, "is_end_of_day_sleep=Yes").ok().unwrap();
-        assert_eq!(event.is_end_of_day_sleep, Some(true));
         set_event_attribute(&mut event, "start=2026-01-01T09:00:00Z").ok().unwrap();
         assert_eq!(str_datetime(&event.start.unwrap()), "2026-01-01 09:00:00+00:00");
         assert!(set_event_attribute(&mut event, "start=2026-01-01T09:00:00").is_err());

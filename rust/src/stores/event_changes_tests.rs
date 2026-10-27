@@ -14,7 +14,7 @@ fn day() -> Vec<Event> {
         event_at("11:30-12:30").id("gym").summary("Gym").build(),
         event_at("12:30-13:15").id("lunch").summary("Lunch").build(),
         event_at("13:15-13:30").id("call").summary("Call").build(),
-        event_at("23:00-07:00+1").id("s1").summary("Sleep").sleep().build(),
+        event_at("23:00-07:00+1").id("s1").summary("Sleep").build(),
     ]
 }
 
@@ -125,7 +125,7 @@ fn a_move_into_another_event_is_refused_with_everything_to_fix_it_at_once() {
     // The stretch it touches, through the night, as it would leave it.
     assert!(message.contains("  11:30–12:15  Lunch *  lunch"), "{message}");
     assert!(message.contains("  13:15–13:30  Call  call"), "{message}");
-    assert!(message.contains("  23:00–07:00  Sleep  s1  (end of day)"), "{message}");
+    assert!(message.contains("  23:00–07:00  Sleep  s1"), "{message}");
     assert_eq!(error.categories, vec!["overlap".to_string()]);
     assert_eq!(f.writes(), 0);
 }

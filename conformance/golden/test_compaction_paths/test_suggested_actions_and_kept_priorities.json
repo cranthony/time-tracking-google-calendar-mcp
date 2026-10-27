@@ -144,7 +144,6 @@
       "goals": null,
       "id": "b9e1e9b068c94af0129d20f775",
       "is_cancelled": false,
-      "is_end_of_day_sleep": null,
       "judgments": null,
       "location": null,
       "priority": null,
@@ -169,7 +168,6 @@
       "goals": null,
       "id": "3bc8a594c0be6dfabc4993e74e",
       "is_cancelled": false,
-      "is_end_of_day_sleep": null,
       "judgments": null,
       "location": null,
       "priority": null,
@@ -181,7 +179,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b9e1e9b068c94af0129d20f775\",\n      \"summary\": \"Breakfast\",\n      \"start\": \"2026-10-04T07:00:00-04:00\",\n      \"end\": \"2026-10-04T07:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 1,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000093\\\"\"\n    },\n    {\n      \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n      \"summary\": \"Work\",\n      \"start\": \"2026-10-05T08:00:00-04:00\",\n      \"end\": \"2026-10-05T12:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"a0g0jc\"\n      ],\n      \"action_names\": [\n        \"do work\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 3,\n      \"is_end_of_day_sleep\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000094\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b9e1e9b068c94af0129d20f775\",\n      \"summary\": \"Breakfast\",\n      \"start\": \"2026-10-04T07:00:00-04:00\",\n      \"end\": \"2026-10-04T07:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 1,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000093\\\"\"\n    },\n    {\n      \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n      \"summary\": \"Work\",\n      \"start\": \"2026-10-05T08:00:00-04:00\",\n      \"end\": \"2026-10-05T12:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"a0g0jc\"\n      ],\n      \"action_names\": [\n        \"do work\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 3,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000094\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -1519,7 +1517,6 @@
     "goals": null,
     "id": "3bc8a594c0be6dfabc4993e74e",
     "is_cancelled": false,
-    "is_end_of_day_sleep": null,
     "judgments": null,
     "location": null,
     "priority": 3,
@@ -1528,7 +1525,7 @@
     "summary": "Work"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n  \"summary\": \"Work\",\n  \"start\": \"2026-10-05T08:00:00-04:00\",\n  \"end\": \"2026-10-05T12:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": 3,\n  \"action_ids\": [\n    \"a0g0jc\"\n  ],\n  \"action_names\": [\n    \"do work\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 3,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000104\\\"\"\n}",
+   "text": "{\n  \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n  \"summary\": \"Work\",\n  \"start\": \"2026-10-05T08:00:00-04:00\",\n  \"end\": \"2026-10-05T12:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": 3,\n  \"action_ids\": [\n    \"a0g0jc\"\n  ],\n  \"action_names\": [\n    \"do work\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"ffde1615-6d47-5736-847f-9a518a5ead09\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 3,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000104\\\"\"\n}",
    "tool": "get_event"
   }
  ],
@@ -4058,11 +4055,6 @@
        "dateTime": "2026-10-08T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "87255f0fd683a5a8618e32577d@google.com",
       "id": "87255f0fd683a5a8618e32577d",
       "kind": "calendar#event",
@@ -4092,11 +4084,6 @@
       "end": {
        "dateTime": "2026-10-06T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "983cc1ee90e3562d53bf2811fa@google.com",
       "id": "983cc1ee90e3562d53bf2811fa",
@@ -4143,11 +4130,6 @@
        "dateTime": "2026-10-07T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "afaf1b5f5b5363588c57736ee3@google.com",
       "id": "afaf1b5f5b5363588c57736ee3",
       "kind": "calendar#event",
@@ -4162,11 +4144,6 @@
       "end": {
        "dateTime": "2026-10-05T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "b0beb355f2460d88416e307a4a@google.com",
       "id": "b0beb355f2460d88416e307a4a",

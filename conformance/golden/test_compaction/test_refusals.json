@@ -662,9 +662,9 @@
      }
     ]
    },
-   "content": "Error executing tool compact_notes: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Breakfast' (07:00–08:30, as asked) overlaps 'Work' (08:00–12:00).\n\nThe calendar from Sun 04 Oct 22:30 to Wed 07 Oct 17:00, as this batch would leave it (* = in this batch):\n  22:30–06:30  Sleep  b0beb355f2460d88416e307a4a  (end of day)\n  07:00–08:30  Breakfast *  d820ae0f22570a19812dcb76c2\n  08:00–12:00  Work  3bc8a594c0be6dfabc4993e74e\n  12:00–13:00  Lunch  c5aefcb1a0e717b26c9d3d4839\n  13:00–17:00  Afternoon work  2a2bbdacdbfc08240bd7b31473\n  18:00–19:00  Dinner  f43e48437258cfca35d17613c4\n  22:30–06:30  Sleep  983cc1ee90e3562d53bf2811fa  (end of day)\n  07:00–07:30  Breakfast  80ef6e6b3e64378a65837bc042\n  08:00–12:00  Work  95245adbc9680701fe3defce4d\n  12:00–13:00  Lunch  ce6e21fbbbbbae2bda5a8a102b\n  13:00–17:00  Afternoon work  ee7f6f96ac6a86131c31dc7199\n  18:00–19:00  Dinner  a3ed657f83d6a4bc6c3589c096\n  22:30–06:30  Sleep  afaf1b5f5b5363588c57736ee3  (end of day)\n  07:00–07:30  Breakfast  a85f2d467494a9d0220c19d15f\n  08:00–12:00  Work  f8bd16c38f3a1abffb065946d7\n  12:00–13:00  Lunch  05fc5d4746a5de646b6c1f42ef\n  13:00–17:00  Afternoon work  23a1388e7f1d12ac272a90633f",
+   "content": "Error executing tool compact_notes: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Breakfast' (07:00–08:30, as asked) overlaps 'Work' (08:00–12:00).\n\nThe calendar from Sun 04 Oct 22:30 to Wed 07 Oct 17:00, as this batch would leave it (* = in this batch):\n  22:30–06:30  Sleep  b0beb355f2460d88416e307a4a\n  07:00–08:30  Breakfast *  d820ae0f22570a19812dcb76c2\n  08:00–12:00  Work  3bc8a594c0be6dfabc4993e74e\n  12:00–13:00  Lunch  c5aefcb1a0e717b26c9d3d4839\n  13:00–17:00  Afternoon work  2a2bbdacdbfc08240bd7b31473\n  18:00–19:00  Dinner  f43e48437258cfca35d17613c4\n  22:30–06:30  Sleep  983cc1ee90e3562d53bf2811fa\n  07:00–07:30  Breakfast  80ef6e6b3e64378a65837bc042\n  08:00–12:00  Work  95245adbc9680701fe3defce4d\n  12:00–13:00  Lunch  ce6e21fbbbbbae2bda5a8a102b\n  13:00–17:00  Afternoon work  ee7f6f96ac6a86131c31dc7199\n  18:00–19:00  Dinner  a3ed657f83d6a4bc6c3589c096\n  22:30–06:30  Sleep  afaf1b5f5b5363588c57736ee3\n  07:00–07:30  Breakfast  a85f2d467494a9d0220c19d15f\n  08:00–12:00  Work  f8bd16c38f3a1abffb065946d7\n  12:00–13:00  Lunch  05fc5d4746a5de646b6c1f42ef\n  13:00–17:00  Afternoon work  23a1388e7f1d12ac272a90633f",
    "is_error": true,
-   "text": "Error executing tool compact_notes: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Breakfast' (07:00–08:30, as asked) overlaps 'Work' (08:00–12:00).\n\nThe calendar from Sun 04 Oct 22:30 to Wed 07 Oct 17:00, as this batch would leave it (* = in this batch):\n  22:30–06:30  Sleep  b0beb355f2460d88416e307a4a  (end of day)\n  07:00–08:30  Breakfast *  d820ae0f22570a19812dcb76c2\n  08:00–12:00  Work  3bc8a594c0be6dfabc4993e74e\n  12:00–13:00  Lunch  c5aefcb1a0e717b26c9d3d4839\n  13:00–17:00  Afternoon work  2a2bbdacdbfc08240bd7b31473\n  18:00–19:00  Dinner  f43e48437258cfca35d17613c4\n  22:30–06:30  Sleep  983cc1ee90e3562d53bf2811fa  (end of day)\n  07:00–07:30  Breakfast  80ef6e6b3e64378a65837bc042\n  08:00–12:00  Work  95245adbc9680701fe3defce4d\n  12:00–13:00  Lunch  ce6e21fbbbbbae2bda5a8a102b\n  13:00–17:00  Afternoon work  ee7f6f96ac6a86131c31dc7199\n  18:00–19:00  Dinner  a3ed657f83d6a4bc6c3589c096\n  22:30–06:30  Sleep  afaf1b5f5b5363588c57736ee3  (end of day)\n  07:00–07:30  Breakfast  a85f2d467494a9d0220c19d15f\n  08:00–12:00  Work  f8bd16c38f3a1abffb065946d7\n  12:00–13:00  Lunch  05fc5d4746a5de646b6c1f42ef\n  13:00–17:00  Afternoon work  23a1388e7f1d12ac272a90633f",
+   "text": "Error executing tool compact_notes: Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.\n\nProblems:\n- 'Breakfast' (07:00–08:30, as asked) overlaps 'Work' (08:00–12:00).\n\nThe calendar from Sun 04 Oct 22:30 to Wed 07 Oct 17:00, as this batch would leave it (* = in this batch):\n  22:30–06:30  Sleep  b0beb355f2460d88416e307a4a\n  07:00–08:30  Breakfast *  d820ae0f22570a19812dcb76c2\n  08:00–12:00  Work  3bc8a594c0be6dfabc4993e74e\n  12:00–13:00  Lunch  c5aefcb1a0e717b26c9d3d4839\n  13:00–17:00  Afternoon work  2a2bbdacdbfc08240bd7b31473\n  18:00–19:00  Dinner  f43e48437258cfca35d17613c4\n  22:30–06:30  Sleep  983cc1ee90e3562d53bf2811fa\n  07:00–07:30  Breakfast  80ef6e6b3e64378a65837bc042\n  08:00–12:00  Work  95245adbc9680701fe3defce4d\n  12:00–13:00  Lunch  ce6e21fbbbbbae2bda5a8a102b\n  13:00–17:00  Afternoon work  ee7f6f96ac6a86131c31dc7199\n  18:00–19:00  Dinner  a3ed657f83d6a4bc6c3589c096\n  22:30–06:30  Sleep  afaf1b5f5b5363588c57736ee3\n  07:00–07:30  Breakfast  a85f2d467494a9d0220c19d15f\n  08:00–12:00  Work  f8bd16c38f3a1abffb065946d7\n  12:00–13:00  Lunch  05fc5d4746a5de646b6c1f42ef\n  13:00–17:00  Afternoon work  23a1388e7f1d12ac272a90633f",
    "tool": "compact_notes"
   },
   {
@@ -3428,11 +3428,6 @@
        "dateTime": "2026-10-08T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "87255f0fd683a5a8618e32577d@google.com",
       "id": "87255f0fd683a5a8618e32577d",
       "kind": "calendar#event",
@@ -3462,11 +3457,6 @@
       "end": {
        "dateTime": "2026-10-06T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "983cc1ee90e3562d53bf2811fa@google.com",
       "id": "983cc1ee90e3562d53bf2811fa",
@@ -3513,11 +3503,6 @@
        "dateTime": "2026-10-07T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "afaf1b5f5b5363588c57736ee3@google.com",
       "id": "afaf1b5f5b5363588c57736ee3",
       "kind": "calendar#event",
@@ -3532,11 +3517,6 @@
       "end": {
        "dateTime": "2026-10-05T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "b0beb355f2460d88416e307a4a@google.com",
       "id": "b0beb355f2460d88416e307a4a",

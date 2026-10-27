@@ -3580,7 +3580,6 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 facts: state.facts.as_ref().map(|f| facts_from_dict(Some(f))),
                 decided_by: decided_by.get(&id).cloned(),
                 history_until: day.history_until.filter(|h| event.start() < *h).map(|h| event.end().min(h)),
-                is_end_of_day_sleep: event.is_end_of_day_sleep == Some(true),
                 revisited: day.revisits.contains(&id),
             };
             match out.iter_mut().find(|(k, _)| *k == id) {

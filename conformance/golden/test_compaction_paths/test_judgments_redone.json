@@ -1746,7 +1746,6 @@
     "goals": null,
     "id": "c5aefcb1a0e717b26c9d3d4839",
     "is_cancelled": false,
-    "is_end_of_day_sleep": null,
     "judgments": {
      "co2yzn": {
       "adventurous": {
@@ -1830,7 +1829,7 @@
     "summary": "Lunch"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"is_end_of_day_sleep\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"co2yzn\": \"laughed a lot\"\n    },\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 0,\n          \"scale\": 3,\n          \"reasoning\": \"on second thought\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    },\n    \"co2yzn\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    }\n  },\n  \"etag\": \"\\\"0000000000000085\\\"\"\n}",
+   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"co2yzn\": \"laughed a lot\"\n    },\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 0,\n          \"scale\": 3,\n          \"reasoning\": \"on second thought\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    },\n    \"co2yzn\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"close and warm\"\n        }\n      },\n      \"close\": {\n        \"3dnjav\": {\n          \"rating\": 1,\n          \"scale\": 1,\n          \"reasoning\": \"close and warm\"\n        }\n      }\n    }\n  },\n  \"etag\": \"\\\"0000000000000085\\\"\"\n}",
    "tool": "get_event"
   }
  ],
@@ -4247,11 +4246,6 @@
        "dateTime": "2026-10-08T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "87255f0fd683a5a8618e32577d@google.com",
       "id": "87255f0fd683a5a8618e32577d",
       "kind": "calendar#event",
@@ -4281,11 +4275,6 @@
       "end": {
        "dateTime": "2026-10-06T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "983cc1ee90e3562d53bf2811fa@google.com",
       "id": "983cc1ee90e3562d53bf2811fa",
@@ -4332,11 +4321,6 @@
        "dateTime": "2026-10-07T06:30:00",
        "timeZone": "America/New_York"
       },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
-      },
       "iCalUID": "afaf1b5f5b5363588c57736ee3@google.com",
       "id": "afaf1b5f5b5363588c57736ee3",
       "kind": "calendar#event",
@@ -4351,11 +4335,6 @@
       "end": {
        "dateTime": "2026-10-05T06:30:00",
        "timeZone": "America/New_York"
-      },
-      "extendedProperties": {
-       "private": {
-        "cascading-time-tracker-is_end_of_day_sleep": "true"
-       }
       },
       "iCalUID": "b0beb355f2460d88416e307a4a@google.com",
       "id": "b0beb355f2460d88416e307a4a",

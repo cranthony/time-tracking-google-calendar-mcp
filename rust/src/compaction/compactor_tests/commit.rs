@@ -251,7 +251,7 @@ fn a_later_days_notes_are_compacted_with_the_earlier_days() {
 fn the_next_days_compaction_window_starts_where_the_last_one_left_off() {
     let events = vec![
         event_at("09:00-10:00").id("e1").summary("Email").priority(2).build(),
-        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
         event_at("07:00+1-07:30+1").id("gr1").summary("Getting Ready").priority(2).build(),
     ];
     let setup = Setup::new(&[("09:05", "email")], Some(events), "07:10+1");
@@ -279,7 +279,7 @@ fn the_requests_a_compaction_of_many_events_and_notes_makes() {
     // too, so only the first step reads it (a sync).
     let at = |minutes: usize| format!("{:02}:{:02}", 8 + minutes / 60, minutes % 60);
     let mut events: Vec<Event> = (0..6).map(|i| event_at(&format!("{}-{}", at(30 * i), at(30 * i + 30))).id(&format!("w{i}")).summary("Work").priority(2).build()).collect();
-    events.push(event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build());
+    events.push(event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build());
     let times: Vec<String> = (0..7).map(|i| at(30 * i + 5)).collect();
     let notes: Vec<(&str, &str)> = times.iter().map(|time| (time.as_str(), "working")).collect();
     let setup = Setup::new(&notes, Some(events), &at(200));

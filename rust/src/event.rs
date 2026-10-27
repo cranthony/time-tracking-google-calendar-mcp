@@ -84,7 +84,6 @@ pub struct Event {
     pub time_zone: Option<String>,
     pub original_start: Option<Moment>,
     pub priority: Option<i64>,
-    pub is_end_of_day_sleep: Option<bool>,
     pub event_label_id: Option<String>,
     /// Its actions, the first setting its color, and how much of it each
     /// takes.
@@ -167,9 +166,6 @@ impl Event {
         let mut event = Event::default();
         if let Some(raw) = prop("priority") {
             event.priority = Some(python_int(raw).ok_or_else(|| anyhow!("invalid literal for int() with base 10: {}", py::repr(raw)))?);
-        }
-        if let Some(raw) = prop("is_end_of_day_sleep") {
-            event.is_end_of_day_sleep = Some(raw.to_lowercase() == "true");
         }
         if let Some(raw) = prop("action_ids") {
             event.action_ids = Some(parse_shares(raw));
@@ -254,9 +250,6 @@ impl Event {
         };
         if let Some(priority) = self.priority {
             set(&mut private, format!("{PREFIX}priority"), Some(priority.to_string()));
-        }
-        if let Some(sleep) = self.is_end_of_day_sleep {
-            set(&mut private, format!("{PREFIX}is_end_of_day_sleep"), Some(if sleep { "true" } else { "false" }.into()));
         }
         if let Some(ids) = &self.action_ids {
             set(&mut private, format!("{PREFIX}action_ids"), Some(shares_text(ids)));

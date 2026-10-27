@@ -44,7 +44,7 @@ pub fn day() -> Vec<Event> {
         event_at("09:00-10:00").id("e1").summary("Email").priority(2).build(),
         event_at("10:00-11:00").id("e2").summary("Report").priority(2).build(),
         event_at("12:00-13:00").id("e3").summary("Lunch").priority(1).build(),
-        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
     ]
 }
 

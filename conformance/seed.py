@@ -1,6 +1,5 @@
 """Calendars as a user's would be before a scenario starts: a few days of
-planned events, each day ending in a sleep marked as the day's end (which
-only calendar_cli.py sets, so it's seeded here)."""
+planned events, each day ending in a night's sleep."""
 
 from __future__ import annotations
 
@@ -9,7 +8,6 @@ from datetime import date, timedelta
 from conformance.fake_google import FakeGoogle
 
 ZONE = "America/New_York"
-SLEEP_KEY = "cascading-time-tracker-is_end_of_day_sleep"
 
 
 def local(day: date, hhmm: str) -> str:
@@ -17,15 +15,13 @@ def local(day: date, hhmm: str) -> str:
     return f"{day.isoformat()}T{hhmm}:00"
 
 
-def event(google: FakeGoogle, calendar_id: str, day: date, start: str, end: str, summary: str, *, end_day: date | None = None, sleep: bool = False, **fields) -> str:
+def event(google: FakeGoogle, calendar_id: str, day: date, start: str, end: str, summary: str, *, end_day: date | None = None, **fields) -> str:
     body = {
         "summary": summary,
         "start": {"dateTime": local(day, start), "timeZone": ZONE},
         "end": {"dateTime": local(end_day or day, end), "timeZone": ZONE},
         **fields,
     }
-    if sleep:
-        body.setdefault("extendedProperties", {}).setdefault("private", {})[SLEEP_KEY] = "true"
     return google.add_event(calendar_id, body)
 
 
@@ -42,6 +38,6 @@ def planned_days(google: FakeGoogle, calendar_id: str, first: date, days: int) -
             "Lunch": event(google, calendar_id, day, "12:00", "13:00", "Lunch"),
             "Afternoon work": event(google, calendar_id, day, "13:00", "17:00", "Afternoon work"),
             "Dinner": event(google, calendar_id, day, "18:00", "19:00", "Dinner"),
-            "Sleep": event(google, calendar_id, day, "22:30", "06:30", "Sleep", end_day=day + timedelta(days=1), sleep=True),
+            "Sleep": event(google, calendar_id, day, "22:30", "06:30", "Sleep", end_day=day + timedelta(days=1)),
         }
     return ids

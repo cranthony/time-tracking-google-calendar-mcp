@@ -74,7 +74,7 @@ fn from_api_parses_fields() {
     assert_eq!(event.start, Some(at("2026-01-01T09:00:00+00:00")));
     assert_eq!(event.end, Some(at("2026-01-01T10:00:00+00:00")));
     assert_eq!((event.description, event.location, event.status, event.recurring_event_id), (None, None, None, None));
-    assert_eq!((event.priority, event.is_end_of_day_sleep, event.event_label_id), (None, None, None));
+    assert_eq!((event.priority, event.event_label_id), (None, None));
 }
 
 #[test]
@@ -160,19 +160,28 @@ fn from_api_extracts_app_properties() {
     let data = with(
         plain(),
         "extendedProperties",
-        json!({"private": {"cascading-time-tracker-priority": "2", "cascading-time-tracker-is_end_of_day_sleep": "true"}}),
+        json!({"private": {"cascading-time-tracker-priority": "2"}}),
     );
 
     let event = read(data);
 
-    assert_eq!((event.priority, event.is_end_of_day_sleep), (Some(2), Some(true)));
+    assert_eq!(event.priority, Some(2));
+}
+
+#[test]
+fn from_api_ignores_the_old_end_of_day_sleep_mark() {
+    // Once set by hand to end compaction's days; now inert on the events
+    // that still have it.
+    let data = with(plain(), "extendedProperties", json!({"private": {"cascading-time-tracker-is_end_of_day_sleep": "true"}}));
+
+    assert_eq!(read(data), read(plain()));
 }
 
 #[test]
 fn from_api_ignores_other_private_keys() {
     let event = read(with(plain(), "extendedProperties", json!({"private": {"someOtherApp-key": "value"}})));
 
-    assert_eq!((event.priority, event.is_end_of_day_sleep), (None, None));
+    assert_eq!(event.priority, None);
 }
 
 #[test]
@@ -235,11 +244,11 @@ fn to_api_body_includes_what_is_set() {
 
 #[test]
 fn to_api_body_includes_app_properties_when_present() {
-    let sent = body(Event { priority: Some(2), is_end_of_day_sleep: Some(true), ..focus() });
+    let sent = body(Event { priority: Some(2), action_ids: Some(crate::testing::shares(&["a"])), ..focus() });
 
     assert_eq!(
         sent["extendedProperties"],
-        json!({"private": {"cascading-time-tracker-priority": "2", "cascading-time-tracker-is_end_of_day_sleep": "true"}})
+        json!({"private": {"cascading-time-tracker-priority": "2", "cascading-time-tracker-action_ids": "a"}})
     );
     assert_eq!(body(Event { priority: Some(1), ..focus() })["extendedProperties"], json!({"private": {"cascading-time-tracker-priority": "1"}}));
 }
@@ -368,11 +377,11 @@ fn facts_that_arent_json_read_as_none() {
 
 #[test]
 fn to_api_body_clears_some_app_properties_while_setting_others() {
-    let sent = body(Event { id: Some("abc123".into()), is_end_of_day_sleep: Some(true), cleared: cleared(&["location"]), ..Default::default() });
+    let sent = body(Event { id: Some("abc123".into()), priority: Some(2), cleared: cleared(&["location"]), ..Default::default() });
 
     assert!(!sent.contains_key("colorId"));
     assert_eq!(sent["location"], Value::Null);
-    assert_eq!(sent["extendedProperties"], json!({"private": {"cascading-time-tracker-is_end_of_day_sleep": "true"}}));
+    assert_eq!(sent["extendedProperties"], json!({"private": {"cascading-time-tracker-priority": "2"}}));
 }
 
 #[test]

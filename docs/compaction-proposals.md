@@ -196,7 +196,7 @@ as it is now:
   `location`, `priority`, `action_ids`, `facts`, `status` (`on_schedule`, `adjusted`, `new`,
   `cancelled`, `merged`, `planned` -- the future, untouched),
   `planned_start`/`planned_end`, `decided_by` (`claude`, `user` or
-  none), `history_until`, `is_end_of_day_sleep`, `revisited` (only
+  none), `history_until`, `revisited` (only
   when true: a settled event revisited for a historical note), and for a cancelled
   one `counts_against_follow_through` and `follow_through` (who it
   counts against; to flip it, cancel it again). `None`, with `problem`
