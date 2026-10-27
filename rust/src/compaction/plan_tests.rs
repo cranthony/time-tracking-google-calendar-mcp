@@ -1131,7 +1131,10 @@ fn flags_what_each_past_event_is_missing() {
     assert_eq!(missing("e1"), Vec::<String>::new());
     assert_eq!(missing("e2"), strings(&["location"]));
     assert_eq!(missing("e3"), strings(&["action", "location"]));
-    assert_eq!(missing("e4"), Vec::<String>::new());
+    // Review, at 14:00, hasn't happened: its facts aren't recorded, so
+    // nothing changes it.
+    assert!(!timeline.events.iter().any(|e| e.event_id.as_deref() == Some("e4")));
+    assert!(!plan.changes.iter().any(|c| c.event_id.as_deref() == Some("e4")));
     let text = timeline.text;
     assert!(text.contains("├ Report\n          ◇ Email\n          ⚠ no location\n"), "{text}");
     assert!(text.contains("Missing:\n  ⚠ Report: location\n  ⚠ Lunch: action, location\n"), "{text}");

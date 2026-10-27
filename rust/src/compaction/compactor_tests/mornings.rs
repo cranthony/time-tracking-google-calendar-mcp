@@ -68,6 +68,60 @@ fn what_it_doesnt_reach_is_still_outside() {
     );
 }
 
+// -- moving past the span ------------------------------------------------------------
+// A decision that moves one of the span's events past its last night takes
+// in what it lands among, for the decisions to make room -- and where they
+// move those to, in turn.
+
+fn reading_tomorrow() -> EventDecision {
+    EventDecision { start: Some(time_at("09:15+1")), end: Some(time_at("10:15+1")), ..keep("e1") }
+}
+
+#[test]
+fn a_move_past_the_span_takes_in_what_it_lands_on() {
+    let setup = night_setup();
+
+    refused(setup.try_dry_run(vec![reading_tomorrow()], DryRun::default()), "(?s)'Reading'.*overlaps 'Work'|(?s)'Work'.*overlaps 'Reading'");
+}
+
+#[test]
+fn what_it_lands_on_can_be_moved_aside() {
+    let setup = night_setup();
+
+    let planned = setup.dry_run(vec![reading_tomorrow(), EventDecision { start: Some(time_at("10:15+1")), ..keep("w1") }]);
+
+    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().start, Some(time_at("09:15+1")));
+    assert_eq!(change(&planned, "w1").after.as_ref().unwrap().start, Some(time_at("10:15+1")));
+    // The next night, it doesn't reach.
+    assert!(!planned.changes.iter().any(|c| c.event_id.as_deref() == Some("s2")));
+    let id = planned.compaction_id.unwrap();
+    assert_eq!(setup.commit(&id).status, "applied");
+    assert_eq!(setup.event("w1").start, Some(time_at("10:15+1")));
+}
+
+#[test]
+fn where_it_moves_them_takes_in_what_is_there() {
+    let setup = night_setup();
+
+    refused(
+        setup.try_dry_run(
+            vec![reading_tomorrow(), EventDecision { start: Some(time_at("21:30+1")), end: Some(time_at("23:00+1")), ..keep("w1") }],
+            DryRun::default(),
+        ),
+        "(?s)'Work'.*overlaps 'Sleep'|(?s)'Sleep'.*overlaps 'Work'",
+    );
+}
+
+#[test]
+fn a_move_past_the_span_takes_no_facts_there() {
+    let setup = night_setup();
+
+    let planned =
+        setup.dry_run(vec![EventDecision { facts: Some(crate::testing::facts(json!({"notes": {"self": "a good chapter"}}))), ..reading_tomorrow() }, cancel("w1")]);
+
+    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().facts, None);
+}
+
 // -- sleeping in --------------------------------------------------------------------
 // The event that ended just before the compaction window -- here, last
 // night's sleep -- is offered with it, so a late wake-up can extend it.

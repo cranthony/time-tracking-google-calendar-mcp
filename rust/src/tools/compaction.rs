@@ -1706,6 +1706,12 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// recorded -- unless allow_compacted_changes is set: ONLY set it when the
 /// user has explicitly approved changing history. It's kept with these
 /// edits, so later revisions keep to it. Nothing is moved to make room.
+/// An update or create that puts an event past the proposal's last night
+/// takes in the events it lands among -- and, where those are moved, the
+/// ones there -- as the proposal's, so move them aside in the same call;
+/// what nothing reaches stays outside. An event that starts after now
+/// hasn't happened: it records no facts (one moved there loses those it
+/// had, and its judgments), and isn't judged.
 #[tool(writes)]
 pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Option<Vec<ProposalUpdate>>, creates: Option<Vec<ProposalCreate>>, cancels: Option<Vec<EventCancel>>, as_planned: Option<Vec<String>>, notes: Option<Vec<NoteEdit>>, additions: Option<Vec<AdditionChoice>>, through: Option<DateTimeText>, #[schema(default = "false")] allow_compacted_changes: bool, goal_changes: Option<Vec<GoalChangeChoice>>) -> Result<Proposal, ToolError> {
     let compactor = compactor(app)?;

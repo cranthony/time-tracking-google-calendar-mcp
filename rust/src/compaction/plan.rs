@@ -419,6 +419,12 @@ pub fn plan_compaction(
         return Err(error_of(&problems, "malformed_decision"));
     }
     let (mut facts, cancels, merged_into, touched) = resolved;
+    // What hasn't happened yet has no facts to record: one that starts
+    // after now keeps those the calendar has for it, if it hadn't started
+    // either, and loses any it had -- moved there from the past.
+    for fact in facts.iter_mut().filter(|f| !f.default && f.event.start() >= now) {
+        fact.event.facts = fact.base.as_ref().filter(|b| b.start() >= now).and_then(|b| b.facts.clone());
+    }
 
     let decided_ids: Vec<String> = facts
         .iter()
@@ -459,7 +465,7 @@ pub fn plan_compaction(
         if let Some(ids) = &decision.action_ids {
             copy.action_ids = Some(ids.clone());
         }
-        if let Some(f) = &decision.facts {
+        if let Some(f) = decision.facts.as_ref().filter(|_| copy.start() < now) {
             copy.facts = Some(f.clone());
         }
         set_fields(copy, decision);

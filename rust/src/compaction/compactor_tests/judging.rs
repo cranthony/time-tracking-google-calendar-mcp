@@ -45,6 +45,83 @@ fn judgments_of(setup: &Setup, event_id: &str) -> Value {
     Value::Object(setup.event(event_id).judgments.unwrap_or_default())
 }
 
+// -- only the past is judged -------------------------------------------------------
+// An event moved to after now hasn't happened yet: it has no facts to
+// record, nor judgments.
+
+fn email_after_lunch() -> EventDecision {
+    EventDecision { start: Some(time_at("13:00")), end: Some(time_at("14:00")), ..keep("e1") }
+}
+
+#[test]
+fn an_event_moved_after_now_isnt_judged() {
+    let setup = judged(sam(), vec![heard()]);
+
+    let planned = setup.dry_run(vec![EventDecision { facts: Some(facts(json!({"with": ["sam"]}))), ..email_after_lunch() }]);
+    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().facts, None);
+    let applied = setup.commit(&planned.compaction_id.unwrap());
+
+    assert!(applied.judgments.is_none());
+    assert!(setup.event("e1").facts.is_none_or(|f| f.is_empty()));
+}
+
+#[test]
+fn one_moved_after_now_loses_the_facts_and_judgments_it_had() {
+    let mut email = event_at("09:00-10:00").id("e1").summary("Email").priority(2).facts(facts(json!({"with": ["sam"]}))).build();
+    email.judgments = json!({"sam": {"heard/judgment": {"rating": 1}}}).as_object().cloned();
+    let events = vec![email, event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).sleep().build()];
+    let setup = Setup::with(&[("09:05", "email")], Some(events), "11:30", Stores { people: sam(), traits: Some(vec![heard()]), ..Default::default() });
+
+    let id = setup.dry_run(vec![email_after_lunch()]).compaction_id.unwrap();
+    let applied = setup.commit(&id);
+
+    assert!(applied.judgments.is_none());
+    let email = setup.event("e1");
+    assert!(email.facts.is_none_or(|f| f.is_empty()));
+    assert!(email.judgments.is_none_or(|j| j.is_empty()));
+}
+
+#[test]
+fn a_step_that_starts_after_its_now_isnt_judged() {
+    let step = |n: i64, at: &str| JournalStep {
+        step: n,
+        action: "update".into(),
+        event_id: Some(format!("e{n}")),
+        before: None,
+        after: Some(EventState {
+            start: Some(time_at(&at[..5])),
+            end: Some(time_at(&at[6..])),
+            facts: Some(json!({"with": ["sam"]})),
+            ..Default::default()
+        }),
+        status: "done".into(),
+        reason: String::new(),
+        row: n,
+        key: None,
+    };
+    let day = crate::stores::journal::JournalCompaction {
+        id: "c1".into(),
+        status: "applied".into(),
+        now: time_at("11:30"),
+        note_ids: Vec::new(),
+        warnings: Vec::new(),
+        decisions: Vec::new(),
+        ignore_notes: Vec::new(),
+        steps: vec![step(1, "09:00-10:00"), step(2, "11:00-12:00"), step(3, "13:00-14:00")],
+        note_targets: Vec::new(),
+        revisits: Vec::new(),
+        row: 1,
+        batch: None,
+        day: 1,
+        additions: Map::new(),
+        proposal: None,
+        revision: 0,
+        meta: None,
+    };
+
+    assert_eq!(judged_events(&[day]).0, strings(&["e1", "e2"]));
+}
+
 // -- judgments ------------------------------------------------------------------------
 // Once its facts are written, a compaction's events are judged, and it
 // isn't complete until they are.
