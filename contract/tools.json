@@ -15065,7 +15065,7 @@
     }
   },
   {
-    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nA priority (0 the most, as actions'; optional) says how much it\nmatters: without one, a goal takes its nearest parent's that has one,\nand with none up its tree it's treated as 3. sort_order (optional)\nis the user's own order among goals that otherwise list alike (the\nsame priority, due the same day): the lowest first, those without one\nafter them; leave it as it is unless asked to reorder goals.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline -- {at: \"2026-11-01\"} (due at the end of that\nday) or {at: \"2026-11-01T17:00\"}, in the calendar's time zone; or\nmeasured from something, and kept so while it's open: {before_parent:\n{days | minutes}} (that far before its parent's; moving it to the top\nlevel unties it), {after_start: {days | minutes}} (after it becomes\nactive: days, the end of that many days after the day it started) or\n{after_goal: {id, days | minutes}} (after another goal's) -- and due,\nwhen that falls (\"2026-11-01\" or \"2026-11-01T17:00\"; none until one\nmeasured from its start starts). Every open goal needs a deadline,\nand an active one a due. An inactive goal can wait to be activated\n(activate_when): {after: [{goal_closed: id} (done, missed or\nobsolete) | {at: a date or a date and time}] -- every one -- then\ndelay: \"next_day\" (the start of the day after) or {minutes}, and\nhold_while: [{active_at_least: n, priority?: {at_or_above | exactly:\na priority or \"own\"}}] (held back while that many other goals of that\npriority are active, its own parents and sub-goals not counted)}.\nReady and not held, it's activated -- dated when it became ready --\nwith its inactive parents; activating it by hand ignores it, and\neither way it's cleared -- as it is when the goal is closed (done,\nmissed or obsolete) while it waits. expected_start is when one waiting is\nexpected to be: when what it waits for is due, then its delay; none\nwhile it's held, or what it waits for has no due yet. A status (inactive, active, done, missed -- its\ndeadline passed without it -- or obsolete) and its history (each change of\nstatus and when, oldest first, each with the deadline in force at\nthat change, if it had one, and a note, if one was left with it --\nwhy it was marked done, say; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete). A missed\ngoal can be reopened with a new deadline, and its history keeps each\ndeadline it missed, so a goal can be missed and retried any number\nof times. Then a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nwith_ids are the people it's done with (who the user works on it\nalongside) and for_ids those it's done for, who aren't part of doing\nit (a promise to them, a gift, a favor): person ids from get_people,\nnever \"self\", and no one in both -- or circles from get_circles: a\nplain circle's id for all its members, {circle_id, except: [person\nids]} for all but those, and a community's for the community itself.\nA plain circle's member can't be in one while their circle is in the\nother.\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal was\nopen (inactive or active) when the event started -- open now, or\nclosed_at after it started -- and the event clearly matches its\nattribution_hints, or with none its title -- never guess -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
+    "description": "The user's goals: outcomes they mean to reach and can mark done (not\nongoing practices -- those are habits). By default the inactive and\nactive ones, not done, missed or obsolete ones; every depth, each with its\nparent_id and path (its parents' titles, outermost first). A goal\ncan sit under another to any depth: a sub-goal is a piece of reaching\nits parent, and required says whether its parent needs it done.\nA priority (0 the most, as actions'; optional) says how much it\nmatters: without one, a goal takes its nearest parent's that has one,\nand with none up its tree it's treated as 3. A background_color\n(#rrggbb; optional) colors it in the app: without one, a goal takes\nits nearest parent's that has one, and with none up its tree, its\npriority's (see get_priority_colors); effective_color is its own or\nthe parent's it takes, none when it's its priority's. sort_order (optional)\nis the user's own order among goals that otherwise list alike (the\nsame priority, due the same day): the lowest first, those without one\nafter them; leave it as it is unless asked to reorder goals.\nEach has a title, an optional expected_minutes (how long it's\nexpected to take: a guide for comparing with the time spent, never\nenforced), a deadline -- {at: \"2026-11-01\"} (due at the end of that\nday) or {at: \"2026-11-01T17:00\"}, in the calendar's time zone; or\nmeasured from something, and kept so while it's open: {before_parent:\n{days | minutes}} (that far before its parent's; moving it to the top\nlevel unties it), {after_start: {days | minutes}} (after it becomes\nactive: days, the end of that many days after the day it started) or\n{after_goal: {id, days | minutes}} (after another goal's) -- and due,\nwhen that falls (\"2026-11-01\" or \"2026-11-01T17:00\"; none until one\nmeasured from its start starts). Every open goal needs a deadline,\nand an active one a due. An inactive goal can wait to be activated\n(activate_when): {after: [{goal_closed: id} (done, missed or\nobsolete) | {at: a date or a date and time}] -- every one -- then\ndelay: \"next_day\" (the start of the day after) or {minutes}, and\nhold_while: [{active_at_least: n, priority?: {at_or_above | exactly:\na priority or \"own\"}}] (held back while that many other goals of that\npriority are active, its own parents and sub-goals not counted)}.\nReady and not held, it's activated -- dated when it became ready --\nwith its inactive parents; activating it by hand ignores it, and\neither way it's cleared -- as it is when the goal is closed (done,\nmissed or obsolete) while it waits. expected_start is when one waiting is\nexpected to be: when what it waits for is due, then its delay; none\nwhile it's held, or what it waits for has no due yet. A status (inactive, active, done, missed -- its\ndeadline passed without it -- or obsolete) and its history (each change of\nstatus and when, oldest first, each with the deadline in force at\nthat change, if it had one, and a note, if one was left with it --\nwhy it was marked done, say; started_at is when it first became\nactive, closed_at when it was done, missed or made obsolete). A missed\ngoal can be reopened with a new deadline, and its history keeps each\ndeadline it missed, so a goal can be missed and retried any number\nof times. Then a description and definition_of_done (HTML), and\nattribution_hints (a guide for telling which events are for it).\nwith_ids are the people it's done with (who the user works on it\nalongside) and for_ids those it's done for, who aren't part of doing\nit (a promise to them, a gift, a favor): person ids from get_people,\nnever \"self\", and no one in both -- or circles from get_circles: a\nplain circle's id for all its members, {circle_id, except: [person\nids]} for all but those, and a community's for the community itself.\nA plain circle's member can't be in one while their circle is in the\nother.\nEvents are tagged with goals, apart from their actions (see\nlist_events' goals): tag an event with a goal only when the goal was\nopen (inactive or active) when the event started -- open now, or\nclosed_at after it started -- and the event clearly matches its\nattribution_hints, or with none its title -- never guess -- and\nwith the most specific goal that fits (a sub-goal rather than its\nparent). Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -15292,6 +15292,19 @@
             "priority": {
               "type": [
                 "integer",
+                "null"
+              ]
+            },
+            "background_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "effective_color": {
+              "description": "Its own color, or its nearest parent's that has one; none, it's\ncolored by the priority that applies (its own, or its nearest\nparent's, or 3: see get_priority_colors).",
+              "type": [
+                "string",
                 "null"
               ]
             },
@@ -15612,6 +15625,19 @@
         "priority": {
           "type": [
             "integer",
+            "null"
+          ]
+        },
+        "background_color": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effective_color": {
+          "description": "Its own color, or its nearest parent's that has one; none, it's\ncolored by the priority that applies (its own, or its nearest\nparent's, or 3: see get_priority_colors).",
+          "type": [
+            "string",
             "null"
           ]
         },
@@ -16047,7 +16073,7 @@
     }
   },
   {
-    "description": "Add a goal (see get_goals): a title, a deadline, and optionally\nparent_id (the goal it's a piece of), required, priority,\nexpected_minutes, activate_when, description, definition_of_done,\nattribution_hints, with_ids and for_ids. Active unless given a\nstatus; activating a goal activates its inactive parents. Its history\nstarts with its status, now, unless given one (to backdate it, say).\nA sub-goal can't be due after its parent, or be expected to take\nlonger, or be open (inactive or active) under a done, missed or\nobsolete one. A goal can't wait, through others, for itself, or for a\nparent to close, and a deadline can't be measured, through others,\nfrom its own. id is assigned\nunless given (a client's own, so it can name the goal before it's\nmade; the same create sent again gives the goal as it was made).\nReturns the goal and its id as created_id.",
+    "description": "Add a goal (see get_goals): a title, a deadline, and optionally\nparent_id (the goal it's a piece of), required, priority, background_color,\nexpected_minutes, activate_when, description, definition_of_done,\nattribution_hints, with_ids and for_ids. Active unless given a\nstatus; activating a goal activates its inactive parents. Its history\nstarts with its status, now, unless given one (to backdate it, say).\nA sub-goal can't be due after its parent, or be expected to take\nlonger, or be open (inactive or active) under a done, missed or\nobsolete one. A goal can't wait, through others, for itself, or for a\nparent to close, and a deadline can't be measured, through others,\nfrom its own. id is assigned\nunless given (a client's own, so it can name the goal before it's\nmade; the same create sent again gives the goal as it was made).\nReturns the goal and its id as created_id.",
     "inputSchema": {
       "properties": {
         "goal": {
@@ -16205,6 +16231,13 @@
               "description": "How much it matters, 0 the most, as actions' priorities; none, it\ntakes its nearest parent's that has one, and with none up its tree,\nit's treated as 3.",
               "type": [
                 "integer",
+                "null"
+              ]
+            },
+            "background_color": {
+              "description": "Its color, as \"#rrggbb\" (e.g. \"#a4bdfc\"); none, it takes its\nnearest parent's that has one, or else its priority's (see\nget_priority_colors).",
+              "type": [
+                "string",
                 "null"
               ]
             },
@@ -16703,6 +16736,19 @@
                 "null"
               ]
             },
+            "background_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "effective_color": {
+              "description": "Its own color, or its nearest parent's that has one; none, it's\ncolored by the priority that applies (its own, or its nearest\nparent's, or 3: see get_priority_colors).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "sort_order": {
               "type": [
                 "integer",
@@ -16988,6 +17034,7 @@
               "parent_id",
               "required",
               "priority",
+              "background_color",
               "sort_order",
               "expected_minutes",
               "deadline",
@@ -17163,6 +17210,13 @@
               "description": "How much it matters, 0 the most, as actions' priorities; none, it\ntakes its nearest parent's that has one, and with none up its tree,\nit's treated as 3.",
               "type": [
                 "integer",
+                "null"
+              ]
+            },
+            "background_color": {
+              "description": "Its color, as \"#rrggbb\" (e.g. \"#a4bdfc\"); none, it takes its\nnearest parent's that has one, or else its priority's (see\nget_priority_colors).",
+              "type": [
+                "string",
                 "null"
               ]
             },
@@ -17483,6 +17537,19 @@
         "priority": {
           "type": [
             "integer",
+            "null"
+          ]
+        },
+        "background_color": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effective_color": {
+          "description": "Its own color, or its nearest parent's that has one; none, it's\ncolored by the priority that applies (its own, or its nearest\nparent's, or 3: see get_priority_colors).",
+          "type": [
+            "string",
             "null"
           ]
         },
@@ -18151,6 +18218,19 @@
                 "null"
               ]
             },
+            "background_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "effective_color": {
+              "description": "Its own color, or its nearest parent's that has one; none, it's\ncolored by the priority that applies (its own, or its nearest\nparent's, or 3: see get_priority_colors).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "sort_order": {
               "type": [
                 "integer",
@@ -18624,6 +18704,13 @@
                 "null"
               ]
             },
+            "background_color": {
+              "description": "Its color, as \"#rrggbb\" (e.g. \"#a4bdfc\"); none, it takes its\nnearest parent's that has one, or else its priority's (see\nget_priority_colors).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "sort_order": {
               "description": "Where it's listed among goals that otherwise list alike (the same\npriority, due the same day): the lowest first, those without one\nafter them. The user's own order, set by dragging goals in the app.",
               "type": [
@@ -18790,6 +18877,7 @@
                   "parent_id",
                   "required",
                   "priority",
+                  "background_color",
                   "sort_order",
                   "expected_minutes",
                   "deadline",
@@ -19164,6 +19252,19 @@
             "priority": {
               "type": [
                 "integer",
+                "null"
+              ]
+            },
+            "background_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "effective_color": {
+              "description": "Its own color, or its nearest parent's that has one; none, it's\ncolored by the priority that applies (its own, or its nearest\nparent's, or 3: see get_priority_colors).",
+              "type": [
+                "string",
                 "null"
               ]
             },

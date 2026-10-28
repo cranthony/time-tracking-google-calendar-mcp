@@ -14,6 +14,7 @@ events have none.
 | `title` | |
 | `parent_id` | The goal it's a piece of, to any depth; none for a top-level goal. |
 | `required` | Whether its parent needs it done to be done. |
+| `background_color` | Optional. Its color, `#rrggbb`; without one, a goal takes its nearest parent's that has one, and with none up its tree, its priority's (`get_priority_colors`). `effective_color` (read-only) is its own or the parent's it takes, none when it's its priority's. |
 | `expected_minutes` | Optional. How long it's expected to take, compared with the time spent purely as a guide for estimating; never enforced. |
 | `deadline` | As set: `{at}` -- a date ("2026-11-01", due at the end of that day) or a date and time ("2026-11-01T17:00"), in the calendar's time zone -- or measured from something, and kept so while the goal is open: `{before_parent: {days \| minutes}}`, `{after_start: {days \| minutes}}` (from when it becomes active: days, the end of that many days after the day it started) or `{after_goal: {id, days \| minutes}}`. Days keep a date a date; minutes give a date and time. Setting a date unties it; so does moving a goal measured from its parent's to the top level. |
 | `due` | Read-only: when the deadline falls, worked out; none until a goal measured from its start starts. Kept in the tab's `deadline` column, with what it's measured from in `deadline_rule`. |
