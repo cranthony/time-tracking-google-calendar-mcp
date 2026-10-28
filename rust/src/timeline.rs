@@ -10,12 +10,13 @@ pub type Moment = DateTime<FixedOffset>;
 
 const WIDTH: usize = 40;
 const GUTTER: usize = 6;
-const LEGEND: [&str; 8] = [
+const LEGEND: [&str; 9] = [
     "→ note above set this edge",
     "↳ note added to that event",
     "○ note not added   ✓ compacted",
     "◆ action   ◇ action being added",
     "▸ facts   ▹ facts being set",
+    "⚑ goal   ⚐ goal being tagged",
     "⚠ missing action or location",
     "✗ counts against follow-through",
     "+/− late/early   ⇢/⇠ moved",
@@ -66,6 +67,13 @@ pub struct TimelineEvent {
     pub new_actions: Vec<String>,
     pub facts: Vec<String>,
     pub new_facts: bool,
+    /// The goals it's tagged with, each named with its share ("Fix the
+    /// fence (30m)"), and whether the decisions tag it (`new_goals`).
+    pub goals: Vec<String>,
+    pub new_goals: bool,
+    /// Their ids, in the same order: what `Timeline::goals` finds the
+    /// events tagged with each goal by.
+    pub goal_ids: Vec<String>,
     pub missing: Vec<String>,
     pub follow_through: Vec<String>,
 }
@@ -93,6 +101,8 @@ impl TimelineEvent {
             "new_actions": self.new_actions,
             "facts": self.facts,
             "new_facts": self.new_facts,
+            "goals": self.goals,
+            "new_goals": self.new_goals,
             "missing": self.missing,
             "follow_through": self.follow_through,
         })
@@ -106,7 +116,28 @@ pub struct Timeline {
     pub now: Option<Moment>,
     pub last_compaction: Option<Moment>,
     pub decided: bool,
+    /// The goals closed or due in the window, with the events tagged
+    /// with each (see `with_goals`); listed at the end of `text`.
+    pub goals: Vec<TimelineGoal>,
     pub text: String,
+}
+
+/// A goal closed or due in the window, as the timeline's `goals` lists it:
+/// its `title`, `why` it's listed ("done 09:30", "due today"), and the
+/// summaries of the events `tagged` with it -- none when nothing is, which
+/// is what to look at.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TimelineGoal {
+    pub id: String,
+    pub title: String,
+    pub why: String,
+    pub tagged: Vec<String>,
+}
+
+impl TimelineGoal {
+    pub fn to_json(&self) -> Value {
+        json!({"id": self.id, "title": self.title, "why": self.why, "tagged": self.tagged})
+    }
 }
 
 impl Timeline {
@@ -117,6 +148,7 @@ impl Timeline {
             "now": self.now.map(|t| py::pydantic_datetime(&t)),
             "last_compaction": self.last_compaction.map(|t| py::pydantic_datetime(&t)),
             "decided": self.decided,
+            "goals": self.goals.iter().map(TimelineGoal::to_json).collect::<Vec<_>>(),
             "text": self.text,
         })
     }
@@ -133,8 +165,44 @@ pub fn build_timeline(
     notes.sort_by_key(|n| n.time());
     let mut events = events;
     events.sort_by_key(|e| e.at());
-    let mut timeline = Timeline { notes, events, now, last_compaction, decided, text: String::new() };
+    let mut timeline = Timeline { notes, events, now, last_compaction, decided, goals: Vec::new(), text: String::new() };
     timeline.text = render(&timeline, true);
+    timeline
+}
+
+/// `timeline` with `goals` -- the goals closed or due in the window, and
+/// the events tagged with each -- listed under "Goals closed or due:" at
+/// the end of its text, before the legend. `goals` is what Claude checks
+/// its tagging against: a goal there with nothing tagged is one to look
+/// for the work on, or to say in the recap that none matched.
+pub fn with_goals(timeline: Timeline, goals: Vec<TimelineGoal>) -> Timeline {
+    let mut timeline = timeline;
+    timeline.goals = goals;
+    if timeline.goals.is_empty() {
+        return timeline;
+    }
+    let mut section = vec![String::new(), "Goals closed or due:".to_string()];
+    for goal in &timeline.goals {
+        let tagged = if goal.tagged.is_empty() { "no event tagged".to_string() } else { goal.tagged.join(", ") };
+        section.extend(textwrap(&format!("⚑ {} · {}: {tagged}", goal.title, goal.why), WIDTH, "  ", "    "));
+    }
+    let mut lines: Vec<String> = timeline.text.lines().map(str::to_string).collect();
+    // The legend, if there is one, is the last block: insert before it.
+    let legend_at = (0..lines.len())
+        .rev()
+        .take_while(|i| LEGEND.contains(&lines[*i].as_str()))
+        .last()
+        .filter(|i| *i > 0 && lines[*i - 1].is_empty())
+        .map(|i| i - 1);
+    match legend_at {
+        Some(at) => {
+            let rest = lines.split_off(at);
+            lines.extend(section);
+            lines.extend(rest);
+        }
+        None => lines.extend(section),
+    }
+    timeline.text = lines.join("\n");
     timeline
 }
 
@@ -158,6 +226,7 @@ pub fn join_labelled(days: Vec<(Moment, &str, Timeline)>) -> Timeline {
         now: days.last().unwrap().2.now,
         last_compaction: days.iter().find_map(|(_, _, t)| t.last_compaction),
         decided: days[0].2.decided,
+        goals: Vec::new(),
         text: String::new(),
     };
     let mut lines: Vec<String> = Vec::new();
@@ -377,6 +446,9 @@ fn edge_lines(
         for fact in &event.facts {
             lines.push((false, format!("    {} {fact}", if event.new_facts { '▹' } else { '▸' })));
         }
+        for goal in &event.goals {
+            lines.push((false, format!("    {} {goal}", if event.new_goals { '⚐' } else { '⚑' })));
+        }
         if !event.missing.is_empty() {
             lines.push((false, format!("    ⚠ no {}", event.missing.join(", no "))));
         }
@@ -505,6 +577,7 @@ fn legend(events: &[TimelineEvent]) -> Vec<String> {
         .iter()
         .filter(|line| match line.chars().next() {
             Some('▸') => events.iter().any(|e| !e.facts.is_empty()),
+            Some('⚑') => events.iter().any(|e| !e.goals.is_empty()),
             Some('⚠') => events.iter().any(|e| !e.missing.is_empty()),
             Some('✗') => events.iter().any(|e| !e.follow_through.is_empty()),
             _ => true,

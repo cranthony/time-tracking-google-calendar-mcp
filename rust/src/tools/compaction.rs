@@ -340,7 +340,11 @@ pub struct ContextEvent {
 /// outermost first; `with_ids` the people it's done with and `for_ids`
 /// those it's done for. `due_in_window` says an open one's deadline fell
 /// inside the window (its start to now): one to propose missed
-/// (`goal_changes`) unless a note or event shows it done. One whose id
+/// (`goal_changes`) unless a note or event shows it done.
+/// `closed_in_window` says a closed one was closed inside the window --
+/// the user marked it done as they finished, most likely -- so the work
+/// on it is among the window's events: find them and tag them with it.
+/// Those flagged come first. One whose id
 /// is "<habit id>_<a date>" is a habit's goal for the period starting
 /// then (a day, a week, a month, a quarter or a year, due at its end): tag every event that
 /// works toward it, done or not, and settle it as any other -- the server
@@ -361,6 +365,9 @@ pub struct ContextGoal {
     #[schema(optional)]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub closed_at: Option<DateTimeText>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub closed_in_window: bool,
 }
 
 /// A change to a goal there is, from what the notes say or a deadline

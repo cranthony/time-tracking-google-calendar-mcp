@@ -1,5 +1,6 @@
-//! Goal shares: compaction tags events with the open goals that have
-//! attribution hints, and writes the shares it gives them.
+//! Goal shares: compaction tags events with the goals open when they
+//! happened, writes the shares it gives them, and shows what it tagged --
+//! and what it didn't, of the goals closed or due in the window.
 
 use super::*;
 use crate::stores::goals::GoalShare;
@@ -107,13 +108,75 @@ fn closed_setup() -> Setup {
 fn prepare_lists_the_goals_closed_since_the_earliest_event_started_with_when() {
     let context = closed_setup().prepare().to_json();
 
+    // Those closed in the window first: they're the ones to find the work on.
     let listed: Vec<&str> = context["goals"].as_array().unwrap().iter().map(|g| g["id"].as_str().unwrap()).collect();
-    assert_eq!(listed, vec!["g1", "g2", "g3", "g6", "c1", "c2"]);
+    assert_eq!(listed, vec!["c1", "c2", "g1", "g2", "g3", "g6"]);
     let c1 = context["goals"].as_array().unwrap().iter().find(|g| g["id"] == "c1").unwrap();
     assert_eq!(c1["closed_at"].as_str().map(|t| crate::event::parse_iso(t, None).unwrap()), Some(time_at("09:30")));
     assert_eq!(c1["status"], json!("done"));
-    assert!(context["goals"][0].get("closed_at").is_none());
+    assert_eq!(c1["closed_in_window"], json!(true));
+    let g1 = context["goals"].as_array().unwrap().iter().find(|g| g["id"] == "g1").unwrap();
+    assert!(g1.get("closed_at").is_none() && g1.get("closed_in_window").is_none());
     assert!(DECISION_GUIDE.contains("A closed goal can be tagged only on events that started before its `closed_at`"));
+    assert!(DECISION_GUIDE.contains("CLOSED IN THE WINDOW: a goal with `closed_in_window`"));
+    assert!(DECISION_GUIDE.contains("TAGGING RECORDS TIME SPENT, NOT COMPLETION"));
+}
+
+#[test]
+fn a_goal_closed_before_the_window_is_listed_but_not_flagged() {
+    // c3 closed yesterday: listed only if an event offered started before
+    // it closed, and never one to find the work on in this window.
+    let context = closed_setup().prepare().to_json();
+
+    assert!(context["goals"].as_array().unwrap().iter().all(|g| g["id"] != "c3"));
+}
+
+#[test]
+fn the_timeline_lists_the_goals_closed_in_the_window_with_the_events_tagged() {
+    let setup = closed_setup();
+    let context = setup.prepare();
+
+    // Before deciding: both closed goals, nothing tagged yet.
+    let timeline = context.timeline.as_ref().unwrap();
+    let watched: Vec<(&str, &str, Vec<String>)> = timeline.goals.iter().map(|g| (g.title.as_str(), g.why.as_str(), g.tagged.clone())).collect();
+    assert_eq!(watched, vec![("Answer Sam's email", "done 09:30", vec![]), ("Fix the fence", "obsolete 10:30", vec![])]);
+    assert!(timeline.text.contains("Goals closed or due:\n  ⚑ Answer Sam's email · done 09:30: no\n    event tagged\n"), "{}", timeline.text);
+    assert!(timeline.to_json()["goals"][0]["tagged"].as_array().unwrap().is_empty());
+
+    // Tagging the email with c1: the timeline marks it under the event and
+    // names it under the goal; the fence, untagged, draws a warning.
+    let tag = |event: &str, id: &str| EventDecision { goals: Some(vec![share(id, Some(30), None)]), ..keep(event) };
+    let planned = setup.dry_run(vec![tag("e1", "c1")]);
+    let timeline = planned.timeline.as_ref().unwrap();
+    assert!(timeline.text.contains("┌ Email\n          ⚐ Answer Sam's email (30m)\n"), "{}", timeline.text);
+    assert!(timeline.text.contains("⚑ goal   ⚐ goal being tagged"), "{}", timeline.text);
+    assert!(timeline.text.contains("  ⚑ Answer Sam's email · done 09:30:\n    Email\n"), "{}", timeline.text);
+    assert!(timeline.text.contains("  ⚑ Fix the fence · obsolete 10:30: no\n    event tagged\n"), "{}", timeline.text);
+    let tagged: Vec<(&str, Vec<String>)> = timeline.goals.iter().map(|g| (g.id.as_str(), g.tagged.clone())).collect();
+    assert_eq!(tagged, vec![("c1", vec!["Email".to_string()]), ("c2", vec![])]);
+    let legend_at = timeline.text.find("→ note above set this edge").unwrap();
+    assert!(timeline.text.find("Goals closed or due:").unwrap() < legend_at, "{}", timeline.text);
+    let warned: Vec<&String> = planned.warnings.iter().filter(|w| w.contains("no event is tagged with it")).collect();
+    assert_eq!(warned.len(), 1, "{:?}", planned.warnings);
+    assert!(warned[0].starts_with("goal 'Fix the fence' was closed in the window (obsolete 10:30)"), "{}", warned[0]);
+    assert!(DECISION_GUIDE.contains("For every goal closed or due in the window (`Goals closed or due:` at the end of the timeline), one point"));
+    assert!(DECISION_GUIDE.contains("and tag the event that note ends or falls within with the goal (see GOALS)"));
+}
+
+#[test]
+fn a_goal_an_event_already_has_shows_as_had_and_is_kept() {
+    let mut events = day();
+    events[0].goals = Some(vec![share("g1", None, None)]);
+    let setup = Setup::with(&[("09:05", "email"), ("10:20", "report")], Some(events), "11:30", Stores { goals: goals(), ..Default::default() });
+
+    let planned = setup.dry_run(vec![EventDecision { summary: Some("Email!".into()), ..keep("e1") }]);
+
+    let text = &planned.timeline.as_ref().unwrap().text;
+    assert!(text.contains("          ⚑ Write a book\n"), "{text}");
+    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().goals, Some(vec![share("g1", None, None)]));
+    // Open goals neither closed nor due in the window aren't listed at the end.
+    assert!(planned.timeline.as_ref().unwrap().goals.is_empty());
+    assert!(!text.contains("Goals closed or due:"), "{text}");
 }
 
 #[test]
