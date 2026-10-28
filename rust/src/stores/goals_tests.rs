@@ -467,6 +467,28 @@ fn a_goal_keeps_its_priority_until_cleared_and_it_cant_be_negative() {
 }
 
 #[test]
+fn a_goals_color_is_its_own_or_its_nearest_parents_and_must_be_a_color() {
+    let f = fixture();
+    let top = f.create(json!({"title": "Top", "deadline": "2026-12-01", "background_color": "#123456"})).unwrap();
+    let mid = f.create(json!({"title": "Mid", "parent_id": top, "deadline": "2026-11-20"})).unwrap();
+    let leaf = f.create(json!({"title": "Leaf", "parent_id": mid, "deadline": "2026-11-10", "background_color": "#654321"})).unwrap();
+    let plain = f.create(json!({"title": "Plain", "deadline": "2026-12-01", "priority": 1})).unwrap();
+
+    let colors = |id: &str| (f.get(id)["background_color"].clone(), f.get(id)["effective_color"].clone());
+    assert_eq!(colors(&top), (json!("#123456"), json!("#123456")));
+    assert_eq!(colors(&mid), (Value::Null, json!("#123456")));
+    assert_eq!(colors(&leaf), (json!("#654321"), json!("#654321")));
+    // Its priority's: the app colors it from get_priority_colors.
+    assert_eq!(colors(&plain), (Value::Null, Value::Null));
+
+    refused(f.create(json!({"title": "Odd", "deadline": "2026-11-01", "background_color": "blue"})), r"'Odd'\)'s background_color: 'blue' isn't a color: give one as #rrggbb");
+    let mut cleared = edit(json!({"id": leaf, "version": 1}));
+    cleared.clear_fields = vec!["background_color".into()];
+    f.change(&[], vec![cleared], vec![]).unwrap();
+    assert_eq!(colors(&leaf), (Value::Null, json!("#123456")));
+}
+
+#[test]
 fn a_goal_keeps_its_sort_order_until_cleared() {
     let f = fixture();
     let id = f.create(json!({"title": "Ship", "deadline": "2026-11-01", "sort_order": 2000})).unwrap();

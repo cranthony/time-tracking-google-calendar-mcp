@@ -14,6 +14,7 @@
     "goal": {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "at": "2026-12-01"
@@ -21,6 +22,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2026-12-01",
+     "effective_color": null,
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -46,7 +48,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Learn Rust\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Learn Rust\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"background_color\": null,\n    \"effective_color\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_goal"
   },
   {
@@ -442,6 +444,7 @@
         "parent_id",
         "required",
         "priority",
+        "background_color",
         "sort_order",
         "expected_minutes",
         "deadline",
@@ -508,6 +511,7 @@
        [
         "co2yzn",
         "Learn Rust",
+        "",
         "",
         "",
         "",
@@ -2221,6 +2225,7 @@
         "parent_id",
         "required",
         "priority",
+        "background_color",
         "sort_order",
         "expected_minutes",
         "deadline",
@@ -2240,6 +2245,7 @@
        [
         "co2yzn",
         "Learn Rust",
+        "",
         "",
         "",
         "",

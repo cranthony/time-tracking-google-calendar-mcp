@@ -15,6 +15,8 @@ pub enum GoalField {
     Required,
     #[serde(rename = "priority")]
     Priority,
+    #[serde(rename = "background_color")]
+    BackgroundColor,
     #[serde(rename = "sort_order")]
     SortOrder,
     #[serde(rename = "expected_minutes")]
@@ -48,6 +50,10 @@ pub struct GoalInput {
     /// takes its nearest parent's that has one, and with none up its tree,
     /// it's treated as 3.
     pub priority: Option<i64>,
+    /// Its color, as "#rrggbb" (e.g. "#a4bdfc"); none, it takes its
+    /// nearest parent's that has one, or else its priority's (see
+    /// get_priority_colors).
+    pub background_color: Option<String>,
     /// Where it's listed among goals that otherwise list alike (the same
     /// priority, due the same day): the lowest first, those without one
     /// after them. The user's own order, set by dragging goals in the app.
@@ -101,6 +107,7 @@ impl From<GoalInput> for Goal {
             parent_id: input.parent_id,
             required: input.required,
             priority: input.priority,
+            background_color: input.background_color,
             sort_order: input.sort_order,
             expected_minutes: input.expected_minutes,
             deadline,
@@ -160,7 +167,11 @@ pub struct GoalDelete {
 /// its parent, and required says whether its parent needs it done.
 /// A priority (0 the most, as actions'; optional) says how much it
 /// matters: without one, a goal takes its nearest parent's that has one,
-/// and with none up its tree it's treated as 3. sort_order (optional)
+/// and with none up its tree it's treated as 3. A background_color
+/// (#rrggbb; optional) colors it in the app: without one, a goal takes
+/// its nearest parent's that has one, and with none up its tree, its
+/// priority's (see get_priority_colors); effective_color is its own or
+/// the parent's it takes, none when it's its priority's. sort_order (optional)
 /// is the user's own order among goals that otherwise list alike (the
 /// same priority, due the same day): the lowest first, those without one
 /// after them; leave it as it is unless asked to reorder goals.
@@ -229,7 +240,7 @@ pub fn get_goal(app: &App, id_or_title: String) -> Result<ListedGoal, ToolError>
 }
 
 /// Add a goal (see get_goals): a title, a deadline, and optionally
-/// parent_id (the goal it's a piece of), required, priority,
+/// parent_id (the goal it's a piece of), required, priority, background_color,
 /// expected_minutes, activate_when, description, definition_of_done,
 /// attribution_hints, with_ids and for_ids. Active unless given a
 /// status; activating a goal activates its inactive parents. Its history

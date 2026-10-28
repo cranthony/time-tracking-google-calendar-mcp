@@ -3,6 +3,7 @@
   {
    "arguments": {
     "goal": {
+     "background_color": "#123456",
      "deadline": {
       "at": "2026-12-01"
      },
@@ -15,6 +16,7 @@
     "goal": {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": "#123456",
      "closed_at": null,
      "deadline": {
       "at": "2026-12-01"
@@ -22,6 +24,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2026-12-01",
+     "effective_color": "#123456",
      "expected_minutes": 3000,
      "expected_start": null,
      "for_ids": null,
@@ -47,7 +50,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Ship the app\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": 3000,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Ship the app\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"background_color\": \"#123456\",\n    \"effective_color\": \"#123456\",\n    \"sort_order\": null,\n    \"expected_minutes\": 3000,\n    \"deadline\": {\n      \"at\": \"2026-12-01\"\n    },\n    \"due\": \"2026-12-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-12-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_goal"
   },
   {
@@ -77,6 +80,7 @@
     "goal": {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "at": "2026-11-15"
@@ -84,6 +88,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2026-11-15",
+     "effective_color": "#123456",
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -111,7 +116,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"a0g0jc\",\n    \"title\": \"Write the pane\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-11-15\"\n    },\n    \"due\": \"2026-11-15\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-11-15\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [\n      \"Ship the app\"\n    ],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"a0g0jc\",\n    \"title\": \"Write the pane\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": true,\n    \"priority\": null,\n    \"background_color\": null,\n    \"effective_color\": \"#123456\",\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2026-11-15\"\n    },\n    \"due\": \"2026-11-15\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2026-11-15\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [\n      \"Ship the app\"\n    ],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_goal"
   },
   {
@@ -132,6 +137,7 @@
     "goal": {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "after_start": {
@@ -141,6 +147,7 @@
      "definition_of_done": null,
      "description": null,
      "due": null,
+     "effective_color": "#123456",
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -168,7 +175,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"rs21so\",\n    \"title\": \"Polish\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_start\": {\n        \"days\": 7\n      }\n    },\n    \"due\": null,\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"inactive\",\n    \"history\": [\n      {\n        \"status\": \"inactive\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": null\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [\n      \"Ship the app\"\n    ],\n    \"habit_id\": null,\n    \"started_at\": null,\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"rs21so\",\n    \"title\": \"Polish\",\n    \"parent_id\": \"co2yzn\",\n    \"required\": null,\n    \"priority\": null,\n    \"background_color\": null,\n    \"effective_color\": \"#123456\",\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_start\": {\n        \"days\": 7\n      }\n    },\n    \"due\": null,\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"inactive\",\n    \"history\": [\n      {\n        \"status\": \"inactive\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": null\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [\n      \"Ship the app\"\n    ],\n    \"habit_id\": null,\n    \"started_at\": null,\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_goal"
   },
   {
@@ -203,11 +210,27 @@
    "tool": "create_goal"
   },
   {
+   "arguments": {
+    "goal": {
+     "background_color": "blue",
+     "deadline": {
+      "at": "2026-11-01"
+     },
+     "title": "Odd"
+    }
+   },
+   "content": "Error executing tool create_goal: goal s3wod9 ('Odd')'s background_color: 'blue' isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"",
+   "is_error": true,
+   "text": "Error executing tool create_goal: goal s3wod9 ('Odd')'s background_color: 'blue' isn't a color: give one as #rrggbb, e.g. \"#a4bdfc\"",
+   "tool": "create_goal"
+  },
+  {
    "arguments": {},
    "content": [
     {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": "#123456",
      "closed_at": null,
      "deadline": {
       "at": "2026-12-01"
@@ -215,6 +238,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2026-12-01",
+     "effective_color": "#123456",
      "expected_minutes": 3000,
      "expected_start": null,
      "for_ids": null,
@@ -241,6 +265,7 @@
     {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "at": "2026-11-15"
@@ -248,6 +273,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2026-11-15",
+     "effective_color": "#123456",
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -276,6 +302,7 @@
     {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "after_start": {
@@ -285,6 +312,7 @@
      "definition_of_done": null,
      "description": null,
      "due": null,
+     "effective_color": "#123456",
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -312,7 +340,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"title\": \"Ship the app\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": 3000,\n  \"deadline\": {\n    \"at\": \"2026-12-01\"\n  },\n  \"due\": \"2026-12-01\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-12-01\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-15\"\n  },\n  \"due\": \"2026-11-15\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"rs21so\",\n  \"title\": \"Polish\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": null,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"after_start\": {\n      \"days\": 7\n    }\n  },\n  \"due\": null,\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"inactive\",\n  \"history\": [\n    {\n      \"status\": \"inactive\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": null\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": null,\n  \"closed_at\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"title\": \"Ship the app\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"priority\": null,\n  \"background_color\": \"#123456\",\n  \"effective_color\": \"#123456\",\n  \"sort_order\": null,\n  \"expected_minutes\": 3000,\n  \"deadline\": {\n    \"at\": \"2026-12-01\"\n  },\n  \"due\": \"2026-12-01\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-12-01\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"background_color\": null,\n  \"effective_color\": \"#123456\",\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-15\"\n  },\n  \"due\": \"2026-11-15\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}\n{\n  \"id\": \"rs21so\",\n  \"title\": \"Polish\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": null,\n  \"priority\": null,\n  \"background_color\": null,\n  \"effective_color\": \"#123456\",\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"after_start\": {\n      \"days\": 7\n    }\n  },\n  \"due\": null,\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"inactive\",\n  \"history\": [\n    {\n      \"status\": \"inactive\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": null\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": null,\n  \"closed_at\": null,\n  \"version\": 1\n}",
    "tool": "get_goals"
   },
   {
@@ -322,6 +350,7 @@
    "content": {
     "activate_when": null,
     "attribution_hints": null,
+    "background_color": null,
     "closed_at": null,
     "deadline": {
      "at": "2026-11-15"
@@ -329,6 +358,7 @@
     "definition_of_done": null,
     "description": null,
     "due": "2026-11-15",
+    "effective_color": "#123456",
     "expected_minutes": null,
     "expected_start": null,
     "for_ids": null,
@@ -355,7 +385,7 @@
     "with_ids": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-15\"\n  },\n  \"due\": \"2026-11-15\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"background_color\": null,\n  \"effective_color\": \"#123456\",\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-15\"\n  },\n  \"due\": \"2026-11-15\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"active\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": null,\n  \"version\": 1\n}",
    "tool": "get_goal"
   },
   {
@@ -426,6 +456,7 @@
      {
       "activate_when": null,
       "attribution_hints": null,
+      "background_color": "#123456",
       "closed_at": "2026-10-07T15:30:00-04:00",
       "deadline": {
        "at": "2026-12-01"
@@ -433,6 +464,7 @@
       "definition_of_done": null,
       "description": null,
       "due": "2026-12-01",
+      "effective_color": "#123456",
       "expected_minutes": 3000,
       "expected_start": null,
       "for_ids": null,
@@ -464,6 +496,7 @@
      {
       "activate_when": null,
       "attribution_hints": null,
+      "background_color": null,
       "closed_at": "2026-10-07T15:30:00-04:00",
       "deadline": {
        "at": "2026-11-15"
@@ -471,6 +504,7 @@
       "definition_of_done": null,
       "description": null,
       "due": "2026-11-15",
+      "effective_color": "#123456",
       "expected_minutes": null,
       "expected_start": null,
       "for_ids": null,
@@ -504,6 +538,7 @@
      {
       "activate_when": null,
       "attribution_hints": null,
+      "background_color": null,
       "closed_at": null,
       "deadline": {
        "after_start": {
@@ -513,6 +548,7 @@
       "definition_of_done": null,
       "description": null,
       "due": null,
+      "effective_color": null,
       "expected_minutes": null,
       "expected_start": null,
       "for_ids": null,
@@ -541,6 +577,7 @@
      {
       "activate_when": null,
       "attribution_hints": null,
+      "background_color": null,
       "closed_at": null,
       "deadline": {
        "at": "2026-12-31"
@@ -548,6 +585,7 @@
       "definition_of_done": null,
       "description": null,
       "due": "2026-12-31",
+      "effective_color": null,
       "expected_minutes": null,
       "expected_start": null,
       "for_ids": null,
@@ -574,7 +612,7 @@
     ]
    },
    "is_error": false,
-   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Ship the app\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": 3000,\n      \"deadline\": {\n        \"at\": \"2026-12-01\"\n      },\n      \"due\": \"2026-12-01\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [],\n      \"habit_id\": null,\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"title\": \"Write the pane\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-11-15\"\n      },\n      \"due\": \"2026-11-15\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-15\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-15\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [\n        \"Ship the app\"\n      ],\n      \"habit_id\": null,\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"rs21so\",\n      \"title\": \"Polish\",\n      \"parent_id\": \"inbox1\",\n      \"required\": null,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"after_start\": {\n          \"days\": 7\n        }\n      },\n      \"due\": null,\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"inactive\",\n      \"history\": [\n        {\n          \"status\": \"inactive\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": null\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [\n        \"Prioritize unstructured goals\"\n      ],\n      \"habit_id\": null,\n      \"started_at\": null,\n      \"closed_at\": null,\n      \"version\": 2\n    },\n    {\n      \"id\": \"inbox1\",\n      \"title\": \"Prioritize unstructured goals\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"priority\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-12-31\"\n      },\n      \"due\": \"2026-12-31\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"inactive\",\n      \"history\": [\n        {\n          \"status\": \"inactive\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-31\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [],\n      \"habit_id\": null,\n      \"started_at\": null,\n      \"closed_at\": null,\n      \"version\": 1\n    }\n  ],\n  \"deleted_ids\": []\n}",
+   "text": "{\n  \"goals\": [\n    {\n      \"id\": \"co2yzn\",\n      \"title\": \"Ship the app\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"priority\": null,\n      \"background_color\": \"#123456\",\n      \"effective_color\": \"#123456\",\n      \"sort_order\": null,\n      \"expected_minutes\": 3000,\n      \"deadline\": {\n        \"at\": \"2026-12-01\"\n      },\n      \"due\": \"2026-12-01\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-01\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [],\n      \"habit_id\": null,\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"title\": \"Write the pane\",\n      \"parent_id\": \"co2yzn\",\n      \"required\": true,\n      \"priority\": null,\n      \"background_color\": null,\n      \"effective_color\": \"#123456\",\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-11-15\"\n      },\n      \"due\": \"2026-11-15\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"done\",\n      \"history\": [\n        {\n          \"status\": \"active\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-15\"\n        },\n        {\n          \"status\": \"done\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-11-15\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [\n        \"Ship the app\"\n      ],\n      \"habit_id\": null,\n      \"started_at\": \"2026-10-07T15:30:00-04:00\",\n      \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n      \"version\": 2\n    },\n    {\n      \"id\": \"rs21so\",\n      \"title\": \"Polish\",\n      \"parent_id\": \"inbox1\",\n      \"required\": null,\n      \"priority\": null,\n      \"background_color\": null,\n      \"effective_color\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"after_start\": {\n          \"days\": 7\n        }\n      },\n      \"due\": null,\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"inactive\",\n      \"history\": [\n        {\n          \"status\": \"inactive\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": null\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [\n        \"Prioritize unstructured goals\"\n      ],\n      \"habit_id\": null,\n      \"started_at\": null,\n      \"closed_at\": null,\n      \"version\": 2\n    },\n    {\n      \"id\": \"inbox1\",\n      \"title\": \"Prioritize unstructured goals\",\n      \"parent_id\": null,\n      \"required\": null,\n      \"priority\": null,\n      \"background_color\": null,\n      \"effective_color\": null,\n      \"sort_order\": null,\n      \"expected_minutes\": null,\n      \"deadline\": {\n        \"at\": \"2026-12-31\"\n      },\n      \"due\": \"2026-12-31\",\n      \"activate_when\": null,\n      \"expected_start\": null,\n      \"status\": \"inactive\",\n      \"history\": [\n        {\n          \"status\": \"inactive\",\n          \"at\": \"2026-10-07T15:30:00-04:00\",\n          \"deadline\": \"2026-12-31\"\n        }\n      ],\n      \"description\": null,\n      \"definition_of_done\": null,\n      \"attribution_hints\": null,\n      \"with_ids\": null,\n      \"for_ids\": null,\n      \"path\": [],\n      \"habit_id\": null,\n      \"started_at\": null,\n      \"closed_at\": null,\n      \"version\": 1\n    }\n  ],\n  \"deleted_ids\": []\n}",
    "tool": "update_goals"
   },
   {
@@ -587,6 +625,7 @@
     {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": "#123456",
      "closed_at": "2026-10-07T15:30:00-04:00",
      "deadline": {
       "at": "2026-12-01"
@@ -594,6 +633,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2026-12-01",
+     "effective_color": "#123456",
      "expected_minutes": 3000,
      "expected_start": null,
      "for_ids": null,
@@ -625,6 +665,7 @@
     {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": "2026-10-07T15:30:00-04:00",
      "deadline": {
       "at": "2026-11-15"
@@ -632,6 +673,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2026-11-15",
+     "effective_color": "#123456",
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -664,7 +706,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"co2yzn\",\n  \"title\": \"Ship the app\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": 3000,\n  \"deadline\": {\n    \"at\": \"2026-12-01\"\n  },\n  \"due\": \"2026-12-01\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"done\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-12-01\"\n    },\n    {\n      \"status\": \"done\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-12-01\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}\n{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-15\"\n  },\n  \"due\": \"2026-11-15\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"done\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    },\n    {\n      \"status\": \"done\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"co2yzn\",\n  \"title\": \"Ship the app\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"priority\": null,\n  \"background_color\": \"#123456\",\n  \"effective_color\": \"#123456\",\n  \"sort_order\": null,\n  \"expected_minutes\": 3000,\n  \"deadline\": {\n    \"at\": \"2026-12-01\"\n  },\n  \"due\": \"2026-12-01\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"done\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-12-01\"\n    },\n    {\n      \"status\": \"done\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-12-01\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}\n{\n  \"id\": \"a0g0jc\",\n  \"title\": \"Write the pane\",\n  \"parent_id\": \"co2yzn\",\n  \"required\": true,\n  \"priority\": null,\n  \"background_color\": null,\n  \"effective_color\": \"#123456\",\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"at\": \"2026-11-15\"\n  },\n  \"due\": \"2026-11-15\",\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"done\",\n  \"history\": [\n    {\n      \"status\": \"active\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    },\n    {\n      \"status\": \"done\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": \"2026-11-15\"\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [\n    \"Ship the app\"\n  ],\n  \"habit_id\": null,\n  \"started_at\": \"2026-10-07T15:30:00-04:00\",\n  \"closed_at\": \"2026-10-07T15:30:00-04:00\",\n  \"version\": 2\n}",
    "tool": "get_goals"
   },
   {
@@ -691,6 +733,7 @@
    "content": {
     "activate_when": null,
     "attribution_hints": null,
+    "background_color": null,
     "closed_at": null,
     "deadline": {
      "after_start": {
@@ -700,6 +743,7 @@
     "definition_of_done": null,
     "description": null,
     "due": null,
+    "effective_color": null,
     "expected_minutes": null,
     "expected_start": null,
     "for_ids": null,
@@ -724,7 +768,7 @@
     "with_ids": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"title\": \"Polish it\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"priority\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"after_start\": {\n      \"days\": 7\n    }\n  },\n  \"due\": null,\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"inactive\",\n  \"history\": [\n    {\n      \"status\": \"inactive\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": null\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [],\n  \"habit_id\": null,\n  \"started_at\": null,\n  \"closed_at\": null,\n  \"version\": 3\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"title\": \"Polish it\",\n  \"parent_id\": null,\n  \"required\": null,\n  \"priority\": null,\n  \"background_color\": null,\n  \"effective_color\": null,\n  \"sort_order\": null,\n  \"expected_minutes\": null,\n  \"deadline\": {\n    \"after_start\": {\n      \"days\": 7\n    }\n  },\n  \"due\": null,\n  \"activate_when\": null,\n  \"expected_start\": null,\n  \"status\": \"inactive\",\n  \"history\": [\n    {\n      \"status\": \"inactive\",\n      \"at\": \"2026-10-07T15:30:00-04:00\",\n      \"deadline\": null\n    }\n  ],\n  \"description\": null,\n  \"definition_of_done\": null,\n  \"attribution_hints\": null,\n  \"with_ids\": null,\n  \"for_ids\": null,\n  \"path\": [],\n  \"habit_id\": null,\n  \"started_at\": null,\n  \"closed_at\": null,\n  \"version\": 3\n}",
    "tool": "update_goal"
   },
   {
@@ -972,6 +1016,7 @@
         "parent_id",
         "required",
         "priority",
+        "background_color",
         "sort_order",
         "expected_minutes",
         "deadline",
@@ -1041,6 +1086,7 @@
         "",
         "",
         "",
+        "#123456",
         "",
         "3000",
         "2026-12-01",
@@ -1087,6 +1133,7 @@
         "Write the pane",
         "co2yzn",
         "True",
+        "",
         "",
         "",
         "",
@@ -1139,6 +1186,7 @@
         "",
         "",
         "",
+        "",
         "inactive",
         "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":null}]",
         "",
@@ -1182,6 +1230,7 @@
         "",
         "",
         "",
+        "#123456",
         "",
         "3000",
         "2026-12-01",
@@ -1203,6 +1252,7 @@
         "Write the pane",
         "co2yzn",
         "True",
+        "",
         "",
         "",
         "",
@@ -1230,6 +1280,7 @@
         "",
         "",
         "",
+        "",
         "inactive",
         "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":null}]",
         "",
@@ -1245,6 +1296,7 @@
        [
         "inbox1",
         "Prioritize unstructured goals",
+        "",
         "",
         "",
         "",
@@ -1292,6 +1344,7 @@
        [
         "rs21so",
         "Polish it",
+        "",
         "",
         "",
         "",
@@ -1356,6 +1409,7 @@
         "",
         "",
         "",
+        "",
         ""
        ]
       ]
@@ -1384,6 +1438,7 @@
       "majorDimension": "ROWS",
       "values": [
        [
+        "",
         "",
         "",
         "",
@@ -1510,6 +1565,7 @@
         "parent_id",
         "required",
         "priority",
+        "background_color",
         "sort_order",
         "expected_minutes",
         "deadline",
@@ -1532,6 +1588,7 @@
         "",
         "",
         "",
+        "#123456",
         "",
         "3000",
         "2026-12-01",
@@ -1553,6 +1610,7 @@
         "Write the pane",
         "co2yzn",
         "True",
+        "",
         "",
         "",
         "",

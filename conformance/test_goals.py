@@ -5,15 +5,18 @@ from __future__ import annotations
 
 
 async def test_goals(session):
-    top = (await session.call("create_goal", goal={"title": "Ship the app", "deadline": {"at": "2026-12-01"}, "expected_minutes": 3000}))["created_id"]
+    top = (await session.call("create_goal", goal={"title": "Ship the app", "deadline": {"at": "2026-12-01"}, "expected_minutes": 3000, "background_color": "#123456"}))["created_id"]
     await session.call_error("create_goal", goal={"title": "No deadline"})
     sub = (await session.call("create_goal", goal={"title": "Write the pane", "parent_id": top, "deadline": {"at": "2026-11-15"}, "required": True}))["created_id"]
     later = (await session.call("create_goal", goal={"title": "Polish", "parent_id": top, "status": "inactive", "deadline": {"after_start": {"days": 7}}}))["created_id"]
     await session.call_error("create_goal", goal={"title": "Too late", "parent_id": top, "deadline": {"at": "2026-12-02"}})
     await session.call_error("create_goal", goal={"title": "Too long", "parent_id": top, "deadline": {"at": "2026-11-01"}, "expected_minutes": 3001})
+    await session.call_error("create_goal", goal={"title": "Odd", "deadline": {"at": "2026-11-01"}, "background_color": "blue"})
 
     listed = await session.call("get_goals")
     assert [g["title"] for g in listed] == ["Ship the app", "Write the pane", "Polish"]
+    # A sub-goal with no color of its own takes its nearest parent's.
+    assert [(g["background_color"], g["effective_color"]) for g in listed] == [("#123456", "#123456"), (None, "#123456"), (None, "#123456")]
     assert (await session.call("get_goal", id_or_title="write THE pane"))["path"] == ["Ship the app"]
     await session.call_error("get_goal", id_or_title="nosuch")
 

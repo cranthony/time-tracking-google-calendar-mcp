@@ -14,6 +14,7 @@
     "goal": {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "at": "2099-11-01"
@@ -21,6 +22,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2099-11-01",
+     "effective_color": null,
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -46,7 +48,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Draft the plan\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2099-11-01\"\n    },\n    \"due\": \"2099-11-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2099-11-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"co2yzn\",\n    \"title\": \"Draft the plan\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"background_color\": null,\n    \"effective_color\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"at\": \"2099-11-01\"\n    },\n    \"due\": \"2099-11-01\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2099-11-01\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_goal"
   },
   {
@@ -97,6 +99,7 @@
       ]
      },
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "after_start": {
@@ -106,6 +109,7 @@
      "definition_of_done": null,
      "description": null,
      "due": null,
+     "effective_color": null,
      "expected_minutes": null,
      "expected_start": "2099-11-02",
      "for_ids": null,
@@ -131,7 +135,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Send the plan\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_start\": {\n        \"days\": 2\n      }\n    },\n    \"due\": null,\n    \"activate_when\": {\n      \"after\": [\n        {\n          \"goal_closed\": \"co2yzn\"\n        }\n      ],\n      \"delay\": \"next_day\",\n      \"hold_while\": [\n        {\n          \"active_at_least\": 5,\n          \"priority\": {\n            \"at_or_above\": \"own\"\n          }\n        }\n      ]\n    },\n    \"expected_start\": \"2099-11-02\",\n    \"status\": \"inactive\",\n    \"history\": [\n      {\n        \"status\": \"inactive\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": null\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": null,\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"3dnjav\",\n    \"title\": \"Send the plan\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"background_color\": null,\n    \"effective_color\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_start\": {\n        \"days\": 2\n      }\n    },\n    \"due\": null,\n    \"activate_when\": {\n      \"after\": [\n        {\n          \"goal_closed\": \"co2yzn\"\n        }\n      ],\n      \"delay\": \"next_day\",\n      \"hold_while\": [\n        {\n          \"active_at_least\": 5,\n          \"priority\": {\n            \"at_or_above\": \"own\"\n          }\n        }\n      ]\n    },\n    \"expected_start\": \"2099-11-02\",\n    \"status\": \"inactive\",\n    \"history\": [\n      {\n        \"status\": \"inactive\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": null\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": null,\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_goal"
   },
   {
@@ -170,6 +174,7 @@
     "goal": {
      "activate_when": null,
      "attribution_hints": null,
+     "background_color": null,
      "closed_at": null,
      "deadline": {
       "after_goal": {
@@ -180,6 +185,7 @@
      "definition_of_done": null,
      "description": null,
      "due": "2099-11-04",
+     "effective_color": null,
      "expected_minutes": null,
      "expected_start": null,
      "for_ids": null,
@@ -205,7 +211,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"goal\": {\n    \"id\": \"a0g0jc\",\n    \"title\": \"Follow up\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_goal\": {\n        \"id\": \"co2yzn\",\n        \"days\": 3\n      }\n    },\n    \"due\": \"2099-11-04\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2099-11-04\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"goal\": {\n    \"id\": \"a0g0jc\",\n    \"title\": \"Follow up\",\n    \"parent_id\": null,\n    \"required\": null,\n    \"priority\": null,\n    \"background_color\": null,\n    \"effective_color\": null,\n    \"sort_order\": null,\n    \"expected_minutes\": null,\n    \"deadline\": {\n      \"after_goal\": {\n        \"id\": \"co2yzn\",\n        \"days\": 3\n      }\n    },\n    \"due\": \"2099-11-04\",\n    \"activate_when\": null,\n    \"expected_start\": null,\n    \"status\": \"active\",\n    \"history\": [\n      {\n        \"status\": \"active\",\n        \"at\": \"2026-10-07T15:30:00-04:00\",\n        \"deadline\": \"2099-11-04\"\n      }\n    ],\n    \"description\": null,\n    \"definition_of_done\": null,\n    \"attribution_hints\": null,\n    \"with_ids\": null,\n    \"for_ids\": null,\n    \"path\": [],\n    \"habit_id\": null,\n    \"started_at\": \"2026-10-07T15:30:00-04:00\",\n    \"closed_at\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_goal"
   }
  ],
@@ -419,6 +425,7 @@
         "parent_id",
         "required",
         "priority",
+        "background_color",
         "sort_order",
         "expected_minutes",
         "deadline",
@@ -490,6 +497,7 @@
         "",
         "",
         "",
+        "",
         "2099-11-01",
         "",
         "active",
@@ -539,6 +547,7 @@
         "",
         "",
         "",
+        "",
         "inactive",
         "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":null}]",
         "",
@@ -579,6 +588,7 @@
        [
         "a0g0jc",
         "Follow up",
+        "",
         "",
         "",
         "",
@@ -703,6 +713,7 @@
         "parent_id",
         "required",
         "priority",
+        "background_color",
         "sort_order",
         "expected_minutes",
         "deadline",
@@ -722,6 +733,7 @@
        [
         "co2yzn",
         "Draft the plan",
+        "",
         "",
         "",
         "",
@@ -751,6 +763,7 @@
         "",
         "",
         "",
+        "",
         "inactive",
         "[{\"status\":\"inactive\",\"at\":\"2026-10-07T15:30:00-04:00\",\"deadline\":null}]",
         "",
@@ -766,6 +779,7 @@
        [
         "a0g0jc",
         "Follow up",
+        "",
         "",
         "",
         "",

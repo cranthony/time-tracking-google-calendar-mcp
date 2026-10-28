@@ -17,7 +17,7 @@ use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, RowSheet, RowType};
 use crate::sheet::GOALS;
-use crate::stores::groups::{set, str_or_none};
+use crate::stores::groups::{color_problem, set, str_or_none};
 use crate::stores::habit_goals::{self, Template};
 use crate::stores::locations::dedup;
 use crate::stores::people::SELF_ID;
@@ -30,10 +30,11 @@ use std::sync::Arc;
 pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
-pub const CLEARABLE_FIELDS: [&str; 13] = [
+pub const CLEARABLE_FIELDS: [&str; 14] = [
     "parent_id",
     "required",
     "priority",
+    "background_color",
     "sort_order",
     "expected_minutes",
     "deadline",
@@ -264,6 +265,10 @@ pub struct Goal {
     /// takes its nearest parent's that has one, and with none up its tree,
     /// it's treated as 3.
     pub priority: Option<i64>,
+    /// Its color, as "#rrggbb" (e.g. "#a4bdfc"); none, it takes its
+    /// nearest parent's that has one, or else its priority's (see
+    /// get_priority_colors).
+    pub background_color: Option<String>,
     /// Where it's listed among goals that otherwise list alike (the same
     /// priority, due the same day): the lowest first, those without one
     /// after them. The user's own order, set by dragging goals in the app.
@@ -335,6 +340,11 @@ pub struct ListedGoal {
     pub parent_id: Option<String>,
     pub required: Option<bool>,
     pub priority: Option<i64>,
+    pub background_color: Option<String>,
+    /// Its own color, or its nearest parent's that has one; none, it's
+    /// colored by the priority that applies (its own, or its nearest
+    /// parent's, or 3: see get_priority_colors).
+    pub effective_color: Option<String>,
     pub sort_order: Option<i64>,
     pub expected_minutes: Option<i64>,
     pub deadline: Option<Deadline>,
@@ -566,6 +576,24 @@ pub fn priority_of(goal: &Goal, goals: &[Goal]) -> i64 {
         at = parent_of(goals, g);
     }
     3
+}
+
+/// The color that applies to `goal`: its own, or its nearest parent's
+/// that has one; none, it's colored by its priority (priority_of).
+pub fn color_of(goal: &Goal, goals: &[Goal]) -> Option<String> {
+    let mut seen: Vec<&str> = Vec::new();
+    let mut at = Some(goal);
+    while let Some(g) = at {
+        if let Some(color) = set(g.background_color.as_deref()) {
+            return Some(color.to_string());
+        }
+        match g.id.as_deref() {
+            Some(id) if !seen.contains(&id) => seen.push(id),
+            _ => break,
+        }
+        at = parent_of(goals, g);
+    }
+    None
 }
 
 /// The ids of `goal`'s parents, nearest first (stopping at a cycle).
@@ -1226,6 +1254,9 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
         if let Some(priority) = goal.priority.filter(|p| *p < 0) {
             problems.push((me.clone(), format!("{name}'s priority must be 0 or more, not {priority}")));
         }
+        if let Some(problem) = set(goal.background_color.as_deref()).and_then(color_problem) {
+            problems.push((me.clone(), format!("{name}'s background_color: {problem}")));
+        }
         // Only a habit's goal is named for it, and always.
         let named_for = goal.id.as_deref().and_then(habit_goals::habit_of_id);
         if named_for != set(goal.habit_id.as_deref()) {
@@ -1523,6 +1554,8 @@ pub fn listed(goal: &Goal, goals: &[Goal], zone: &Tz) -> ListedGoal {
         parent_id: goal.parent_id.clone(),
         required: goal.required,
         priority: goal.priority,
+        background_color: goal.background_color.clone(),
+        effective_color: color_of(goal, goals),
         sort_order: goal.sort_order,
         expected_minutes: goal.expected_minutes,
         deadline: deadline_of(goal),
