@@ -121,9 +121,17 @@ rules below say what happens then. A refused call writes nothing.
   (`compacted`). The timeline shows it first, under its date, marked
   revisited.
 - `goals` lists the open goals (id, title, path, status, deadline, hints,
-  people); one whose deadline fell inside the window -- its start to now
-  -- has `due_in_window: true`, for the triage pass (see
-  `compact_notes`' `goal_changes`).
+  people), and those closed since the earliest event offered started
+  (with `closed_at`); one whose deadline fell inside the window -- its
+  start to now -- has `due_in_window: true`, for the triage pass (see
+  `compact_notes`' `goal_changes`), and one closed inside it has
+  `closed_in_window: true`: the work on it is most likely among the
+  window's events, to tag. Those flagged come first.
+- `timeline.text` marks each event's goals under it (`⚑` one it has,
+  `⚐` one being tagged) and ends with `Goals closed or due:`, each goal
+  closed or due in the window with the events tagged with it, or `no
+  event tagged`; `timeline.goals` has the same as data (`id`, `title`,
+  `why`, `tagged`).
 - With a proposal open, also returns `proposal`: its current revision's
   Claude decisions (`updates`, `creates` with their keys, `cancels`,
   `ignore_notes`, `annotate_notes`, `new_*`, `goal_changes`), its last

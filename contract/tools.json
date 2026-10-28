@@ -20354,7 +20354,7 @@
           "type": "object"
         },
         "ContextGoal": {
-          "description": "An open goal (inactive or active), or one closed (done, missed or\nobsolete) since the earliest event offered started, at `closed_at`.\nAn event can be tagged with it when it clearly matches its attribution\nhints, or with none its title and path -- a closed one only if the\nevent started before it closed. `path` is its parents' titles,\noutermost first; `with_ids` the people it's done with and `for_ids`\nthose it's done for. `due_in_window` says an open one's deadline fell\ninside the window (its start to now): one to propose missed\n(`goal_changes`) unless a note or event shows it done. One whose id\nis \"<habit id>_<a date>\" is a habit's goal for the period starting\nthen (a day, a week, a month, a quarter or a year, due at its end): tag every event that\nworks toward it, done or not, and settle it as any other -- the server\nmakes the next period's, or tries a missed one again for it.",
+          "description": "An open goal (inactive or active), or one closed (done, missed or\nobsolete) since the earliest event offered started, at `closed_at`.\nAn event can be tagged with it when it clearly matches its attribution\nhints, or with none its title and path -- a closed one only if the\nevent started before it closed. `path` is its parents' titles,\noutermost first; `with_ids` the people it's done with and `for_ids`\nthose it's done for. `due_in_window` says an open one's deadline fell\ninside the window (its start to now): one to propose missed\n(`goal_changes`) unless a note or event shows it done.\n`closed_in_window` says a closed one was closed inside the window --\nthe user marked it done as they finished, most likely -- so the work\non it is among the window's events: find them and tag them with it.\nThose flagged come first. One whose id\nis \"<habit id>_<a date>\" is a habit's goal for the period starting\nthen (a day, a week, a month, a quarter or a year, due at its end): tag every event that\nworks toward it, done or not, and settle it as any other -- the server\nmakes the next period's, or tries a missed one again for it.",
           "properties": {
             "id": {
               "type": "string"
@@ -20443,6 +20443,9 @@
                 "string",
                 "null"
               ]
+            },
+            "closed_in_window": {
+              "type": "boolean"
             }
           },
           "required": [

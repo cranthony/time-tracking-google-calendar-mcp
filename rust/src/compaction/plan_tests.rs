@@ -442,6 +442,28 @@ fn the_timeline_marks_actions_and_totals_their_time() {
 }
 
 #[test]
+fn the_timeline_marks_the_goals_an_event_has_and_is_tagged_with() {
+    let share = |id: &str, minutes: Option<i64>| crate::stores::goals::GoalShare { goal_id: id.into(), minutes, percent: None, remaining: false };
+    let mut events = day();
+    events[0].goals = Some(vec![share("g1", None)]);
+    let plan = plan_with(
+        &[],
+        &[EventDecision { goals: Some(vec![share("g2", Some(15))]), ..keep("e2") }],
+        &events,
+        "11:30",
+        Extra { names: names(&[("g1", "Write a book"), ("g2", "Draft chapter one")]), ..Default::default() },
+    )
+    .unwrap();
+    let text = timeline_text(&plan);
+    assert!(text.contains("┌ Email\n          ⚑ Write a book\n"), "{text}");
+    assert!(text.contains("├ Report\n          ⚐ Draft chapter one (15m)\n"), "{text}");
+    assert!(text.contains("⚑ goal   ⚐ goal being tagged"), "{text}");
+    let report = plan.timeline.as_ref().unwrap().events.iter().find(|e| e.summary == "Report").unwrap();
+    assert_eq!((report.goals.clone(), report.new_goals, report.goal_ids.clone()), (vec!["Draft chapter one (15m)".to_string()], true, vec!["g2".to_string()]));
+    assert_eq!(report.to_json()["goals"], json!(["Draft chapter one (15m)"]));
+}
+
+#[test]
 fn keep_records_facts_and_the_timeline_shows_them_compactly() {
     let given = facts(json!({"locations": ["home"], "with": ["sam"], "for": ["mom"], "notes": {"self": "tired", "sam": "loved it"}}));
     let plan = plan_with(

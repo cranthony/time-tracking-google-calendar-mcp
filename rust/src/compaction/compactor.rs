@@ -106,7 +106,7 @@ use super::proposals::{
     ProposalEvent, ProposalNote, ProposalResult, ProposalSummary, Recap, UserEdit,
 };
 use crate::determinism;
-use crate::event::{Event, Moment};
+use crate::event::{parse_iso, Event, Moment};
 use crate::facts::{fact_problems, Facts, SELF_ID};
 use crate::google::calendar::BATCH_SIZE;
 use crate::google::{BatchRequest, GoogleError};
@@ -125,7 +125,7 @@ use crate::stores::journal::{
 use crate::stores::locations::{listed, Locations};
 use crate::stores::notes::{NotedTime, NotedTimeSheet, SheetNote};
 use crate::stores::people::People;
-use crate::timeline::{build_timeline, join_labelled, render, split_days, Timeline, REVISITED_LABEL};
+use crate::timeline::{build_timeline, join_labelled, render, split_days, with_goals, Timeline, TimelineEvent, TimelineGoal, REVISITED_LABEL};
 use chrono::Duration;
 use serde_json::{json, Map, Value};
 use sha1::{Digest, Sha1};
@@ -544,6 +544,9 @@ impl NoteCompactor {
             ));
         }
         let previous_note = day.latest_compacted.clone();
+        let context_goals = self.context_goals_of(&day)?;
+        let timeline = join_labelled(timelines);
+        let watched = context_goals.as_deref().map(|g| watched_goals(g, &timeline.events, day.now)).unwrap_or_default();
         Ok(CompactionContext {
             notes,
             events,
@@ -553,7 +556,7 @@ impl NoteCompactor {
             open_compaction: open_id,
             compaction_window_start: Some(day.compaction_window_start),
             days: context_days(&day),
-            timeline: Some(join_labelled(timelines)),
+            timeline: Some(with_goals(timeline, watched)),
             actions: tree.as_ref().map(|t| {
                 t.actions
                     .iter()
@@ -638,20 +641,7 @@ impl NoteCompactor {
                 }
                 None => None,
             },
-            goals: match &self.goals {
-                Some(g) => {
-                    let all = g.all()?;
-                    // The calendar's zone is read only when a deadline has to be
-                    // placed in the window.
-                    let dated = all.iter().any(|g| g.status.is_some_and(|s| !s.is_closed()) && g.deadline.as_deref().is_some_and(|d| !d.trim().is_empty()));
-                    let window = if dated { Some((self.zone()?, day.compaction_window_start, day.now)) } else { None };
-                    // A goal closed since the earliest event offered started can
-                    // still be tagged on the events before it closed.
-                    let since = day.events.iter().map(|e| e.start()).fold(day.compaction_window_start, Moment::min);
-                    Some(context_goals(&all, since, window))
-                }
-                None => None,
-            },
+            goals: context_goals,
             previous_note,
             judgments_pending: pending,
             proposal,
@@ -729,10 +719,38 @@ impl NoteCompactor {
                 Some((id.clone(), l.name.filter(|n| !n.is_empty()).unwrap_or(id)))
             }));
         }
+        if let Some(g) = &self.goals {
+            names.extend(g.all()?.into_iter().filter_map(|g| {
+                let id = g.id.filter(|i| !i.is_empty())?;
+                Some((id.clone(), g.title.filter(|t| !t.is_empty()).unwrap_or(id)))
+            }));
+        }
         if let Some(additions) = additions {
             names.extend(additions.refs().into_iter().map(|(r, name)| (r, format!("{name} (new)"))));
         }
         Ok(names)
+    }
+
+    /// The goals as prepare_compaction lists them for `day` (see
+    /// `context_goals`), or None when this calendar has no goals.
+    fn context_goals_of(&self, day: &Day) -> anyhow::Result<Option<Vec<Value>>> {
+        let Some(g) = &self.goals else { return Ok(None) };
+        let all = g.all()?;
+        // The calendar's zone is read only when a deadline has to be placed
+        // in the window.
+        let dated = all.iter().any(|g| g.status.is_some_and(|s| !s.is_closed()) && g.deadline.as_deref().is_some_and(|d| !d.trim().is_empty()));
+        let zone = if dated { Some(self.zone()?) } else { None };
+        // A goal closed since the earliest event offered started can still
+        // be tagged on the events before it closed.
+        let since = day.events.iter().map(|e| e.start()).fold(day.compaction_window_start, Moment::min);
+        Ok(Some(context_goals(&all, since, (day.compaction_window_start, day.now), zone)))
+    }
+
+    /// The goals `timeline` is to list at its end (see `with_goals`): those
+    /// closed or due in the window, each with the events tagged with it.
+    fn watched_goals(&self, day: &Day, timeline: &Timeline) -> anyhow::Result<Vec<TimelineGoal>> {
+        let Some(goals) = self.context_goals_of(day)? else { return Ok(Vec::new()) };
+        Ok(watched_goals(&goals, &timeline.events, day.now))
     }
 
     fn suggestions(&self, days: &[Day], tree: &ActionTree) -> anyhow::Result<Vec<(String, Vec<String>)>> {
@@ -997,13 +1015,17 @@ impl NoteCompactor {
             message.push_str(&format!(" {remaining} later note(s) aren't part of it: they'll be in the next proposal."));
         }
         let additions_json = additions.to_json_dict();
+        let timeline = joined(&walked);
+        let watched = self.watched_goals(&walked.last().unwrap().day, &timeline)?;
+        let mut warnings: Vec<String> = walked.iter().flat_map(|w| w.plan.warnings.clone()).collect();
+        warnings.extend(untagged_goal_warnings(&watched));
         Ok(CompactionResult {
             status: "proposed".into(),
             compaction_id: Some(revision_id(&proposal, revision_number)),
             proposal_id: Some(proposal.clone()),
             revision: Some(revision_number),
-            warnings: walked.iter().flat_map(|w| w.plan.warnings.clone()).collect(),
-            timeline: Some(joined(&walked)),
+            warnings,
+            timeline: Some(with_goals(timeline, watched)),
             additions: if additions_json.is_empty() { None } else { Some(additions_json) },
             changes,
             message,
@@ -3849,13 +3871,17 @@ pub fn new_event_id(compaction_id: &str, step: i64) -> String {
 /// and those closed (done, missed or obsolete) at or after `since`, each
 /// with its `closed_at`. Compaction may tag an event with any of them
 /// that it clearly matches, a closed one only on events that started
-/// before it closed; none of them is one a new goal may repeat. With
-/// `window` (the calendar's zone, the window's start and now), an open
-/// one whose deadline fell inside it has `due_in_window`: one to propose
-/// missed unless something shows it done.
-pub fn context_goals(all: &[goals::Goal], since: Moment, window: Option<(chrono_tz::Tz, Moment, Moment)>) -> Vec<Value> {
+/// before it closed; none of them is one a new goal may repeat. One
+/// closed inside `window` (its start and now) has `closed_in_window`:
+/// the user closed it as they finished, most likely, so the work on it
+/// is among the window's events, to tag. With `zone` (the calendar's),
+/// an open one whose deadline fell inside the window has
+/// `due_in_window`: one to propose missed unless something shows it
+/// done. Those flagged come first.
+pub fn context_goals(all: &[goals::Goal], since: Moment, window: (Moment, Moment), zone: Option<chrono_tz::Tz>) -> Vec<Value> {
+    let (start, now) = window;
     let due_in_window = |deadline: Option<&str>| -> bool {
-        let (Some((zone, start, now)), Some(due)) = (window, deadline.and_then(deadline_end)) else { return false };
+        let (Some(zone), Some(due)) = (zone, deadline.and_then(deadline_end)) else { return false };
         start.with_timezone(&zone).naive_local() <= due && due <= now.with_timezone(&zone).naive_local()
     };
     let listed = |g: &goals::Goal| match g.status {
@@ -3863,7 +3889,8 @@ pub fn context_goals(all: &[goals::Goal], since: Moment, window: Option<(chrono_
         Some(_) => true,
         None => false,
     };
-    all.iter()
+    let listed: Vec<Value> = all
+        .iter()
         .filter(|g| listed(g))
         .filter(|g| g.id.as_deref().is_some_and(|i| !i.is_empty()))
         .map(|g| {
@@ -3879,10 +3906,59 @@ pub fn context_goals(all: &[goals::Goal], since: Moment, window: Option<(chrono_
             }
             if let Some(at) = goals::closed_at(g) {
                 out["closed_at"] = json!(at);
+                if goals::closed_moment(g).is_some_and(|c| start <= c && c <= now) {
+                    out["closed_in_window"] = json!(true);
+                }
             } else if due_in_window(g.deadline.as_deref()) {
                 out["due_in_window"] = json!(true);
             }
             out
+        })
+        .collect();
+    let flagged = |g: &Value| g["closed_in_window"] == json!(true) || g["due_in_window"] == json!(true);
+    let (first, rest): (Vec<Value>, Vec<Value>) = listed.into_iter().partition(flagged);
+    first.into_iter().chain(rest).collect()
+}
+
+/// The goals `timeline.goals` lists (see `with_goals`): of `context` (as
+/// `context_goals` gives them), those closed or due in the window, each
+/// with why -- "done 09:30", "due in the window" -- and the summaries of
+/// the `events` tagged with it, in time order.
+pub fn watched_goals(context: &[Value], events: &[TimelineEvent], now: Moment) -> Vec<TimelineGoal> {
+    let tz = *now.offset();
+    context
+        .iter()
+        .filter(|g| g["closed_in_window"] == json!(true) || g["due_in_window"] == json!(true))
+        .filter_map(|g| {
+            let id = g["id"].as_str()?.to_string();
+            let title = g["title"].as_str().filter(|t| !t.is_empty()).unwrap_or(&id).to_string();
+            let why = if g["closed_in_window"] == json!(true) {
+                let status = g["status"].as_str().unwrap_or("closed");
+                match g["closed_at"].as_str().and_then(|t| parse_iso(t, None).ok()) {
+                    Some(at) => format!("{status} {}", at.with_timezone(&tz).format("%H:%M")),
+                    None => status.to_string(),
+                }
+            } else {
+                "due in the window".to_string()
+            };
+            let tagged: Vec<String> = events.iter().filter(|e| e.start.is_some() && e.goal_ids.iter().any(|t| *t == id)).map(|e| e.summary.clone()).collect();
+            Some(TimelineGoal { id, title, why, tagged })
+        })
+        .collect()
+}
+
+/// A warning for each goal closed in the window that no event is tagged
+/// with: the work on it is most likely among the events, untagged.
+pub fn untagged_goal_warnings(watched: &[TimelineGoal]) -> Vec<String> {
+    watched
+        .iter()
+        .filter(|g| g.tagged.is_empty() && !g.why.starts_with("due"))
+        .map(|g| {
+            format!(
+                "goal {} was closed in the window ({}) but no event is tagged with it: tag the event(s) the work on it happened at, or say in the recap's `unsure` that none of these events was it",
+                py::repr(&g.title),
+                g.why
+            )
         })
         .collect()
 }

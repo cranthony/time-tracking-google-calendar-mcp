@@ -1238,6 +1238,24 @@ pub fn facts_lines(facts: Option<&Facts>, names: &[(String, String)]) -> Vec<Str
     lines
 }
 
+/// An event's goals as the timeline shows them under it: each goal's
+/// title, with its share when it takes part of the event ("Fix the fence
+/// (30m)").
+pub fn goal_lines(goals: Option<&Vec<GoalShare>>, names: &[(String, String)]) -> Vec<String> {
+    goals
+        .into_iter()
+        .flatten()
+        .map(|g| match crate::stores::shares::amount_text(g) {
+            Some(amount) => format!("{} ({amount})", name_of(names, &g.goal_id)),
+            None => name_of(names, &g.goal_id),
+        })
+        .collect()
+}
+
+fn goal_ids(goals: Option<&Vec<GoalShare>>) -> Vec<String> {
+    goals.into_iter().flatten().map(|g| g.goal_id.clone()).collect()
+}
+
 #[allow(clippy::too_many_arguments)]
 fn timeline_of(
     ordered: &[PlanNote],
@@ -1255,6 +1273,11 @@ fn timeline_of(
     let fact_fields = |final_: &Event, original: Option<&Event>| -> (Vec<String>, bool) {
         let said = facts_lines(final_.facts.as_ref(), names);
         let changed = !said.is_empty() && original.is_none_or(|o| facts_dict(final_.facts.as_ref()) != facts_dict(o.facts.as_ref()));
+        (said, changed)
+    };
+    let goal_fields = |final_: &Event, original: Option<&Event>| -> (Vec<String>, bool) {
+        let said = goal_lines(final_.goals.as_ref(), names);
+        let changed = !said.is_empty() && original.is_none_or(|o| final_.goals != o.goals);
         (said, changed)
     };
     let missing = |final_: &Event, start: Moment| -> Vec<String> {
@@ -1309,6 +1332,7 @@ fn timeline_of(
         let actions = named(final_.action_ids.as_ref());
         let before_actions = named(original.action_ids.as_ref());
         let (facts_said, new_facts) = fact_fields(&final_, Some(original));
+        let (goals_said, new_goals) = goal_fields(&final_, Some(original));
         events.push(TimelineEvent {
             summary: final_.summary.clone().filter(|s| !s.is_empty()).unwrap_or(id.clone()),
             status: status.into(),
@@ -1320,6 +1344,9 @@ fn timeline_of(
             actions,
             facts: facts_said,
             new_facts,
+            goals: goals_said,
+            new_goals,
+            goal_ids: goal_ids(final_.goals.as_ref()),
             missing: missing(&final_, final_.start()),
             event_id: Some(id.clone()),
             planned_start: original.start,
@@ -1331,6 +1358,7 @@ fn timeline_of(
         if fact.base.is_none() {
             let actions = named(fact.event.action_ids.as_ref());
             let (facts_said, new_facts) = fact_fields(&fact.event, None);
+            let (goals_said, new_goals) = goal_fields(&fact.event, None);
             events.push(TimelineEvent {
                 summary: fact.event.summary.clone().unwrap_or_default(),
                 status: "new".into(),
@@ -1343,6 +1371,9 @@ fn timeline_of(
                 actions,
                 facts: facts_said,
                 new_facts,
+                goals: goals_said,
+                new_goals,
+                goal_ids: goal_ids(fact.event.goals.as_ref()),
                 missing: missing(&fact.event, fact.start),
                 ..Default::default()
             });
@@ -1419,6 +1450,8 @@ pub fn planned_timeline(
                 actions: e.action_ids.iter().flatten().map(|a| name_of(names, &a.action_id)).collect(),
                 new_actions: suggested.iter().find(|(k, _)| *k == id).map(|(_, v)| v.iter().map(|a| name_of(names, a)).collect()).unwrap_or_default(),
                 facts: facts_lines(e.facts.as_ref(), names),
+                goals: goal_lines(e.goals.as_ref(), names),
+                goal_ids: goal_ids(e.goals.as_ref()),
                 ..Default::default()
             }
         })

@@ -73,9 +73,9 @@ fn prepare_marks_the_goals_whose_deadline_fell_in_the_window() {
     let context = setup().prepare().to_json();
 
     let due: Vec<(&str, bool)> = context["goals"].as_array().unwrap().iter().map(|g| (g["id"].as_str().unwrap(), g["due_in_window"] == json!(true))).collect();
-    // g2 and g3 fell due this morning; g1 is due next week, g4 at the end
-    // of today, and g5 is closed.
-    assert_eq!(due, vec![("g1", false), ("g2", true), ("g3", true), ("g4", false)]);
+    // g2 and g3 fell due this morning, so they come first; g1 is due next
+    // week, g4 at the end of today, and g5 is closed.
+    assert_eq!(due, vec![("g2", true), ("g3", true), ("g1", false), ("g4", false)]);
     assert!(DECISION_GUIDE.contains("GOAL CHANGES: `goals` are the goals as they stand"));
     assert!(DECISION_GUIDE.contains("TRIAGE: for every goal with `due_in_window`"));
     assert!(DECISION_GUIDE.contains("never give a `retry_deadline` yourself"));
