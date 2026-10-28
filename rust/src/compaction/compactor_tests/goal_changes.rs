@@ -57,7 +57,7 @@ fn goal(setup: &Setup, id: &str) -> Goal {
 }
 
 fn entry(status: GoalStatus, at: &str, deadline: &str) -> StatusChange {
-    StatusChange { status, at: crate::contract::DateTimeText(py::pydantic_datetime(&time_at(at))), deadline: Some(deadline.into()) }
+    StatusChange { status, at: crate::contract::DateTimeText(py::pydantic_datetime(&time_at(at))), deadline: Some(deadline.into()), note: None }
 }
 
 fn shown_ids(proposal: &Proposal) -> Vec<(String, String, String)> {
@@ -239,7 +239,7 @@ fn a_users_goal_change_is_checked_as_claudes_is() {
 
 /// `goal_id` made obsolete behind the proposal's back.
 fn closed(goal_id: &str) -> GoalEdit {
-    GoalEdit { goal: Goal { id: Some(goal_id.into()), status: Some(GoalStatus::Obsolete), version: Some(0), ..Default::default() }, clear_fields: Vec::new() }
+    GoalEdit { goal: Goal { id: Some(goal_id.into()), status: Some(GoalStatus::Obsolete), version: Some(0), ..Default::default() }, clear_fields: Vec::new(), status_note: None }
 }
 
 #[test]

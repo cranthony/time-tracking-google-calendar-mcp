@@ -136,6 +136,11 @@ fn cleared(clear: &[GoalField]) -> Vec<String> {
 pub struct GoalUpdate {
     pub goal: GoalInput,
     pub clear_fields: Option<Vec<GoalField>>,
+    /// A note for the status change this update records -- a status set
+    /// without a history -- kept on that history entry: why the goal was
+    /// marked done, say. With a history given, put the note on its entry
+    /// instead.
+    pub status_note: Option<String>,
 }
 
 /// A goal to delete. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
@@ -185,7 +190,8 @@ pub struct GoalDelete {
 /// while it's held, or what it waits for has no due yet. A status (inactive, active, done, missed -- its
 /// deadline passed without it -- or obsolete) and its history (each change of
 /// status and when, oldest first, each with the deadline in force at
-/// that change, if it had one; started_at is when it first became
+/// that change, if it had one, and a note, if one was left with it --
+/// why it was marked done, say; started_at is when it first became
 /// active, closed_at when it was done, missed or made obsolete). A missed
 /// goal can be reopened with a new deadline, and its history keeps each
 /// deadline it missed, so a goal can be missed and retried any number
@@ -247,8 +253,9 @@ pub fn create_goal(app: &App, goal: GoalInput) -> Result<CreatedGoal, ToolError>
 /// that update's clear_fields to remove it instead), `creates` (new goals,
 /// as create_goal takes them; an update can name one by an id given
 /// here) and `deletes`. A status set without a history adds the change,
-/// now, with the goal's deadline after the change, to the goal's history;
-/// a history given replaces it whole (to backdate a change, or remove a
+/// now, with the goal's deadline after the change, and the update's
+/// status_note, to the goal's history; a history given replaces it whole
+/// (to backdate a change, or remove a
 /// mistaken one), its entries' deadlines as given, and must end with the
 /// goal's status. To retry a missed goal, set its new deadline and give
 /// its history ending missed (with the deadline it missed) then active or
@@ -270,7 +277,7 @@ pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option
     let edits: Vec<GoalEdit> = updates
         .unwrap_or_default()
         .into_iter()
-        .map(|u| GoalEdit { goal: u.goal.into(), clear_fields: cleared(&u.clear_fields.unwrap_or_default()) })
+        .map(|u| GoalEdit { goal: u.goal.into(), clear_fields: cleared(&u.clear_fields.unwrap_or_default()), status_note: u.status_note })
         .collect();
     let creates: Vec<Goal> = creates.unwrap_or_default().into_iter().map(Goal::from).collect();
     let removals: Vec<GoalRemoval> =
@@ -279,12 +286,13 @@ pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option
 }
 
 /// Update one goal by id: the fields given are set, those left out kept,
-/// and those in clear_fields removed -- update_goals for one goal (see
-/// there for status and history). Give version -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns the goal as updated.
+/// and those in clear_fields removed, and status_note kept on the status
+/// change it records -- update_goals for one goal (see there for status
+/// and history). Give version -- the version you last read: without it, it's refused; changed since, it's refused -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns the goal as updated.
 #[tool(writes)]
-pub fn update_goal(app: &App, goal: GoalInput, clear_fields: Option<Vec<GoalField>>) -> Result<ListedGoal, ToolError> {
+pub fn update_goal(app: &App, goal: GoalInput, clear_fields: Option<Vec<GoalField>>, status_note: Option<String>) -> Result<ListedGoal, ToolError> {
     let id = goal.id.clone().unwrap_or_default();
-    let changed = update_goals(app, Some(vec![GoalUpdate { goal, clear_fields }]), None, None)?;
+    let changed = update_goals(app, Some(vec![GoalUpdate { goal, clear_fields, status_note }]), None, None)?;
     changed.goals.into_iter().find(|g| g.id.as_deref() == Some(id.trim())).ok_or_else(|| ToolError::Message(format!("goal {id} wasn't updated")))
 }
 

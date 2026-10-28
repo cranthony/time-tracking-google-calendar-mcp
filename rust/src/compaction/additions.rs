@@ -310,7 +310,7 @@ fn goal_addition_problems(
         all.push(Goal {
             id: Some(g.ref_.clone()),
             status: Some(status),
-            history: Some(vec![StatusChange { status, at: now.clone(), deadline: g.item.deadline.clone() }]),
+            history: Some(vec![StatusChange { status, at: now.clone(), deadline: g.item.deadline.clone(), note: None }]),
             version: None,
             ..g.item.clone()
         });

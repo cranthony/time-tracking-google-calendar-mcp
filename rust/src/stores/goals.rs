@@ -96,6 +96,11 @@ pub struct StatusChange {
     /// (a status set without a history); a history given whole keeps
     /// its entries' as given.
     pub deadline: Option<String>,
+    /// A note on the change, as the user left it: why the goal was marked
+    /// done, say. Given with the change (update_goals' status_note), or
+    /// in a history given whole.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 /// How far a deadline is from what it's measured from: whole days (a
@@ -372,6 +377,9 @@ pub const GOAL_ROW: RowType = <Goal as rows::RowItem>::ROW_TYPE;
 pub struct GoalEdit {
     pub goal: Goal,
     pub clear_fields: Vec<String>,
+    /// A note for the status change this update records, if it records
+    /// one (a status set without a history).
+    pub status_note: Option<String>,
 }
 
 /// A goal to delete, and the version last seen of it.
@@ -672,7 +680,7 @@ fn activate(goals: &mut [Goal], index: usize, at: &DateTimeText) -> Vec<String> 
             continue;
         }
         goal.status = Some(GoalStatus::Active);
-        goal.history.get_or_insert_with(Vec::new).push(StatusChange { status: GoalStatus::Active, at: at.clone(), deadline: None });
+        goal.history.get_or_insert_with(Vec::new).push(StatusChange { status: GoalStatus::Active, at: at.clone(), deadline: None, note: None });
         activated.push(id);
     }
     activated
@@ -974,7 +982,7 @@ impl Goals {
             after.deadline_offset_minutes = None;
             if edit.goal.history.is_none() && after.status != before.status {
                 if let Some(status) = after.status {
-                    after.history.get_or_insert_with(Vec::new).push(StatusChange { status, at: now.clone(), deadline: None });
+                    after.history.get_or_insert_with(Vec::new).push(StatusChange { status, at: now.clone(), deadline: None, note: edit.status_note.clone() });
                     stamped.push(id.clone());
                 }
             }
@@ -1000,7 +1008,7 @@ impl Goals {
             let status = given.status.unwrap_or(GoalStatus::Active);
             let history = given.history.clone().unwrap_or_else(|| {
                 stamped.push(id.clone());
-                vec![StatusChange { status, at: now.clone(), deadline: None }]
+                vec![StatusChange { status, at: now.clone(), deadline: None, note: None }]
             });
             goals.push(Goal { id: Some(id.clone()), status: Some(status), history: Some(history), version: None, ..given.clone() });
             if status == GoalStatus::Active {

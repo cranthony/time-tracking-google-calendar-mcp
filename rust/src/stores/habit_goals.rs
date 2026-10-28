@@ -209,7 +209,7 @@ pub fn renew(goals: &mut Vec<Goal>, templates: &[Template], zone: &Tz, now: Naiv
                     .unwrap_or(GoalStatus::Active);
                 let deadline = next_period(covered, period).1.format("%Y-%m-%d").to_string();
                 let goal = &mut goals[i];
-                goal.history.get_or_insert_with(Vec::new).push(StatusChange { status: prior, at, deadline: Some(deadline.clone()) });
+                goal.history.get_or_insert_with(Vec::new).push(StatusChange { status: prior, at, deadline: Some(deadline.clone()), note: None });
                 goal.status = Some(prior);
                 goal.deadline = Some(deadline);
                 changed.extend(goal.id.clone());
@@ -237,7 +237,7 @@ pub fn renew(goals: &mut Vec<Goal>, templates: &[Template], zone: &Tz, now: Naiv
             expected_minutes: t.expected_minutes,
             deadline: Some(deadline.clone()),
             status: Some(GoalStatus::Active),
-            history: Some(vec![StatusChange { status: GoalStatus::Active, at: stamp(from, zone), deadline: Some(deadline) }]),
+            history: Some(vec![StatusChange { status: GoalStatus::Active, at: stamp(from, zone), deadline: Some(deadline), note: None }]),
             description: t.description.clone(),
             definition_of_done: t.definition_of_done.clone(),
             attribution_hints: t.attribution_hints.clone(),
