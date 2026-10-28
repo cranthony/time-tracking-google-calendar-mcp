@@ -638,7 +638,7 @@ fn retire_goals(app: &App, habit_id: &str) -> Result<(), ToolError> {
     let edits: Vec<GoalEdit> = all
         .iter()
         .filter(|g| g.habit_id.as_deref() == Some(habit_id) && g.status.is_some_and(|s| !s.is_closed()))
-        .map(|g| GoalEdit { goal: Goal { id: g.id.clone(), status: Some(GoalStatus::Obsolete), version: Some(g.version.unwrap_or(0)), ..Goal::default() }, clear_fields: Vec::new() })
+        .map(|g| GoalEdit { goal: Goal { id: g.id.clone(), status: Some(GoalStatus::Obsolete), version: Some(g.version.unwrap_or(0)), ..Goal::default() }, clear_fields: Vec::new(), status_note: None })
         .collect();
     if !edits.is_empty() {
         goals.change_goals(&[], &edits, &[], &zone).map_err(refused)?;

@@ -234,15 +234,15 @@ fn changed(goal: &Goal, change: &GoalChange) -> Goal {
     let history = after.history.get_or_insert_with(Vec::new);
     match (&change.retry_deadline, goal.status) {
         (Some(deadline), Some(prior)) if change.status == GoalStatus::Missed => {
-            history.push(StatusChange { status: GoalStatus::Missed, at: at.clone(), deadline: goal.deadline.clone() });
-            history.push(StatusChange { status: prior, at, deadline: Some(deadline.clone()) });
+            history.push(StatusChange { status: GoalStatus::Missed, at: at.clone(), deadline: goal.deadline.clone(), note: None });
+            history.push(StatusChange { status: prior, at, deadline: Some(deadline.clone()), note: None });
             after.deadline = Some(deadline.clone());
             // A deadline of its own unties it from what it was measured
             // from.
             after.deadline_rule = None;
         }
         _ => {
-            history.push(StatusChange { status: change.status, at, deadline: goal.deadline.clone() });
+            history.push(StatusChange { status: change.status, at, deadline: goal.deadline.clone(), note: None });
             after.status = Some(change.status);
         }
     }
@@ -263,6 +263,7 @@ pub fn edit_for(goal: &Goal, change: &GoalChange) -> GoalEdit {
             ..Default::default()
         },
         clear_fields: Vec::new(),
+        status_note: None,
     }
 }
 

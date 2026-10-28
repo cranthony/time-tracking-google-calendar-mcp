@@ -25,8 +25,8 @@ fn closed(id: &str, deadline: &str, status: GoalStatus, closed: &str) -> Goal {
         deadline: Some(deadline.into()),
         status: Some(status),
         history: Some(vec![
-            StatusChange { status: GoalStatus::Active, at: stamp(at("2026-10-25T00:00"), &ZONE), deadline: Some(deadline.into()) },
-            StatusChange { status, at: stamp(at(closed), &ZONE), deadline: Some(deadline.into()) },
+            StatusChange { status: GoalStatus::Active, at: stamp(at("2026-10-25T00:00"), &ZONE), deadline: Some(deadline.into()), note: None },
+            StatusChange { status, at: stamp(at(closed), &ZONE), deadline: Some(deadline.into()), note: None },
         ]),
         ..Goal::default()
     }
@@ -148,7 +148,7 @@ fn a_missed_goal_is_tried_again_through_the_next_period() {
     assert_eq!(history[2].at, history[1].at);
     // Done in its second week, the next is the week after.
     let mut goals = vec![Goal { status: Some(GoalStatus::Done), ..goal.clone() }];
-    goals[0].history.as_mut().unwrap().push(StatusChange { status: GoalStatus::Done, at: stamp(at("2026-11-05T12:00"), &ZONE), deadline: Some("2026-11-07".into()) });
+    goals[0].history.as_mut().unwrap().push(StatusChange { status: GoalStatus::Done, at: stamp(at("2026-11-05T12:00"), &ZONE), deadline: Some("2026-11-07".into()), note: None });
     assert!(renew(&mut goals, &[weekly()], &ZONE, at("2026-11-07T12:00")).is_empty());
     assert_eq!(renew(&mut goals, &[weekly()], &ZONE, at("2026-11-08T12:00")), vec!["hab1_2026-11-08"]);
 }

@@ -33,7 +33,7 @@ fn goal(given: Value) -> Goal {
 }
 
 fn edit(given: Value) -> GoalEdit {
-    GoalEdit { goal: goal(given), clear_fields: Vec::new() }
+    GoalEdit { goal: goal(given), clear_fields: Vec::new(), status_note: None }
 }
 
 fn json_of<T: serde::Serialize>(value: T) -> Value {
@@ -762,4 +762,33 @@ fn a_habits_goal_not_written_yet_is_listed_at_the_version_a_change_to_it_needs()
     // Changed at that version, as a client that read it would.
     let changed = goals.change_goals(&[], &[edit(json!({"id": "hab1_2026-10-11", "status": "done", "version": listed.version}))], &[], &ZONE).unwrap();
     assert_eq!(changed.goals[0].status, Some(GoalStatus::Done));
+}
+
+#[test]
+fn a_status_change_keeps_the_note_left_with_it() {
+    let f = fixture();
+    let now = "2026-10-17T09:00:00-04:00";
+    let id = f.create(json!({"title": "Top", "deadline": "2026-12-01"})).unwrap();
+
+    // An update's status_note lands on the change it records; one
+    // without a status change is dropped, and an entry without a note
+    // reads back without one.
+    let noted = GoalEdit { goal: goal(json!({"id": id, "status": "done"})), clear_fields: Vec::new(), status_note: Some("Shipped in 7.212".into()) };
+    f.change(&[], vec![noted], vec![]).unwrap();
+    assert_eq!(
+        f.get(&id)["history"],
+        json!([{"status": "active", "at": now, "deadline": "2026-12-01"}, {"status": "done", "at": now, "deadline": "2026-12-01", "note": "Shipped in 7.212"}])
+    );
+    let unchanged = GoalEdit { goal: goal(json!({"id": id, "title": "Top goal"})), clear_fields: Vec::new(), status_note: Some("Nothing to note".into()) };
+    f.change(&[], vec![unchanged], vec![]).unwrap();
+    assert_eq!(f.get(&id)["history"].as_array().unwrap().len(), 2);
+    assert_eq!(f.get(&id)["history"][1]["note"], json!("Shipped in 7.212"));
+
+    // A history given whole keeps its entries' notes as given.
+    let given = json!([
+        {"status": "active", "at": "2026-10-01T09:00:00-04:00", "deadline": "2026-12-01"},
+        {"status": "done", "at": "2026-10-16T09:00:00-04:00", "deadline": "2026-12-01", "note": "Shipped early"}
+    ]);
+    f.change(&[], vec![edit(json!({"id": id, "history": given.clone()}))], vec![]).unwrap();
+    assert_eq!(f.get(&id)["history"], given);
 }
