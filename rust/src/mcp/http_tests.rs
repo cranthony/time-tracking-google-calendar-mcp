@@ -781,3 +781,19 @@ fn the_public_base_is_the_mcp_url_without_mcp_or_the_proxys_host() {
     assert_eq!(disabled(&proxied).unwrap().public_base().as_deref(), Some("https://tracker.corp.example"));
     assert_eq!(disabled(&[]).unwrap().public_base(), None);
 }
+
+#[test]
+fn the_icon_is_served_without_signing_in() {
+    let served = served(AUTHKIT);
+
+    let svg = send("GET", &format!("{}/favicon.svg", served.url), &[], None);
+    assert_eq!((svg.status, svg.body.as_bytes()), (200, icon::SVG));
+    assert_eq!(svg.header("content-type"), Some("image/svg+xml"));
+    assert_eq!(svg.header("cache-control"), Some("public, max-age=86400"));
+    for (path, content_type, bytes) in [("/favicon.png", "image/png", icon::PNG), ("/favicon.ico", "image/x-icon", icon::ICO)] {
+        let answer = send("GET", &format!("{}{path}", served.url), &[], None);
+        assert_eq!(answer.status, 200, "{path}");
+        assert_eq!(answer.header("content-type"), Some(content_type));
+        assert_eq!(answer.header("content-length"), Some(bytes.len().to_string().as_str()));
+    }
+}

@@ -3,6 +3,7 @@
 //! in order -- the HTTP scenarios compare bodies byte for byte. Transports (stdio, streamable HTTP) hand messages here.
 
 pub mod http;
+pub mod icon;
 pub mod proxy;
 pub mod schema;
 pub mod stdio;
@@ -152,7 +153,7 @@ fn initialize_result(app: &crate::app::App, params: &Value) -> Value {
             "tools": {"listChanged": false}
         },
         "protocolVersion": negotiated,
-        "serverInfo": {"name": SERVER_NAME, "version": ""}
+        "serverInfo": {"name": SERVER_NAME, "version": "", "icons": icon::server_icons(app.setup.base())}
     });
     // A build that skips sign-in says so to whoever connects: a flag for
     // clients to check, and words for people (and models) to read.
