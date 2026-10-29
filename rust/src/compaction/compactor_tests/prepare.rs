@@ -22,6 +22,7 @@ fn offers_the_days_notes_with_candidates_and_the_days_events() {
     assert_eq!(context.open_compaction, None);
     assert!(DECISION_GUIDE.contains("SILENCE MEANS ON SCHEDULE"));
     assert!(DECISION_GUIDE.contains("READ EACH NOTE'S TENSE"));
+    assert!(DECISION_GUIDE.contains("never the start_note of an event doing what it names"));
     assert_eq!(context.to_json()["instructions"], json!(DECISION_GUIDE));
 }
 
