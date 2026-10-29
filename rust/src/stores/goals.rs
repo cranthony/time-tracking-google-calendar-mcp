@@ -12,7 +12,7 @@
 
 use crate::attendees::{named_entries, Named};
 use crate::contract::{DateTimeText, RowItem, Schema};
-use crate::event::{parse_iso, Moment};
+use crate::event::{parse_iso, Event, Moment};
 use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, RowSheet, RowType};
@@ -558,6 +558,19 @@ fn start_of(at: &str) -> Option<NaiveDateTime> {
         return date.and_hms_opt(0, 0, 0);
     }
     deadline_end(text)
+}
+
+/// `events`, each with its goal_priority filled in: the highest (the
+/// lowest number) of the priorities that apply to the goals there are
+/// that it's tagged with (see `priority_of`).
+pub fn fill_in_from_goals(events: &[Event], goals: &[Goal]) -> Vec<Event> {
+    events
+        .iter()
+        .map(|e| {
+            let tagged = e.goals.iter().flatten().filter_map(|s| goals.iter().find(|g| g.id.as_deref() == Some(s.goal_id.as_str())));
+            Event { goal_priority: tagged.map(|g| priority_of(g, goals)).min(), ..e.clone() }
+        })
+        .collect()
 }
 
 /// The priority that applies to `goal`: its own, or its nearest parent's

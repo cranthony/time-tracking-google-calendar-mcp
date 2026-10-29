@@ -11,7 +11,7 @@ use crate::py;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::{share_ids, ActionShare, ActionTree};
 use crate::stores::event_changes::{self, Cancel, EventChanges, StaleEvent, StaleEvents};
-use crate::stores::goals::{settled_shares, GoalShare};
+use crate::stores::goals::{fill_in_from_goals, settled_shares, Goal, GoalShare};
 use crate::stores::notes::NotedTime as StoredNote;
 use crate::stores::schedule::ScheduleHint;
 use super::recurrences::{stored_repeat, Repeat};
@@ -85,10 +85,11 @@ pub struct Facts {
 /// priority falling back,
 /// when the event doesn't set one, to the highest (lowest-numbered)
 /// priority among its actions (each action's own, or its nearest
-/// group's). Kept separate from priority so that sending a listed event
-/// straight back to update_event never copies its actions' priority onto
-/// the event itself, which would stop it following later changes to the
-/// actions. An update ignores it.
+/// group's) and its goals (each goal's own, or its nearest parent's, or
+/// else 3). Kept separate from priority so that sending a listed event
+/// straight back to update_event never copies that priority onto the
+/// event itself, which would stop it following later changes to its
+/// actions and goals. An update ignores it.
 ///
 /// recurring_event_id is read-only too, and an update ignores it as
 /// well: it's assigned by Google and can't be set at all.
@@ -322,19 +323,28 @@ pub fn shown_shares(event: &Event, goal_ids: Option<&[String]>) -> Option<Vec<Go
     Some(settled_shares(shares, event_minutes(event), &|id| goal_ids.is_none_or(|ids| ids.iter().any(|i| i == id))))
 }
 
-/// The ids of the goals there are, read only if any of `events` has goals.
-pub fn goal_ids_for(app: &App, events: &[Event]) -> anyhow::Result<Option<Vec<String>>> {
+/// The goals there are, read only if any of `events` has goals.
+pub fn goals_for(app: &App, events: &[Event]) -> anyhow::Result<Option<Vec<Goal>>> {
     if events.iter().all(|e| e.goals.as_ref().is_none_or(Vec::is_empty)) {
         return Ok(None);
     }
-    Ok(Some(app.goals()?.ids()?))
+    Ok(Some(app.goals()?.all()?))
+}
+
+/// `events` with their actions and their actions' and goals' priorities
+/// filled in, and the ids of the goals there are (None if none of them
+/// has goals).
+pub fn filled_in(app: &App, events: &[Event], tree: &ActionTree) -> anyhow::Result<(Vec<Event>, Option<Vec<String>>)> {
+    let filled = fill_in_from_actions(events, tree);
+    let Some(goals) = goals_for(app, events)? else { return Ok((filled, None)) };
+    Ok((fill_in_from_goals(&filled, &goals), Some(goals.into_iter().filter_map(|g| g.id).collect())))
 }
 
 /// `_public_events`: with action names and priorities filled in.
 pub fn public_events(app: &App, events: &[Event]) -> anyhow::Result<Value> {
     let tree = app.actions()?.tree()?;
-    let goal_ids = goal_ids_for(app, events)?;
-    Ok(Value::Array(fill_in_from_actions(events, &tree).iter().map(|e| public_event_among(e, Some(&tree), goal_ids.as_deref())).collect()))
+    let (filled, goal_ids) = filled_in(app, events, &tree)?;
+    Ok(Value::Array(filled.iter().map(|e| public_event_among(e, Some(&tree), goal_ids.as_deref())).collect()))
 }
 
 /// `PublicEvent.to_event(clear_fields)`.
@@ -555,7 +565,7 @@ fn stale(app: &App, error: anyhow::Error) -> ToolError {
 /// done at each event, the first setting its color (action_names gives
 /// their names). effective_priority is the priority that applies:
 /// the event's own priority, falling back to the highest priority of its
-/// actions.
+/// actions and goals.
 /// recurring_event_id is the id of an instance's recurring
 /// series (see get_recurrence and update_recurrence to read and edit the
 /// series as a whole); event_label_id is the calendar label derived from
@@ -629,7 +639,7 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// Change several events at once, as one batch: `updates` (each an
 /// event's id and the fields to set -- left out, a field keeps its value;
 /// list it in that update's clear_fields to remove it instead -- clearing
-/// priority makes it follow its actions' priority again), `creates` (new
+/// priority makes it follow its actions' and goals' again), `creates` (new
 /// events, optionally with actions: action_ids, the first setting its
 /// color), `cancels` (each saying whether it counts against
 /// follow-through: a commitment dropped, rather than a change of plan --

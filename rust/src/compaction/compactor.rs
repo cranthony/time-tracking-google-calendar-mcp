@@ -509,7 +509,13 @@ impl NoteCompactor {
                     candidates: candidates.iter().rev().find(|(k, _)| *k == n.id()).map(|(_, v)| v.clone()).unwrap_or_default(),
                 });
             }
-            for e in &day.events {
+            // An event's priority takes in its goals'.
+            let tagged = day.events.iter().any(|e| e.goals.as_ref().is_some_and(|s| !s.is_empty()));
+            let day_events = match &self.goals {
+                Some(g) if tagged => goals::fill_in_from_goals(&day.events, &g.all()?),
+                _ => day.events.clone(),
+            };
+            for e in &day_events {
                 let Some(id) = e.id.clone().filter(|i| !i.is_empty()) else { continue };
                 if events.iter().any(|c| c.id == id) {
                     continue;
