@@ -239,12 +239,17 @@ impl GroupTree {
         item.priority().or_else(|| self.enclosing(item).iter().find_map(|g| g.priority))
     }
 
+    /// Its own color, or else its nearest enclosing group's; None if it
+    /// takes its priority's.
+    pub fn chosen_color(&self, item: &dyn Placed) -> Option<String> {
+        set(item.background_color())
+            .or_else(|| self.enclosing(item).iter().find_map(|g| set(g.background_color.as_deref())))
+            .map(str::to_string)
+    }
+
     pub fn color(&self, item: &dyn Placed) -> String {
-        if let Some(color) = set(item.background_color()) {
-            return color.to_string();
-        }
-        if let Some(color) = self.enclosing(item).iter().find_map(|g| set(g.background_color.as_deref())) {
-            return color.to_string();
+        if let Some(color) = self.chosen_color(item) {
+            return color;
         }
         let priority = self.priority(item);
         palette_get(&self.palette, clamp(priority)).unwrap_or(default_color(priority)).to_string()

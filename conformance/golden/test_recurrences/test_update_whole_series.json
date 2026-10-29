@@ -12,6 +12,7 @@
     "changed": [
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#fbd75b",
       "effective_priority": 1,
@@ -32,7 +33,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"attend standup\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"attend standup\",\n      \"effective_color\": \"#fbd75b\",\n      \"effective_priority\": 1,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"co2yzn\",\n      \"group_id\": null,\n      \"name\": \"attend standup\",\n      \"status\": \"active\",\n      \"label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"background_color\": null,\n      \"priority\": 1,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"attend standup\",\n      \"effective_color\": \"#fbd75b\",\n      \"chosen_color\": null,\n      \"effective_priority\": 1,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"co2yzn\"\n}",
    "tool": "create_action"
   },
   {

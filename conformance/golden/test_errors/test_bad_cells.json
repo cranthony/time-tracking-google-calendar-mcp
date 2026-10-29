@@ -44,6 +44,7 @@
     "changed": [
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": 2,
@@ -64,7 +65,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -151,6 +152,7 @@
     "actions": [
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": 2,
@@ -170,7 +172,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {
@@ -179,6 +181,7 @@
    },
    "content": {
     "background_color": null,
+    "chosen_color": null,
     "commute": null,
     "effective_color": "#a4bdfc",
     "effective_priority": 2,
@@ -194,7 +197,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"background_color\": null,\n  \"priority\": 2,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"Music › play guitar\",\n  \"effective_color\": \"#a4bdfc\",\n  \"effective_priority\": 2,\n  \"holds_label\": true,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"3dnjav\",\n  \"group_id\": \"co2yzn\",\n  \"name\": \"play guitar\",\n  \"status\": \"active\",\n  \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"background_color\": null,\n  \"priority\": 2,\n  \"note\": null,\n  \"commute\": null,\n  \"path\": \"Music › play guitar\",\n  \"effective_color\": \"#a4bdfc\",\n  \"chosen_color\": null,\n  \"effective_priority\": 2,\n  \"holds_label\": true,\n  \"version\": 1\n}",
    "tool": "get_action"
   },
   {
@@ -237,6 +240,7 @@
     "changed": [
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
@@ -257,7 +261,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"lejxa2\",\n      \"group_id\": null,\n      \"name\": \"read\",\n      \"status\": \"proposed\",\n      \"label_id\": \"10199877-95e7-5c0a-b7b8-6aeb6b3225e8\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"lejxa2\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"lejxa2\",\n      \"group_id\": null,\n      \"name\": \"read\",\n      \"status\": \"proposed\",\n      \"label_id\": \"10199877-95e7-5c0a-b7b8-6aeb6b3225e8\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200,\n  \"created_id\": \"lejxa2\"\n}",
    "tool": "create_action"
   },
   {
@@ -365,6 +369,7 @@
     "actions": [
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": 2,
@@ -381,6 +386,7 @@
      },
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
@@ -400,7 +406,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    },\n    {\n      \"id\": \"lejxa2\",\n      \"group_id\": null,\n      \"name\": \"read\",\n      \"status\": \"proposed\",\n      \"label_id\": \"10199877-95e7-5c0a-b7b8-6aeb6b3225e8\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": \"co2yzn\",\n      \"name\": \"play guitar\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": 2,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"Music › play guitar\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": 2,\n      \"holds_label\": true,\n      \"version\": 1\n    },\n    {\n      \"id\": \"lejxa2\",\n      \"group_id\": null,\n      \"name\": \"read\",\n      \"status\": \"proposed\",\n      \"label_id\": \"10199877-95e7-5c0a-b7b8-6aeb6b3225e8\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"read\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   }
  ],
