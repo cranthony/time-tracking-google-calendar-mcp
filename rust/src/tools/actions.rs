@@ -17,7 +17,8 @@ pub use crate::stores::actions::*;
 /// commute (true for a way of getting from one place to another, such as
 /// "drive" or "walk", which a travel time can be by), plus its path through its groups ("Creative › Guitar › Play guitar"),
 /// its effective_color and effective_priority (its own, or else its
-/// nearest group's) and whether it holds_label: active actions always hold one of the calendar's event
+/// nearest group's), its chosen_color (its own background_color, or else
+/// its nearest group's; null when its color is its priority's) and whether it holds_label: active actions always hold one of the calendar's event
 /// labels, and proposed ones do while there's room. Also how many of the
 /// calendar's label slots are in use. Read-only.
 #[tool]

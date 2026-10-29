@@ -36,6 +36,7 @@
     "changed": [
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
@@ -56,7 +57,7 @@
     "label_slots_used": 5
    },
    "is_error": false,
-   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"eat a meal\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"eat a meal\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
+   "text": "{\n  \"changed\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"eat a meal\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"eat a meal\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 5,\n  \"label_slots_total\": 200,\n  \"created_id\": \"3dnjav\"\n}",
    "tool": "create_action"
   },
   {
@@ -6658,6 +6659,7 @@
     "actions": [
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
@@ -6674,6 +6676,7 @@
      },
      {
       "background_color": null,
+      "chosen_color": null,
       "commute": null,
       "effective_color": "#a4bdfc",
       "effective_priority": null,
@@ -6693,7 +6696,7 @@
     "label_slots_used": 6
    },
    "is_error": false,
-   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"eat a meal\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"eat a meal\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    },\n    {\n      \"id\": \"kfj3g0\",\n      \"group_id\": null,\n      \"name\": \"go for a walk\",\n      \"status\": \"active\",\n      \"label_id\": \"de31f1cd-d153-5d50-a232-b8141c1374b7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"go for a walk\",\n      \"effective_color\": \"#a4bdfc\",\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
+   "text": "{\n  \"actions\": [\n    {\n      \"id\": \"3dnjav\",\n      \"group_id\": null,\n      \"name\": \"eat a meal\",\n      \"status\": \"active\",\n      \"label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"eat a meal\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    },\n    {\n      \"id\": \"kfj3g0\",\n      \"group_id\": null,\n      \"name\": \"go for a walk\",\n      \"status\": \"active\",\n      \"label_id\": \"de31f1cd-d153-5d50-a232-b8141c1374b7\",\n      \"background_color\": null,\n      \"priority\": null,\n      \"note\": null,\n      \"commute\": null,\n      \"path\": \"go for a walk\",\n      \"effective_color\": \"#a4bdfc\",\n      \"chosen_color\": null,\n      \"effective_priority\": null,\n      \"holds_label\": true,\n      \"version\": 1\n    }\n  ],\n  \"label_slots_used\": 6,\n  \"label_slots_total\": 200\n}",
    "tool": "get_actions"
   },
   {

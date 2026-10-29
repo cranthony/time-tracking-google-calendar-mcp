@@ -151,6 +151,8 @@ fn assigns_an_id_and_label_id_and_is_proposed() {
     let changed = &created["changed"][0];
     assert_eq!(changed["name"], "Play guitar");
     assert_eq!(changed["effective_color"], default_color(Some(1)));
+    // Its priority's color, not one it chose.
+    assert_eq!(changed["chosen_color"], serde_json::Value::Null);
     assert_eq!(changed["holds_label"], true);
 }
 
@@ -487,6 +489,7 @@ fn actions_inherit_their_groups_color_and_priority() {
     let listed = f.get(&play);
 
     assert_eq!((listed["path"].clone(), listed["effective_color"].clone(), listed["effective_priority"].clone()), (json!("Creative › Guitar › Play guitar"), json!("#123456"), json!(3)));
+    assert_eq!(listed["chosen_color"], "#123456");
     assert_eq!(f.names(), vec![("Play guitar".to_string(), "#123456".to_string())]);
 }
 

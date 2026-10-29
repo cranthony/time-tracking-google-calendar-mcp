@@ -7641,7 +7641,7 @@
     }
   },
   {
-    "description": "Every action: what the user does with their time, each a verb\nphrase for what they're doing in a moment (\"play guitar\", \"eat a\nmeal\"). By default the proposed and active ones, not archived or\ndeleted ones. Each has its id, group_id (the action group it's in, if\nany), name, status, label_id, background_color, priority, note and\ncommute (true for a way of getting from one place to another, such as\n\"drive\" or \"walk\", which a travel time can be by), plus its path through its groups (\"Creative › Guitar › Play guitar\"),\nits effective_color and effective_priority (its own, or else its\nnearest group's) and whether it holds_label: active actions always hold one of the calendar's event\nlabels, and proposed ones do while there's room. Also how many of the\ncalendar's label slots are in use. Read-only.",
+    "description": "Every action: what the user does with their time, each a verb\nphrase for what they're doing in a moment (\"play guitar\", \"eat a\nmeal\"). By default the proposed and active ones, not archived or\ndeleted ones. Each has its id, group_id (the action group it's in, if\nany), name, status, label_id, background_color, priority, note and\ncommute (true for a way of getting from one place to another, such as\n\"drive\" or \"walk\", which a travel time can be by), plus its path through its groups (\"Creative › Guitar › Play guitar\"),\nits effective_color and effective_priority (its own, or else its\nnearest group's), its chosen_color (its own background_color, or else\nits nearest group's; null when its color is its priority's) and whether it holds_label: active actions always hold one of the calendar's event\nlabels, and proposed ones do while there's room. Also how many of the\ncalendar's label slots are in use. Read-only.",
     "inputSchema": {
       "properties": {
         "statuses": {
@@ -7765,6 +7765,12 @@
                 "null"
               ]
             },
+            "chosen_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "effective_priority": {
               "type": [
                 "integer",
@@ -7877,6 +7883,12 @@
           ]
         },
         "effective_color": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "chosen_color": {
           "type": [
             "string",
             "null"
@@ -8099,6 +8111,12 @@
               ]
             },
             "effective_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "chosen_color": {
               "type": [
                 "string",
                 "null"
@@ -8334,6 +8352,12 @@
               ]
             },
             "effective_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "chosen_color": {
               "type": [
                 "string",
                 "null"
@@ -8714,6 +8738,12 @@
                 "null"
               ]
             },
+            "chosen_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "effective_priority": {
               "type": [
                 "integer",
@@ -8977,6 +9007,12 @@
                 "null"
               ]
             },
+            "chosen_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "effective_priority": {
               "type": [
                 "integer",
@@ -9205,6 +9241,12 @@
               ]
             },
             "effective_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "chosen_color": {
               "type": [
                 "string",
                 "null"
@@ -9477,6 +9519,12 @@
               ]
             },
             "effective_color": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "chosen_color": {
               "type": [
                 "string",
                 "null"
