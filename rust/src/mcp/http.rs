@@ -8,6 +8,7 @@
 //! held to conformance/'s golden records.
 
 use crate::app::App;
+use crate::mcp::icon;
 use crate::mcp::proxy::{self, ProxyCheck};
 use axum::body::{Body, Bytes};
 use axum::extract::{Request, State};
@@ -229,7 +230,10 @@ fn router(shared: Arc<Shared>) -> Router {
         .route("/mcp", get(mcp_get).post(mcp_post).delete(mcp_delete))
         .route("/setup", get(setup_start))
         .route("/setup/callback", get(setup_callback))
-        .route("/setup/paste", post(setup_paste));
+        .route("/setup/paste", post(setup_paste))
+        .route("/favicon.svg", get(|| async { favicon("image/svg+xml", icon::SVG) }))
+        .route("/favicon.png", get(|| async { favicon("image/png", icon::PNG) }))
+        .route("/favicon.ico", get(|| async { favicon("image/x-icon", icon::ICO) }));
     if !shared.config.auth_disabled {
         router = router
             .route(PROTECTED_RESOURCE_PATH, get(protected_resource))
@@ -242,6 +246,14 @@ fn router(shared: Arc<Shared>) -> Router {
         .layer(middleware::from_fn_with_state(shared.clone(), cors))
         .layer(middleware::from_fn_with_state(shared.clone(), through_proxy))
         .with_state(shared)
+}
+
+/// The app's icon (crate::mcp::icon), cacheable for a day.
+fn favicon(content_type: &'static str, bytes: &'static [u8]) -> Response {
+    let mut response = Response::new(Body::from(bytes));
+    response.headers_mut().insert("content-type", HeaderValue::from_static(content_type));
+    response.headers_mut().insert("cache-control", HeaderValue::from_static("public, max-age=86400"));
+    response
 }
 
 /// With a proxy check, only what came through the proxy (see
