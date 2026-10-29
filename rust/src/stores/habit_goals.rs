@@ -10,7 +10,7 @@
 //! only add "-"), so an id names the habit it's from.
 
 use crate::contract::{DateTimeText, Schema};
-use crate::stores::goals::{Goal, GoalStatus, StatusChange};
+use crate::stores::goals::{Goal, GoalStatus, StatusChange, TextFormat};
 use crate::stores::groups::set;
 use chrono::{Datelike, Duration, NaiveDate, NaiveDateTime};
 use chrono_tz::Tz;
@@ -72,7 +72,11 @@ pub struct RecurringGoal {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description_format: Option<TextFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub definition_of_done: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub definition_of_done_format: Option<TextFormat>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attribution_hints: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -239,7 +243,9 @@ pub fn renew(goals: &mut Vec<Goal>, templates: &[Template], zone: &Tz, now: Naiv
             status: Some(GoalStatus::Active),
             history: Some(vec![StatusChange { status: GoalStatus::Active, at: stamp(from, zone), deadline: Some(deadline), note: None }]),
             description: t.description.clone(),
+            description_format: t.description_format,
             definition_of_done: t.definition_of_done.clone(),
+            definition_of_done_format: t.definition_of_done_format,
             attribution_hints: t.attribution_hints.clone(),
             with_ids: t.with_ids.clone(),
             for_ids: t.for_ids.clone(),

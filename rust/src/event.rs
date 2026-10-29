@@ -5,6 +5,7 @@ use crate::facts::Facts;
 use crate::stores::actions::ActionShare;
 use crate::stores::goals::{parse_shares, shares_text, GoalShare};
 use crate::py;
+use crate::text_format::TextFormat;
 use anyhow::{anyhow, bail};
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
 use chrono_tz::Tz;
@@ -14,7 +15,7 @@ use std::collections::BTreeSet;
 pub const PREFIX: &str = "cascading-time-tracker-";
 pub const MAX_DESCRIPTION_BYTES: usize = 8192;
 
-pub const CLEARABLE_EVENT_FIELDS: [&str; 5] = ["description", "location", "priority", "facts", "judgments"];
+pub const CLEARABLE_EVENT_FIELDS: [&str; 6] = ["description", "description_format", "location", "priority", "facts", "judgments"];
 
 /// The most extended properties each JSON field is split across.
 pub fn chunks(name: &str) -> usize {
@@ -77,6 +78,9 @@ pub struct Event {
     pub start: Option<Moment>,
     pub end: Option<Moment>,
     pub description: Option<String>,
+    /// How its description is written (a private property: Calendar
+    /// shows the description as it is).
+    pub description_format: Option<TextFormat>,
     pub location: Option<String>,
     pub status: Option<String>,
     pub recurring_event_id: Option<String>,
@@ -134,6 +138,7 @@ impl Event {
     fn is_set(&self, name: &str) -> bool {
         match name {
             "description" => self.description.is_some(),
+            "description_format" => self.description_format.is_some(),
             "location" => self.location.is_some(),
             "priority" => self.priority.is_some(),
             "facts" => self.facts.is_some(),
@@ -178,6 +183,7 @@ impl Event {
         if let Some(raw) = prop("action_ids") {
             event.action_ids = Some(parse_shares(raw));
         }
+        event.description_format = prop("description_format").and_then(TextFormat::parse);
         if let Some(raw) = prop("goal_shares") {
             event.goals = Some(parse_shares(raw));
         }
@@ -259,6 +265,9 @@ impl Event {
         if let Some(priority) = self.priority {
             set(&mut private, format!("{PREFIX}priority"), Some(priority.to_string()));
         }
+        if let Some(format) = self.description_format {
+            set(&mut private, format!("{PREFIX}description_format"), Some(format.text().into()));
+        }
         if let Some(ids) = &self.action_ids {
             set(&mut private, format!("{PREFIX}action_ids"), Some(shares_text(ids)));
         }
@@ -297,6 +306,10 @@ impl Event {
             match name.as_str() {
                 "description" | "location" => {
                     body.insert(name.clone(), Value::Null);
+                    // A description cleared takes its format with it.
+                    if name == "description" && self.description_format.is_none() {
+                        set(&mut private, format!("{PREFIX}description_format"), None);
+                    }
                 }
                 "facts" | "judgments" => {
                     for (key, value) in write_chunks(name, None)? {

@@ -1647,6 +1647,7 @@
     "action_names": null,
     "actions_from_label": false,
     "description": null,
+    "description_format": null,
     "effective_priority": null,
     "end": "2026-10-05T07:30:00-04:00",
     "etag": "\"0000000000000016\"",
@@ -1663,7 +1664,7 @@
     "summary": "Breakfast"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"d820ae0f22570a19812dcb76c2\",\n  \"summary\": \"Breakfast\",\n  \"start\": \"2026-10-05T07:00:00-04:00\",\n  \"end\": \"2026-10-05T07:30:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000016\\\"\"\n}",
+   "text": "{\n  \"id\": \"d820ae0f22570a19812dcb76c2\",\n  \"summary\": \"Breakfast\",\n  \"start\": \"2026-10-05T07:00:00-04:00\",\n  \"end\": \"2026-10-05T07:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000016\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -6597,6 +6598,7 @@
     ],
     "actions_from_label": false,
     "description": "Notes:\n- 07:45 finished breakfast",
+    "description_format": null,
     "effective_priority": null,
     "end": "2026-10-05T07:45:00-04:00",
     "etag": "\"0000000000000096\"",
@@ -6613,7 +6615,7 @@
     "summary": "Breakfast"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"d820ae0f22570a19812dcb76c2\",\n  \"summary\": \"Breakfast\",\n  \"start\": \"2026-10-05T07:00:00-04:00\",\n  \"end\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"Notes:\\n- 07:45 finished breakfast\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000096\\\"\"\n}",
+   "text": "{\n  \"id\": \"d820ae0f22570a19812dcb76c2\",\n  \"summary\": \"Breakfast\",\n  \"start\": \"2026-10-05T07:00:00-04:00\",\n  \"end\": \"2026-10-05T07:45:00-04:00\",\n  \"description\": \"Notes:\\n- 07:45 finished breakfast\",\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000096\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -6625,6 +6627,7 @@
     "action_names": null,
     "actions_from_label": false,
     "description": "Notes:\n- 19:30 dinner done",
+    "description_format": null,
     "effective_priority": null,
     "end": "2026-10-05T19:30:00-04:00",
     "etag": "\"0000000000000098\"",
@@ -6650,7 +6653,7 @@
     "summary": "Dinner with Robin"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"f43e48437258cfca35d17613c4\",\n  \"summary\": \"Dinner with Robin\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:30:00-04:00\",\n  \"description\": \"Notes:\\n- 19:30 dinner done\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null,\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000098\\\"\"\n}",
+   "text": "{\n  \"id\": \"f43e48437258cfca35d17613c4\",\n  \"summary\": \"Dinner with Robin\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:30:00-04:00\",\n  \"description\": \"Notes:\\n- 19:30 dinner done\",\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null,\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000098\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -7193,6 +7196,7 @@
     ],
     "actions_from_label": false,
     "description": "Notes:\n- 12:30 lunch with Robin at the cafe",
+    "description_format": null,
     "effective_priority": null,
     "end": "2026-10-05T13:00:00-04:00",
     "etag": "\"0000000000000101\"",
@@ -7281,7 +7285,7 @@
     "summary": "Lunch"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin at the cafe\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": [\n      \"syc56c\"\n    ],\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null,\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      }\n    },\n    \"co2yzn\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      }\n    }\n  },\n  \"etag\": \"\\\"0000000000000101\\\"\"\n}",
+   "text": "{\n  \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-05T12:00:00-04:00\",\n  \"end\": \"2026-10-05T13:00:00-04:00\",\n  \"description\": \"Notes:\\n- 12:30 lunch with Robin at the cafe\",\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": [\n      \"syc56c\"\n    ],\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null,\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": {\n    \"self\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      }\n    },\n    \"co2yzn\": {\n      \"thoughtful\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"creative\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"adventurous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      },\n      \"generous\": {\n        \"judgment\": {\n          \"rating\": 1,\n          \"scale\": 3,\n          \"reasoning\": \"fine\"\n        }\n      }\n    }\n  },\n  \"etag\": \"\\\"0000000000000101\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -7607,6 +7611,7 @@
       ],
       "actions_from_label": false,
       "description": "Notes:\n- 12:30 lunch with Robin at the cafe",
+      "description_format": null,
       "effective_priority": null,
       "end": "2026-10-05T13:00:00-04:00",
       "etag": "\"0000000000000103\"",
@@ -7698,7 +7703,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Long lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"description\": \"Notes:\\n- 12:30 lunch with Robin at the cafe\",\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"syc56c\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": {\n        \"self\": {\n          \"thoughtful\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"creative\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"adventurous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"generous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          }\n        },\n        \"co2yzn\": {\n          \"thoughtful\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"creative\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"adventurous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"generous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          }\n        }\n      },\n      \"etag\": \"\\\"0000000000000103\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"c5aefcb1a0e717b26c9d3d4839\",\n      \"summary\": \"Long lunch\",\n      \"start\": \"2026-10-05T12:00:00-04:00\",\n      \"end\": \"2026-10-05T13:00:00-04:00\",\n      \"description\": \"Notes:\\n- 12:30 lunch with Robin at the cafe\",\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": [\n          \"syc56c\"\n        ],\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": {\n        \"self\": {\n          \"thoughtful\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"creative\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"adventurous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"generous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          }\n        },\n        \"co2yzn\": {\n          \"thoughtful\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"creative\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"adventurous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          },\n          \"generous\": {\n            \"judgment\": {\n              \"rating\": 1,\n              \"scale\": 3,\n              \"reasoning\": \"fine\"\n            }\n          }\n        }\n      },\n      \"etag\": \"\\\"0000000000000103\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   }
  ],
@@ -9197,6 +9202,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -9610,7 +9616,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",
@@ -12142,6 +12150,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -12312,7 +12321,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",

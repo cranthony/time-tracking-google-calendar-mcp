@@ -83,7 +83,7 @@ async def test_update_fields_and_clear(session):
     piano = await make_action(session, "play piano", priority=1)
     [event] = (await session.call(
         "create_event",
-        events=[{"summary": "Practice", "start": at(9), "end": at(10), "action_ids": [guitar], "description": "d", "location": "l", "priority": 4}],
+        events=[{"summary": "Practice", "start": at(9), "end": at(10), "action_ids": [guitar], "description": "**d**", "description_format": "markdown", "location": "l", "priority": 4}],
     ))["events"]
     updated = await session.call(
         "update_event",
@@ -92,6 +92,8 @@ async def test_update_fields_and_clear(session):
     [after] = updated["events"]
     assert after["summary"] == "Piano practice"
     assert after["description"] is None
+    # Its format goes with it.
+    assert (event["description_format"], after["description_format"]) == ("markdown", None)
     assert after["location"] == "l"
     assert after["priority"] is None
     assert after["effective_priority"] == 1

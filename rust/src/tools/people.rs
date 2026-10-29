@@ -180,6 +180,8 @@ pub enum HabitField {
     Name,
     #[serde(rename = "note")]
     Note,
+    #[serde(rename = "note_format")]
+    NoteFormat,
     #[serde(rename = "traits")]
     Traits,
     #[serde(rename = "foundations")]
@@ -610,7 +612,8 @@ pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> 
 
 /// Update a habit by id: its name, action_id (an action's or a
 /// group's), person_id, circle_id or recurring_goal, status (active; archived, set aside; or deleted, shouldn't
-/// have existed), note, traits or foundations (each replaced whole; see
+/// have existed), note, note_format (plain, html or markdown: markdown
+/// for yours), traits or foundations (each replaced whole; see
 /// create_habit). Omitted properties keep their value; list one in
 /// clear_fields to blank it instead (a person's or circle's habit's name
 /// to go back to its default). A habit deleted leaves every habit's
@@ -620,7 +623,11 @@ pub fn create_habit(app: &App, habit: Habit) -> Result<CreatedHabit, ToolError> 
 pub fn update_habit(app: &App, habit: Habit, clear_fields: Option<Vec<HabitField>>) -> Result<ListedHabit, ToolError> {
     prefetch_habits(app, false)?;
     check_part_actions(app, parts_of(&habit.traits))?;
-    let clear = texts(&clear_fields.unwrap_or_default());
+    let mut clear = texts(&clear_fields.unwrap_or_default());
+    // A note cleared takes its format with it.
+    if clear.iter().any(|c| c == "note") && !clear.iter().any(|c| c == "note_format") {
+        clear.push("note_format".into());
+    }
     let updated = app.habits()?.update_habit(&habit, &clear).map_err(refused)?;
     if updated.status != Some(Status::Active) && updated.recurring_goal.is_some() {
         retire_goals(app, updated.id.as_deref().unwrap_or_default())?;

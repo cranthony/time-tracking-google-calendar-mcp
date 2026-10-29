@@ -1153,6 +1153,7 @@
       "action_names": null,
       "actions_from_label": false,
       "description": null,
+      "description_format": null,
       "effective_priority": null,
       "end": "2026-10-05T20:00:00-04:00",
       "etag": "\"0000000000000089\"",
@@ -1172,7 +1173,7 @@
     "timeline": "19:45 ┌ Call · new\n20:00 └ Call ends\n22:30 ┌ Sleep\n06:30 └ Sleep ends\n07:00 ┌ Breakfast\n07:30 └ Breakfast ends\n08:00 ┌ Work\n12:00 ├ Lunch\n13:00 ├ Afternoon work\n17:00 └ Afternoon work ends\n18:00 ┌ Dinner\n19:00 └ Dinner ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"dcd43b1d36f6650c373d153108\",\n      \"summary\": \"Call\",\n      \"start\": \"2026-10-05T19:45:00-04:00\",\n      \"end\": \"2026-10-05T20:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000089\\\"\"\n    }\n  ],\n  \"timeline\": \"19:45 ┌ Call · new\\n20:00 └ Call ends\\n22:30 ┌ Sleep\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n12:00 ├ Lunch\\n13:00 ├ Afternoon work\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n19:00 └ Dinner ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"dcd43b1d36f6650c373d153108\",\n      \"summary\": \"Call\",\n      \"start\": \"2026-10-05T19:45:00-04:00\",\n      \"end\": \"2026-10-05T20:00:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000089\\\"\"\n    }\n  ],\n  \"timeline\": \"19:45 ┌ Call · new\\n20:00 └ Call ends\\n22:30 ┌ Sleep\\n06:30 └ Sleep ends\\n07:00 ┌ Breakfast\\n07:30 └ Breakfast ends\\n08:00 ┌ Work\\n12:00 ├ Lunch\\n13:00 ├ Afternoon work\\n17:00 └ Afternoon work ends\\n18:00 ┌ Dinner\\n19:00 └ Dinner ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -2641,6 +2642,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -3054,7 +3056,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",
@@ -4261,6 +4265,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -4388,7 +4393,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",

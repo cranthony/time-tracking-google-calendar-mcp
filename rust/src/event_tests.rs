@@ -270,6 +270,7 @@ fn to_api_body_sends_cleared_fields_as_null() {
 
     let mut nulls = Map::new();
     nulls.insert("cascading-time-tracker-priority".into(), Value::Null);
+    nulls.insert("cascading-time-tracker-description_format".into(), Value::Null);
     nulls.insert("cascading-time-tracker-facts".into(), Value::Null);
     for i in 2..9 {
         nulls.insert(format!("cascading-time-tracker-facts-{i}"), Value::Null);
@@ -283,6 +284,18 @@ fn to_api_body_sends_cleared_fields_as_null() {
     assert_eq!((sent["description"].clone(), sent["location"].clone()), (Value::Null, Value::Null));
     assert_eq!(sorted(private(&sent)), sorted(Value::Object(nulls)));
     assert_eq!(sent.len(), 4);
+}
+
+#[test]
+fn a_descriptions_format_is_a_private_property_cleared_with_it() {
+    let sent = body(Event { id: Some("abc123".into()), description: Some("**Hi**".into()), description_format: Some(TextFormat::Markdown), ..Default::default() });
+    assert_eq!(private(&sent)["cascading-time-tracker-description_format"], "markdown");
+    let read = Event::from_api(&json!({"id": "abc123", "start": {"dateTime": "2026-10-29T09:00:00Z"}, "extendedProperties": {"private": {"cascading-time-tracker-description_format": "html"}}})).unwrap();
+    assert_eq!(read.description_format, Some(TextFormat::Html));
+
+    let cleared = body(Event { id: Some("abc123".into()), cleared: cleared(&["description"]), ..Default::default() });
+    assert_eq!(cleared["description"], Value::Null);
+    assert_eq!(private(&cleared)["cascading-time-tracker-description_format"], Value::Null);
 }
 
 #[test]

@@ -1953,6 +1953,7 @@
       "action_names": null,
       "actions_from_label": false,
       "description": null,
+      "description_format": null,
       "effective_priority": null,
       "end": "2026-10-05T17:00:00-04:00",
       "etag": "\"0000000000000083\"",
@@ -1972,7 +1973,7 @@
     "timeline": "13:00 ✕ Afternoon work · cancelled (was\n        13:00–17:00)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"2a2bbdacdbfc08240bd7b31473\",\n      \"summary\": \"Afternoon work\",\n      \"start\": \"2026-10-05T13:00:00-04:00\",\n      \"end\": \"2026-10-05T17:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000083\\\"\"\n    }\n  ],\n  \"timeline\": \"13:00 ✕ Afternoon work · cancelled (was\\n        13:00–17:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"2a2bbdacdbfc08240bd7b31473\",\n      \"summary\": \"Afternoon work\",\n      \"start\": \"2026-10-05T13:00:00-04:00\",\n      \"end\": \"2026-10-05T17:00:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000083\\\"\"\n    }\n  ],\n  \"timeline\": \"13:00 ✕ Afternoon work · cancelled (was\\n        13:00–17:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "delete_event"
   },
   {
@@ -4004,6 +4005,7 @@
       "action_names": null,
       "actions_from_label": false,
       "description": null,
+      "description_format": null,
       "effective_priority": null,
       "end": "2026-10-05T07:30:00-04:00",
       "etag": "\"0000000000000084\"",
@@ -4023,7 +4025,7 @@
     "timeline": "07:00 ✕ Breakfast · cancelled (was\n        07:00–07:30)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"d820ae0f22570a19812dcb76c2\",\n      \"summary\": \"Breakfast\",\n      \"start\": \"2026-10-05T07:00:00-04:00\",\n      \"end\": \"2026-10-05T07:30:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000084\\\"\"\n    }\n  ],\n  \"timeline\": \"07:00 ✕ Breakfast · cancelled (was\\n        07:00–07:30)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"d820ae0f22570a19812dcb76c2\",\n      \"summary\": \"Breakfast\",\n      \"start\": \"2026-10-05T07:00:00-04:00\",\n      \"end\": \"2026-10-05T07:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000084\\\"\"\n    }\n  ],\n  \"timeline\": \"07:00 ✕ Breakfast · cancelled (was\\n        07:00–07:30)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "delete_event"
   },
   {
@@ -6979,6 +6981,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -7392,7 +7395,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",
@@ -9425,6 +9430,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -9552,7 +9558,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",

@@ -118,6 +118,7 @@
      "id": "rs21so",
      "name": "Eat together",
      "note": null,
+     "note_format": null,
      "person_id": null,
      "recurring_goal": null,
      "status": "active",
@@ -126,7 +127,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat together\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"note_format\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_habit"
   },
   {
@@ -160,6 +161,7 @@
       ],
       "actions_from_label": false,
       "description": null,
+      "description_format": null,
       "effective_priority": null,
       "end": "2026-10-06T19:00:00-04:00",
       "etag": "\"0000000000000081\"",
@@ -188,7 +190,7 @@
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000081\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000081\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {
@@ -1137,6 +1139,7 @@
      "id": "rs21so",
      "name": "Eat together",
      "note": null,
+     "note_format": null,
      "person_id": null,
      "recurring_goal": null,
      "status": "active",
@@ -1145,7 +1148,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 92b5a6b5e7e4r1\"\n    }\n  ],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"rs21so\",\n  \"name\": \"Eat together\",\n  \"action_id\": \"3dnjav\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"note_format\": null,\n  \"traits\": null,\n  \"foundations\": null,\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": [\n    {\n      \"event_id\": \"a3ed657f83d6a4bc6c3589c096\",\n      \"summary\": \"Dinner\",\n      \"start\": \"2026-10-06T18:00:00-04:00\",\n      \"end\": \"2026-10-06T19:00:00-04:00\",\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"engagement\": \"with\",\n      \"parts\": [\n        \"reliable/follow_through\",\n        \"dependable/a0g0jc\"\n      ],\n      \"cancelled_at\": \"2026-10-07T15:30:00-04:00\",\n      \"source\": \"compaction 92b5a6b5e7e4r1\"\n    }\n  ],\n  \"version\": 1\n}",
    "tool": "get_habits"
   },
   {
@@ -1207,6 +1210,7 @@
       ],
       "actions_from_label": false,
       "description": null,
+      "description_format": null,
       "effective_priority": null,
       "end": "2026-10-07T21:00:00-04:00",
       "etag": "\"0000000000000092\"",
@@ -1235,7 +1239,7 @@
     "timeline": "20:00 ┌ Dinner again · new\n21:00 └ Dinner again ends\n22:30 ┌ Sleep\n06:30 └ Sleep ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"ee39da759fa7bb1c5dec38c3e9\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000092\\\"\"\n    }\n  ],\n  \"timeline\": \"20:00 ┌ Dinner again · new\\n21:00 └ Dinner again ends\\n22:30 ┌ Sleep\\n06:30 └ Sleep ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"ee39da759fa7bb1c5dec38c3e9\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000092\\\"\"\n    }\n  ],\n  \"timeline\": \"20:00 ┌ Dinner again · new\\n21:00 └ Dinner again ends\\n22:30 ┌ Sleep\\n06:30 └ Sleep ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -1249,6 +1253,7 @@
      "action_names": null,
      "actions_from_label": false,
      "description": null,
+     "description_format": null,
      "effective_priority": null,
      "end": "2026-10-07T19:00:00-04:00",
      "etag": "\"0000000000000048\"",
@@ -1273,6 +1278,7 @@
      ],
      "actions_from_label": false,
      "description": null,
+     "description_format": null,
      "effective_priority": null,
      "end": "2026-10-07T21:00:00-04:00",
      "etag": "\"0000000000000092\"",
@@ -1299,7 +1305,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"33f4464c132b378df2ca546d70\",\n  \"summary\": \"Dinner\",\n  \"start\": \"2026-10-07T18:00:00-04:00\",\n  \"end\": \"2026-10-07T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000048\\\"\"\n}\n{\n  \"id\": \"ee39da759fa7bb1c5dec38c3e9\",\n  \"summary\": \"Dinner again\",\n  \"start\": \"2026-10-07T20:00:00-04:00\",\n  \"end\": \"2026-10-07T21:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null,\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000092\\\"\"\n}",
+   "text": "{\n  \"id\": \"33f4464c132b378df2ca546d70\",\n  \"summary\": \"Dinner\",\n  \"start\": \"2026-10-07T18:00:00-04:00\",\n  \"end\": \"2026-10-07T19:00:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000048\\\"\"\n}\n{\n  \"id\": \"ee39da759fa7bb1c5dec38c3e9\",\n  \"summary\": \"Dinner again\",\n  \"start\": \"2026-10-07T20:00:00-04:00\",\n  \"end\": \"2026-10-07T21:00:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": [\n    \"3dnjav\"\n  ],\n  \"action_names\": [\n    \"eat a meal\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": null,\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000092\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -1324,6 +1330,7 @@
       ],
       "actions_from_label": false,
       "description": null,
+      "description_format": null,
       "effective_priority": null,
       "end": "2026-10-07T21:00:00-04:00",
       "etag": "\"0000000000000093\"",
@@ -1352,7 +1359,7 @@
     "timeline": "20:00 ✕ Dinner again · cancelled (was\n        20:00–21:00)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"ee39da759fa7bb1c5dec38c3e9\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000093\\\"\"\n    }\n  ],\n  \"timeline\": \"20:00 ✕ Dinner again · cancelled (was\\n        20:00–21:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"ee39da759fa7bb1c5dec38c3e9\",\n      \"summary\": \"Dinner again\",\n      \"start\": \"2026-10-07T20:00:00-04:00\",\n      \"end\": \"2026-10-07T21:00:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": [\n        \"3dnjav\"\n      ],\n      \"action_names\": [\n        \"eat a meal\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"7a8759ac-8307-5cf3-937d-398ec33255fd\",\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": {\n        \"location_ids\": null,\n        \"with_ids\": [\n          \"co2yzn\"\n        ],\n        \"for_ids\": null,\n        \"notes\": null,\n        \"commute\": null,\n        \"logs\": null\n      },\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000093\\\"\"\n    }\n  ],\n  \"timeline\": \"20:00 ✕ Dinner again · cancelled (was\\n        20:00–21:00)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "delete_event"
   },
   {
@@ -2566,6 +2573,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -2625,6 +2633,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "",
         "",
@@ -3404,7 +3413,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",
@@ -4849,6 +4860,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -4861,6 +4873,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "",
         "",
@@ -4989,7 +5002,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",

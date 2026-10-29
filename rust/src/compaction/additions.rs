@@ -6,7 +6,7 @@
 use crate::event::Event;
 use crate::facts::Facts;
 use crate::stores::actions::{action_problems, Action, ActionShare, ActionStatus, Actions};
-use crate::stores::goals::{goal_problems, people_of, Goal, GoalStatus, Goals, StatusChange};
+use crate::stores::goals::{goal_problems, people_of, Goal, GoalStatus, Goals, StatusChange, TextFormat};
 use crate::stores::locations::{location_problems, Location, Locations};
 use crate::stores::people::{person_problems, People, Person, Status};
 use crate::py;
@@ -212,6 +212,9 @@ fn new_goal(g: &Addition<Goal>, rename: &dyn Fn(&str) -> Option<String>) -> Goal
         parent_id: g.item.parent_id.as_deref().and_then(rename),
         with_ids: people(&g.item.with_ids),
         for_ids: people(&g.item.for_ids),
+        // Written by Claude, in Markdown.
+        description_format: g.item.description.as_ref().map(|_| TextFormat::Markdown),
+        definition_of_done_format: g.item.definition_of_done.as_ref().map(|_| TextFormat::Markdown),
         history: None,
         version: None,
         ..g.item.clone()

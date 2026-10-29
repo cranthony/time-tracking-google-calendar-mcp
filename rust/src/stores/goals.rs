@@ -21,6 +21,7 @@ use crate::stores::groups::{color_problem, set, str_or_none};
 use crate::stores::habit_goals::{self, Template};
 use crate::stores::locations::dedup;
 use crate::stores::people::SELF_ID;
+pub use crate::text_format::TextFormat;
 use anyhow::bail;
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use chrono_tz::Tz;
@@ -30,7 +31,7 @@ use std::sync::Arc;
 pub const GOAL_STATUSES: [&str; 5] = ["inactive", "active", "done", "missed", "obsolete"];
 pub const DEFAULT_STATUSES: [&str; 2] = ["inactive", "active"];
 pub const MAX_TITLE_LENGTH: usize = 200;
-pub const CLEARABLE_FIELDS: [&str; 14] = [
+pub const CLEARABLE_FIELDS: [&str; 16] = [
     "parent_id",
     "required",
     "priority",
@@ -41,7 +42,9 @@ pub const CLEARABLE_FIELDS: [&str; 14] = [
     "deadline_rule",
     "activate_when",
     "description",
+    "description_format",
     "definition_of_done",
+    "definition_of_done_format",
     "attribution_hints",
     "with_ids",
     "for_ids",
@@ -292,10 +295,17 @@ pub struct Goal {
     /// deadline it missed) then active or inactive (with the new one),
     /// both at the moment of the retry.
     pub history: Option<Vec<StatusChange>>,
-    /// What it is, as HTML.
+    /// What it is.
     pub description: Option<String>,
-    /// What being done looks like, as HTML.
+    /// How description is written: plain, html or markdown. None, it's
+    /// HTML if it has tags, else plain text.
+    #[row(text)]
+    pub description_format: Option<TextFormat>,
+    /// What being done looks like.
     pub definition_of_done: Option<String>,
+    /// How definition_of_done is written, as description_format.
+    #[row(text)]
+    pub definition_of_done_format: Option<TextFormat>,
     /// A guide for telling which events are for it.
     pub attribution_hints: Option<String>,
     /// The people it's done with: who the user works on it alongside
@@ -354,7 +364,9 @@ pub struct ListedGoal {
     pub status: Option<GoalStatus>,
     pub history: Option<Vec<StatusChange>>,
     pub description: Option<String>,
+    pub description_format: Option<TextFormat>,
     pub definition_of_done: Option<String>,
+    pub definition_of_done_format: Option<TextFormat>,
     pub attribution_hints: Option<String>,
     pub with_ids: Option<Vec<crate::attendees::Named>>,
     pub for_ids: Option<Vec<crate::attendees::Named>>,
@@ -1578,7 +1590,9 @@ pub fn listed(goal: &Goal, goals: &[Goal], zone: &Tz) -> ListedGoal {
         status: goal.status,
         history: goal.history.clone(),
         description: goal.description.clone(),
+        description_format: goal.description_format,
         definition_of_done: goal.definition_of_done.clone(),
+        definition_of_done_format: goal.definition_of_done_format,
         attribution_hints: goal.attribution_hints.clone(),
         with_ids: goal.with_ids.clone(),
         for_ids: goal.for_ids.clone(),

@@ -503,6 +503,20 @@ fn a_goal_keeps_its_sort_order_until_cleared() {
 }
 
 #[test]
+fn a_goal_keeps_how_its_texts_are_written_until_cleared() {
+    let f = fixture();
+    let id = f.create(json!({"title": "Ship", "deadline": "2026-11-01", "description": "**Soon**", "description_format": "markdown", "definition_of_done": "<b>Out</b>", "definition_of_done_format": "html"})).unwrap();
+    let formats = || (f.get(&id)["description_format"].clone(), f.get(&id)["definition_of_done_format"].clone());
+    assert_eq!(formats(), (json!("markdown"), json!("html")));
+
+    let mut cleared = edit(json!({"id": id, "description_format": "plain", "version": 1}));
+    cleared.clear_fields = vec!["definition_of_done_format".into()];
+    f.change(&[], vec![cleared], vec![]).unwrap();
+    assert_eq!(formats(), (json!("plain"), Value::Null));
+    assert_eq!(f.get(&id)["definition_of_done"], json!("<b>Out</b>"));
+}
+
+#[test]
 fn a_goal_names_the_people_its_done_with_and_for() {
     let mut f = fixture();
     f.goals = f.goals.clone().with_people(Arc::new(|| Ok((vec!["self".into(), "sam".into(), "ana".into()], Default::default()))));
