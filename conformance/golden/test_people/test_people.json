@@ -1341,6 +1341,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -2252,6 +2253,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"

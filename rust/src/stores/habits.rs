@@ -16,6 +16,7 @@ use crate::stores::groups::{repr_or_none, set, str_or_none, GroupTree};
 use crate::stores::habit_goals::{self, RecurringGoal, Template};
 use crate::stores::locations::dedup;
 use crate::stores::people::{Status, TraitIds};
+use crate::text_format::TextFormat;
 use crate::stores::traits::{person_traits_problems, settled_spec, spec_with_new_part_ids, SpecOf};
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
@@ -25,7 +26,7 @@ use std::sync::Arc;
 pub const HABIT_STATUSES: [&str; 3] = ["active", "archived", "deleted"];
 pub const DEFAULT_STATUSES: [&str; 1] = ["active"];
 pub const MAX_NAME_LENGTH: usize = 100;
-pub const CLEARABLE_FIELDS: [&str; 4] = ["name", "note", "traits", "foundations"];
+pub const CLEARABLE_FIELDS: [&str; 5] = ["name", "note", "note_format", "traits", "foundations"];
 pub const SUBJECT_PREFIX: &str = "habit:";
 
 // -- the types -------------------------------------------------------------------
@@ -42,6 +43,7 @@ pub struct ListedHabit {
     pub recurring_goal: Option<RecurringGoal>,
     pub status: Option<Status>,
     pub note: Option<String>,
+    pub note_format: Option<TextFormat>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
     pub action_path: Option<String>,
@@ -69,6 +71,10 @@ pub struct Habit {
     #[row(text)]
     pub status: Option<Status>,
     pub note: Option<String>,
+    /// How note is written: plain, html or markdown. None, it's HTML if
+    /// it has tags, else plain text.
+    #[row(text)]
+    pub note_format: Option<TextFormat>,
     pub traits: Option<Map<String, Value>>,
     pub foundations: Option<Vec<String>>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
@@ -562,6 +568,7 @@ pub fn listed(habit: &Habit, paths: &Scopes) -> ListedHabit {
         recurring_goal: habit.recurring_goal.clone(),
         status: habit.status,
         note: habit.note.clone(),
+        note_format: habit.note_format,
         traits: habit.traits.clone(),
         foundations: habit.foundations.clone(),
         action_path,

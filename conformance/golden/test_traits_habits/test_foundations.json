@@ -89,6 +89,7 @@
      "id": "a0g0jc",
      "name": "Sleep well",
      "note": null,
+     "note_format": null,
      "person_id": null,
      "recurring_goal": null,
      "status": "active",
@@ -97,7 +98,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Sleep well\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"sleep\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"a0g0jc\",\n    \"name\": \"Sleep well\",\n    \"action_id\": \"3dnjav\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"note_format\": null,\n    \"traits\": null,\n    \"foundations\": null,\n    \"action_path\": \"sleep\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"a0g0jc\"\n}",
    "tool": "create_habit"
   },
   {
@@ -138,6 +139,7 @@
      "id": "rs21so",
      "name": "Eat well",
      "note": null,
+     "note_format": null,
      "person_id": null,
      "recurring_goal": null,
      "status": "active",
@@ -165,7 +167,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat well\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": {\n      \"parts\": {\n        \"reliable\": [\n          {\n            \"id\": \"onvtja\",\n            \"kind\": \"spacing\",\n            \"action\": \"co2yzn\",\n            \"max_gap_hours\": 6,\n            \"exceptions\": [\n              {\n                \"actions\": [\n                  \"3dnjav\"\n                ],\n                \"reset_hours\": 1\n              }\n            ]\n          }\n        ]\n      }\n    },\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"rs21so\",\n    \"name\": \"Eat well\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"note_format\": null,\n    \"traits\": {\n      \"parts\": {\n        \"reliable\": [\n          {\n            \"id\": \"onvtja\",\n            \"kind\": \"spacing\",\n            \"action\": \"co2yzn\",\n            \"max_gap_hours\": 6,\n            \"exceptions\": [\n              {\n                \"actions\": [\n                  \"3dnjav\"\n                ],\n                \"reset_hours\": 1\n              }\n            ]\n          }\n        ]\n      }\n    },\n    \"foundations\": null,\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"rs21so\"\n}",
    "tool": "create_habit"
   },
   {
@@ -225,6 +227,7 @@
      "id": "htmn3w",
      "name": "Exercise",
      "note": null,
+     "note_format": null,
      "person_id": null,
      "recurring_goal": null,
      "status": "active",
@@ -233,7 +236,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"htmn3w\",\n    \"name\": \"Exercise\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:a0g0jc\",\n      \"habit:rs21so\"\n    ],\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"htmn3w\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"htmn3w\",\n    \"name\": \"Exercise\",\n    \"action_id\": \"co2yzn\",\n    \"person_id\": null,\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"note_format\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:a0g0jc\",\n      \"habit:rs21so\"\n    ],\n    \"action_path\": \"eat a meal\",\n    \"default_name\": null,\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"htmn3w\"\n}",
    "tool": "create_habit"
   },
   {
@@ -284,6 +287,7 @@
      "id": "syc56c",
      "name": "Family Example",
      "note": null,
+     "note_format": null,
      "person_id": "put4bk",
      "recurring_goal": null,
      "status": "active",
@@ -292,7 +296,7 @@
     }
    },
    "is_error": false,
-   "text": "{\n  \"habit\": {\n    \"id\": \"syc56c\",\n    \"name\": \"Family Example\",\n    \"action_id\": null,\n    \"person_id\": \"put4bk\",\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:htmn3w\"\n    ],\n    \"action_path\": null,\n    \"default_name\": \"Family Example\",\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"syc56c\"\n}",
+   "text": "{\n  \"habit\": {\n    \"id\": \"syc56c\",\n    \"name\": \"Family Example\",\n    \"action_id\": null,\n    \"person_id\": \"put4bk\",\n    \"circle_id\": null,\n    \"recurring_goal\": null,\n    \"status\": \"active\",\n    \"note\": null,\n    \"note_format\": null,\n    \"traits\": null,\n    \"foundations\": [\n      \"habit:htmn3w\"\n    ],\n    \"action_path\": null,\n    \"default_name\": \"Family Example\",\n    \"cancelled_events\": null,\n    \"version\": 1\n  },\n  \"created_id\": \"syc56c\"\n}",
    "tool": "create_habit"
   },
   {
@@ -341,6 +345,7 @@
     "id": "syc56c",
     "name": "Family Example",
     "note": null,
+    "note_format": null,
     "person_id": "put4bk",
     "recurring_goal": null,
     "status": "active",
@@ -348,7 +353,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"syc56c\",\n  \"name\": \"Family Example\",\n  \"action_id\": null,\n  \"person_id\": \"put4bk\",\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:htmn3w\"\n  ],\n  \"action_path\": null,\n  \"default_name\": \"Family Example\",\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"syc56c\",\n  \"name\": \"Family Example\",\n  \"action_id\": null,\n  \"person_id\": \"put4bk\",\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"note_format\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:htmn3w\"\n  ],\n  \"action_path\": null,\n  \"default_name\": \"Family Example\",\n  \"cancelled_events\": [],\n  \"version\": 1\n}",
    "tool": "get_habit"
   },
   {
@@ -372,6 +377,7 @@
     "id": "htmn3w",
     "name": "Exercise",
     "note": null,
+    "note_format": null,
     "person_id": null,
     "recurring_goal": null,
     "status": "deleted",
@@ -379,7 +385,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"htmn3w\",\n  \"name\": \"Exercise\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"deleted\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:a0g0jc\",\n    \"habit:rs21so\"\n  ],\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"htmn3w\",\n  \"name\": \"Exercise\",\n  \"action_id\": \"co2yzn\",\n  \"person_id\": null,\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"deleted\",\n  \"note\": null,\n  \"note_format\": null,\n  \"traits\": null,\n  \"foundations\": [\n    \"habit:a0g0jc\",\n    \"habit:rs21so\"\n  ],\n  \"action_path\": \"eat a meal\",\n  \"default_name\": null,\n  \"cancelled_events\": null,\n  \"version\": 2\n}",
    "tool": "update_habit"
   },
   {
@@ -396,6 +402,7 @@
     "id": "syc56c",
     "name": "Family Example",
     "note": null,
+    "note_format": null,
     "person_id": "put4bk",
     "recurring_goal": null,
     "status": "active",
@@ -403,7 +410,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"syc56c\",\n  \"name\": \"Family Example\",\n  \"action_id\": null,\n  \"person_id\": \"put4bk\",\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"traits\": null,\n  \"foundations\": [],\n  \"action_path\": null,\n  \"default_name\": \"Family Example\",\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"syc56c\",\n  \"name\": \"Family Example\",\n  \"action_id\": null,\n  \"person_id\": \"put4bk\",\n  \"circle_id\": null,\n  \"recurring_goal\": null,\n  \"status\": \"active\",\n  \"note\": null,\n  \"note_format\": null,\n  \"traits\": null,\n  \"foundations\": [],\n  \"action_path\": null,\n  \"default_name\": \"Family Example\",\n  \"cancelled_events\": [],\n  \"version\": 2\n}",
    "tool": "get_habit"
   }
  ],
@@ -1354,6 +1361,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -1593,6 +1601,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ]
       ]
@@ -1628,6 +1637,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "{\"parts\":{\"reliable\":[{\"id\":\"onvtja\",\"kind\":\"spacing\",\"action\":\"co2yzn\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"3dnjav\"],\"reset_hours\":1}]}]}}",
         "",
@@ -1666,6 +1676,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "",
         "[\"habit:a0g0jc\",\"habit:rs21so\"]",
@@ -1738,6 +1749,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "",
         "[\"habit:htmn3w\"]",
@@ -1883,6 +1895,7 @@
         "deleted",
         "",
         "",
+        "",
         "[\"habit:a0g0jc\",\"habit:rs21so\"]",
         "2"
        ],
@@ -1894,6 +1907,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "",
         "[]",
@@ -2219,6 +2233,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -2234,6 +2249,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -2244,6 +2260,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "{\"parts\":{\"reliable\":[{\"id\":\"onvtja\",\"kind\":\"spacing\",\"action\":\"co2yzn\",\"max_gap_hours\":6,\"exceptions\":[{\"actions\":[\"3dnjav\"],\"reset_hours\":1}]}]}}",
         "",
@@ -2259,6 +2276,7 @@
         "deleted",
         "",
         "",
+        "",
         "[\"habit:a0g0jc\",\"habit:rs21so\"]",
         "2"
        ],
@@ -2270,6 +2288,7 @@
         "",
         "",
         "active",
+        "",
         "",
         "",
         "[]",

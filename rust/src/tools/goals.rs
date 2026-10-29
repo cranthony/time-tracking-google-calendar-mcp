@@ -3,7 +3,7 @@
 use super::{refused, texts, ToolError};
 use crate::app::App;
 use crate::contract::{tool, Schema};
-pub use crate::stores::goals::{ActivateWhen, ChangedGoals, CreatedGoal, Deadline, Goal, GoalStatus, ListedGoal, StatusChange};
+pub use crate::stores::goals::{ActivateWhen, ChangedGoals, CreatedGoal, Deadline, Goal, GoalStatus, ListedGoal, StatusChange, TextFormat};
 use crate::stores::goals::{GoalEdit, GoalRemoval};
 use serde::{Deserialize, Serialize};
 
@@ -27,8 +27,12 @@ pub enum GoalField {
     ActivateWhen,
     #[serde(rename = "description")]
     Description,
+    #[serde(rename = "description_format")]
+    DescriptionFormat,
     #[serde(rename = "definition_of_done")]
     DefinitionOfDone,
+    #[serde(rename = "definition_of_done_format")]
+    DefinitionOfDoneFormat,
     #[serde(rename = "attribution_hints")]
     AttributionHints,
     #[serde(rename = "with_ids")]
@@ -71,10 +75,16 @@ pub struct GoalInput {
     /// Every change of its status, oldest first, the last its status now,
     /// each with the deadline in force at that change.
     pub history: Option<Vec<StatusChange>>,
-    /// What it is, as HTML.
+    /// What it is.
     pub description: Option<String>,
-    /// What being done looks like, as HTML.
+    /// How description is written: plain, html or markdown -- markdown
+    /// for what you write. None, it's HTML if it has tags, else plain
+    /// text.
+    pub description_format: Option<TextFormat>,
+    /// What being done looks like.
     pub definition_of_done: Option<String>,
+    /// How definition_of_done is written, as description_format.
+    pub definition_of_done_format: Option<TextFormat>,
     /// A guide for telling which events are for it.
     pub attribution_hints: Option<String>,
     /// The people it's done with: who the user works on it alongside
@@ -115,7 +125,9 @@ impl From<GoalInput> for Goal {
             status: input.status,
             history: input.history,
             description: input.description,
+            description_format: input.description_format,
             definition_of_done: input.definition_of_done,
+            definition_of_done_format: input.definition_of_done_format,
             attribution_hints: input.attribution_hints,
             with_ids: input.with_ids,
             for_ids: input.for_ids,
@@ -128,11 +140,17 @@ impl From<GoalInput> for Goal {
 }
 
 /// The fields `clear` names, as the tab keeps them: clearing the deadline
-/// clears what it's measured from too.
+/// clears what it's measured from too, and clearing a text its format.
 fn cleared(clear: &[GoalField]) -> Vec<String> {
     let mut fields = texts(clear);
-    if clear.contains(&GoalField::Deadline) {
-        fields.push("deadline_rule".into());
+    for (field, also) in [
+        (GoalField::Deadline, "deadline_rule"),
+        (GoalField::Description, "description_format"),
+        (GoalField::DefinitionOfDone, "definition_of_done_format"),
+    ] {
+        if clear.contains(&field) && !fields.iter().any(|f| f == also) {
+            fields.push(also.into());
+        }
     }
     fields
 }
@@ -206,8 +224,11 @@ pub struct GoalDelete {
 /// active, closed_at when it was done, missed or made obsolete). A missed
 /// goal can be reopened with a new deadline, and its history keeps each
 /// deadline it missed, so a goal can be missed and retried any number
-/// of times. Then a description and definition_of_done (HTML), and
-/// attribution_hints (a guide for telling which events are for it).
+/// of times. Then a description and definition_of_done, each with its
+/// format (description_format, definition_of_done_format: plain, html or
+/// markdown; none, it's HTML if it has tags, else plain text -- write
+/// yours in Markdown, and say so), and attribution_hints (a guide for
+/// telling which events are for it).
 /// with_ids are the people it's done with (who the user works on it
 /// alongside) and for_ids those it's done for, who aren't part of doing
 /// it (a promise to them, a gift, a favor): person ids from get_people,
@@ -241,8 +262,9 @@ pub fn get_goal(app: &App, id_or_title: String) -> Result<ListedGoal, ToolError>
 
 /// Add a goal (see get_goals): a title, a deadline, and optionally
 /// parent_id (the goal it's a piece of), required, priority, background_color,
-/// expected_minutes, activate_when, description, definition_of_done,
-/// attribution_hints, with_ids and for_ids. Active unless given a
+/// expected_minutes, activate_when, description, definition_of_done
+/// (each with its format: markdown for yours), attribution_hints,
+/// with_ids and for_ids. Active unless given a
 /// status; activating a goal activates its inactive parents. Its history
 /// starts with its status, now, unless given one (to backdate it, say).
 /// A sub-goal can't be due after its parent, or be expected to take

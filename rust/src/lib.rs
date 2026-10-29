@@ -21,6 +21,7 @@ pub mod py;
 pub mod setup;
 pub mod sheet;
 pub mod stores;
+pub mod text_format;
 pub mod timeline;
 pub mod tools;
 pub mod write_lock;

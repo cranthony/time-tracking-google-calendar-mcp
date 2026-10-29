@@ -8,6 +8,7 @@ use crate::event::{parse_iso, Event, Moment};
 use crate::contract::{tool, DateTimeText, Schema};
 use crate::facts::{fact_problems, Facts as EventFacts, LocationShare, PersonShare};
 use crate::py;
+use crate::text_format::TextFormat;
 use crate::stores::action_calendar::{fill_in_from_actions, ActionCalendar};
 use crate::stores::actions::{share_ids, ActionShare, ActionTree};
 use crate::stores::event_changes::{self, Cancel, EventChanges, StaleEvent, StaleEvents};
@@ -25,6 +26,8 @@ use serde_json::{json, Map, Value};
 pub enum EventField {
     #[serde(rename = "description")]
     Description,
+    #[serde(rename = "description_format")]
+    DescriptionFormat,
     #[serde(rename = "location")]
     Location,
     #[serde(rename = "priority")]
@@ -155,6 +158,11 @@ pub struct PublicEvent {
     pub start: Option<DateTimeText>,
     pub end: Option<DateTimeText>,
     pub description: Option<String>,
+    /// How description is written: plain, html or markdown -- markdown
+    /// for what you write. None, it's HTML if it has tags, else plain
+    /// text. Google Calendar shows a description as it is, whatever its
+    /// format; clearing description clears it too.
+    pub description_format: Option<TextFormat>,
     pub location: Option<String>,
     pub priority: Option<i64>,
     pub action_ids: Option<Vec<ActionShare>>,
@@ -283,6 +291,7 @@ pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Op
     out.insert("start".into(), json!(event.start.map(|s| py::pydantic_datetime(&s))));
     out.insert("end".into(), json!(event.end.map(|s| py::pydantic_datetime(&s))));
     out.insert("description".into(), json!(event.description));
+    out.insert("description_format".into(), json!(event.description_format));
     out.insert("location".into(), json!(event.location));
     out.insert("priority".into(), json!(event.priority));
     out.insert("action_ids".into(), json!(action_ids));
@@ -355,6 +364,7 @@ pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Even
         start: when_given(event.start.as_ref())?,
         end: when_given(event.end.as_ref())?,
         description: event.description.clone(),
+        description_format: event.description_format,
         location: event.location.clone(),
         action_ids: if event.actions_from_label { None } else { event.action_ids.clone() },
         goals: event.goals.clone(),

@@ -3282,6 +3282,7 @@
     "action_names": null,
     "actions_from_label": false,
     "description": null,
+    "description_format": null,
     "effective_priority": null,
     "end": "2026-10-06T19:00:00-04:00",
     "etag": "\"0000000000000036\"",
@@ -3298,7 +3299,7 @@
     "summary": "Dinner"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"a3ed657f83d6a4bc6c3589c096\",\n  \"summary\": \"Dinner\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"description\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
+   "text": "{\n  \"id\": \"a3ed657f83d6a4bc6c3589c096\",\n  \"summary\": \"Dinner\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
    "tool": "get_event"
   }
  ],
@@ -4522,6 +4523,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -4935,7 +4937,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",
@@ -6548,6 +6552,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -6682,7 +6687,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",

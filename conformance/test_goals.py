@@ -33,8 +33,12 @@ async def test_goals(session):
     assert [g["status"] for g in changed["goals"]] == ["done", "done", "inactive", "inactive"]
     assert (await session.call("get_goals", statuses=["done"]))[0]["closed_at"]
     await session.call_error("delete_goal", goal_id="inbox1")
-    renamed = await session.call("update_goal", goal={"id": later, "title": "Polish it"}, clear_fields=["parent_id"])
+    renamed = await session.call("update_goal", goal={"id": later, "title": "Polish it", "description": "**Shine**", "description_format": "markdown"}, clear_fields=["parent_id"])
     assert renamed["path"] == []
+    assert renamed["description_format"] == "markdown"
+    # A description cleared takes its format with it.
+    plain = await session.call("update_goal", goal={"id": later}, clear_fields=["description"])
+    assert (plain["description"], plain["description_format"]) == (None, None)
     await session.call("delete_goal", goal_id="inbox1")
     await session.call("update_goals", deletes=[{"goal_id": later}])
 

@@ -52,7 +52,7 @@ fn a_public_event_shows_just_its_public_fields() {
     assert_eq!(
         fields,
         vec![
-            "id", "summary", "start", "end", "description", "location", "priority", "action_ids", "action_names", "actions_from_label",
+            "id", "summary", "start", "end", "description", "description_format", "location", "priority", "action_ids", "action_names", "actions_from_label",
             "goals", "event_label_id", "is_cancelled", "effective_priority", "recurring_event_id", "facts", "judgments", "etag",
         ]
     );

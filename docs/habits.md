@@ -44,7 +44,7 @@ looks like: context for judging its events), `traits` and
 | `get_habits(statuses?)` | The habits, by default active ones, each with its `action_path` ("Creative › Guitar"). Read-only. |
 | `get_habit(id_or_name)` | One, suggesting close matches if there's none. Read-only. |
 | `create_habit(habit)` | `name` and `action_id` required; `traits` checked as a person's. Returns it, and `created_id`. |
-| `update_habit(habit, clear_fields?)` | Sets what's given; `clear_fields` (`note`, `traits`, `foundations`) blanks. Deleting is `status: deleted`. |
+| `update_habit(habit, clear_fields?)` | Sets what's given; `clear_fields` (`note`, `note_format`, `traits`, `foundations`) blanks; clearing `note` clears `note_format` (`plain`, `html` or `markdown`; without one, HTML if it has tags, else plain text). Deleting is `status: deleted`. |
 
 A habit's `action_id` is checked when it's written: it has to be an
 action (not a deleted one) or a group. One whose action or group is

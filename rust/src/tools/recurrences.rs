@@ -157,6 +157,7 @@ pub struct PublicRecurrence {
     pub repeat: Option<Repeat>,
     pub schedule: Option<String>,
     pub description: Option<String>,
+    pub description_format: Option<crate::text_format::TextFormat>,
     pub location: Option<String>,
     pub priority: Option<i64>,
     pub action_ids: Option<Vec<ActionShare>>,
@@ -188,6 +189,7 @@ fn public_recurrence(event: &Event, tree: &ActionTree, goal_ids: Option<&[String
     out.insert("repeat".into(), repeat.map(|r| r.to_json()).unwrap_or(Value::Null));
     out.insert("schedule".into(), json!(describe_rules(event.recurrence.as_deref(), zone.as_ref())));
     out.insert("description".into(), json!(event.description));
+    out.insert("description_format".into(), json!(event.description_format));
     out.insert("location".into(), json!(event.location));
     out.insert("priority".into(), json!(event.priority));
     out.insert("action_ids".into(), json!(action_ids));
@@ -222,6 +224,7 @@ fn to_event(series: &PublicRecurrence, clear_fields: &[EventField]) -> Result<Ev
         start: when_given(series.start.as_ref())?,
         end: when_given(series.end.as_ref())?,
         description: series.description.clone(),
+        description_format: series.description_format,
         location: series.location.clone(),
         priority: series.priority,
         action_ids: if series.actions_from_label { None } else { series.action_ids.clone() },

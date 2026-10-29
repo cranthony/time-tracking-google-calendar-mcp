@@ -5918,6 +5918,7 @@
     "action_names": null,
     "actions_from_label": false,
     "description": "Notes:\n- 07:25 Robin starts a new job Monday",
+    "description_format": null,
     "effective_priority": null,
     "end": "2026-09-27T07:30:00-04:00",
     "etag": "\"0000000000000181\"",
@@ -5945,7 +5946,7 @@
     "summary": "Breakfast"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"d820ae0f22570a19812dcb76c2\",\n  \"summary\": \"Breakfast\",\n  \"start\": \"2026-09-27T07:00:00-04:00\",\n  \"end\": \"2026-09-27T07:30:00-04:00\",\n  \"description\": \"Notes:\\n- 07:25 Robin starts a new job Monday\",\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"co2yzn\": \"starts a new job Monday\"\n    },\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000181\\\"\"\n}",
+   "text": "{\n  \"id\": \"d820ae0f22570a19812dcb76c2\",\n  \"summary\": \"Breakfast\",\n  \"start\": \"2026-09-27T07:00:00-04:00\",\n  \"end\": \"2026-09-27T07:30:00-04:00\",\n  \"description\": \"Notes:\\n- 07:25 Robin starts a new job Monday\",\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": {\n    \"location_ids\": null,\n    \"with_ids\": [\n      \"co2yzn\"\n    ],\n    \"for_ids\": null,\n    \"notes\": {\n      \"co2yzn\": \"starts a new job Monday\"\n    },\n    \"commute\": null,\n    \"logs\": null\n  },\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000181\\\"\"\n}",
    "tool": "get_event"
   }
  ],
@@ -7320,6 +7321,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -7733,7 +7735,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",
@@ -10273,6 +10277,7 @@
         "recurring_goal",
         "status",
         "note",
+        "note_format",
         "traits",
         "foundations",
         "version"
@@ -10414,7 +10419,9 @@
         "status",
         "history",
         "description",
+        "description_format",
         "definition_of_done",
+        "definition_of_done_format",
         "attribution_hints",
         "with_ids",
         "for_ids",
