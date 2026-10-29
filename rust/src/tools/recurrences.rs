@@ -1,7 +1,7 @@
 //! The recurring-series tools (get_recurrence, update_recurrence,
 //! split_recurrence, delete_recurrence).
 
-use super::events::{check_action_ids, check_facts, check_goal_ids, goal_ids_for, shown_action_shares, shown_shares, when_given, EventField, Facts};
+use super::events::{check_action_ids, check_facts, check_goal_ids, filled_in, shown_action_shares, shown_shares, when_given, EventField, Facts};
 use super::stores::prefetch_stores;
 use super::{from_store, texts, ToolError};
 use crate::contract::wire_text;
@@ -10,7 +10,6 @@ use crate::event::Event;
 use crate::contract::{tool, DateOrDateTime, DateTimeText, Nth, Schema};
 use crate::facts::Facts as EventFacts;
 use crate::py;
-use crate::stores::action_calendar::fill_in_from_actions;
 use crate::stores::actions::{ActionShare, ActionTree};
 use crate::stores::recurrences::{describe_rules, is_refusal, PyDt, Repeat as StoredRepeat, Until};
 use chrono::NaiveDate;
@@ -203,8 +202,8 @@ fn public_recurrence(event: &Event, tree: &ActionTree, goal_ids: Option<&[String
 
 fn public_recurrences(app: &App, events: &[Event]) -> anyhow::Result<Value> {
     let tree = app.actions()?.tree()?;
-    let goal_ids = goal_ids_for(app, events)?;
-    Ok(Value::Array(fill_in_from_actions(events, &tree).iter().map(|e| public_recurrence(e, &tree, goal_ids.as_deref())).collect()))
+    let (filled, goal_ids) = filled_in(app, events, &tree)?;
+    Ok(Value::Array(filled.iter().map(|e| public_recurrence(e, &tree, goal_ids.as_deref())).collect()))
 }
 
 fn shown_refusal(error: anyhow::Error) -> ToolError {

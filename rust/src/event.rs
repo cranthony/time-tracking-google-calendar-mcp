@@ -94,6 +94,9 @@ pub struct Event {
     pub facts: Option<Facts>,
     pub judgments: Option<Map<String, Value>>,
     pub action_priority: Option<i64>,
+    /// The highest priority (the lowest number) among the goals it's
+    /// tagged with (see `goals::fill_in_from_goals`).
+    pub goal_priority: Option<i64>,
     pub actions_from_label: bool,
     pub cleared: BTreeSet<String>,
     /// As read: the etag Calendar gave it. Given to a patch: the etag it
@@ -139,8 +142,13 @@ impl Event {
         }
     }
 
+    /// The priority that applies: its own, or else the highest (the
+    /// lowest number) of its actions' and its goals'.
     pub fn effective_priority(&self) -> Option<i64> {
-        self.priority.or(self.action_priority)
+        self.priority.or(match (self.action_priority, self.goal_priority) {
+            (Some(a), Some(g)) => Some(a.min(g)),
+            (a, g) => a.or(g),
+        })
     }
 
     pub fn is_cancelled(&self) -> bool {

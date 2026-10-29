@@ -679,7 +679,7 @@ pub fn patched(before: &Event, patch: &Event) -> Event {
         ($($field:ident),*) => { $( if patch.$field.is_some() { after.$field = patch.$field.clone(); } )* };
     }
     take!(summary, start, end, description, location, status, recurring_event_id, recurrence, time_zone, original_start,
-          priority, event_label_id, action_ids, goals, facts, judgments, action_priority);
+          priority, event_label_id, action_ids, goals, facts, judgments, action_priority, goal_priority);
     if patch.actions_from_label {
         after.actions_from_label = true;
     }

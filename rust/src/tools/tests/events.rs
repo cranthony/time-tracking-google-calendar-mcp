@@ -617,6 +617,37 @@ fn an_events_goals_are_cut_to_fit_it_once_shortened_and_deleted_goals_left_out()
     assert_eq!(server.event("abc123").goals.unwrap().len(), 2);
 }
 
+#[test]
+fn an_events_priority_is_the_highest_of_its_actions_and_its_goals() {
+    let server = two();
+    with_actions(&server, &[action("g1", "Focus", Some(2))]);
+    server.ok("create_goal", json!({"goal": {"id": "parent", "title": "Parent", "priority": 1, "deadline": {"at": "2026-12-01"}}}));
+    server.ok("create_goal", json!({"goal": {"id": "child1", "title": "Child", "parent_id": "parent", "deadline": {"at": "2026-12-01"}}}));
+    server.ok("create_goal", json!({"goal": {"id": "goal00", "title": "Urgent", "priority": 0, "deadline": {"at": "2026-12-01"}}}));
+    let goals = json!([{"goal_id": "child1"}, {"goal_id": "goal00"}]);
+    server.ok("update_event", json!({"updates": [{"event": {"id": "abc123", "action_ids": ["g1"], "goals": goals}}]}));
+
+    // goal00's 0 is higher than child1's 1 (its parent's) and g1's 2.
+    assert_eq!(server.ok("get_event", json!({"id": "abc123"}))["effective_priority"], 0);
+    // Once goal00 is gone, child1's is the highest left.
+    server.ok("update_goals", json!({"deletes": [{"goal_id": "goal00"}]}));
+    assert_eq!(server.ok("get_event", json!({"id": "abc123"}))["effective_priority"], 1);
+    assert_eq!(listed(&server)[0]["effective_priority"], 1);
+}
+
+#[test]
+fn a_goal_with_no_priority_counts_as_3_and_an_events_own_priority_still_wins() {
+    let server = two();
+    with_goal(&server, "goal01");
+    server.ok("update_event", json!({"updates": [{"event": {"id": "abc123", "goals": [{"goal_id": "goal01"}]}}]}));
+    assert_eq!(server.ok("get_event", json!({"id": "abc123"}))["effective_priority"], 3);
+
+    server.ok("update_event", json!({"updates": [{"event": {"id": "abc123", "priority": 3}}]}));
+    server.ok("update_goal", json!({"goal": {"id": "goal01", "priority": 0}}));
+    let got = server.ok("get_event", json!({"id": "abc123"}));
+    assert_eq!((got["priority"].clone(), got["effective_priority"].clone()), (json!(3), json!(3)));
+}
+
 fn listed_with(server: &Server, person: &str) -> Vec<Value> {
     let range = json!({"min_time": "2020-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00", "person_id": person});
     server.ok("list_events", range).as_array().unwrap().iter().map(|e| e["id"].clone()).collect()
