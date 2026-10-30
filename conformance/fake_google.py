@@ -974,6 +974,11 @@ class FakeGoogle:
     jwks: dict = {"keys": []}
     """AuthKit's signing keys, as /oauth2/jwks serves them."""
 
+    authkit_tokens: Any = None
+    """How /oauth2/token answers, if a scenario needs real answers: a
+    function of the form it was sent (a dict) giving (status, JSON).
+    None echoes, as /oauth2/register does."""
+
     async def _jwks(self, request: Request) -> Response:
         return JSONResponse(self.jwks)
 
@@ -983,6 +988,10 @@ class FakeGoogle:
         400 for a body asking for one."""
         raw = await request.body()
         self.authkit_requests.append({"path": request.url.path, "content_type": request.headers.get("content-type"), "user_agent": request.headers.get("user-agent"), "body": raw.decode()})
+        if request.url.path == "/oauth2/token" and self.authkit_tokens is not None:
+            form = dict(parse_qsl(raw.decode()))
+            status, body = self.authkit_tokens(form)
+            return JSONResponse(body, status_code=status, headers={"Cache-Control": "no-store"})
         status = 400 if b"invalid" in raw else 201
         return JSONResponse({"echo": raw.decode(), "path": request.url.path}, status_code=status, headers={"Cache-Control": "no-store", "X-Dropped": "yes"})
 

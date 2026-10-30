@@ -147,6 +147,7 @@ fn http_config(authkit: &str) -> HttpConfig {
         static_site: None,
         proxy: None,
         token_secret: None,
+        session_key: None,
     }
 }
 
@@ -380,11 +381,19 @@ fn a_call_over_http_is_recorded_with_the_whole_requests_time() {
 /// A stand-in for AuthKit: records each request, and answers JSON -- a 400
 /// for a refresh token it doesn't know.
 fn fake_authkit() -> (String, Arc<Mutex<Vec<Value>>>) {
+    fake_authkit_answering(|_, path, body| if body.contains("refresh_token=unknown") { (400, json!({"error": "invalid_grant"})) } else { (200, json!({"ok": path})) })
+}
+
+/// A stand-in for AuthKit: records each request, and answers each with
+/// `answer`'s status and JSON for its own URL (tokens' issuer), the
+/// request's path and its body.
+fn fake_authkit_answering(answer: impl Fn(&str, &str, &str) -> (u16, Value) + Send + 'static) -> (String, Arc<Mutex<Vec<Value>>>) {
     use std::io::{BufRead, BufReader, Read, Write};
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://127.0.0.1:{}", listener.local_addr().unwrap().port());
     let seen = Arc::new(Mutex::new(Vec::new()));
     let log = seen.clone();
+    let issuer = url.clone();
     std::thread::spawn(move || {
         for stream in listener.incoming() {
             let Ok(mut stream) = stream else { continue };
@@ -410,7 +419,7 @@ fn fake_authkit() -> (String, Arc<Mutex<Vec<Value>>>) {
             let body = String::from_utf8_lossy(&body).to_string();
             let header = |name: &str| headers.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone());
             log.lock().unwrap().push(json!({"path": path, "body": body, "content_type": header("content-type"), "user_agent": header("user-agent")}));
-            let (status, payload) = if body.contains("refresh_token=unknown") { (400, json!({"error": "invalid_grant"})) } else { (200, json!({"ok": path})) };
+            let (status, payload) = answer(&issuer, &path, &body);
             let payload = payload.to_string();
             let reply = format!(
                 "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nCache-Control: no-store\r\nSet-Cookie: upstream=1\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{payload}",
@@ -796,4 +805,312 @@ fn the_icon_is_served_without_signing_in() {
         assert_eq!(answer.header("content-type"), Some(content_type));
         assert_eq!(answer.header("content-length"), Some(bytes.len().to_string().as_str()));
     }
+}
+
+// -- the web app's sign-in cookie (crate::mcp::session) ------------------------------------
+
+const SECRET: &str = "a secret long enough to be taken, thirty-two characters and more";
+const APP: &str = "https://tracker.example";
+
+/// A token `authkit` (a fake's URL) issued: the test key's, naming it.
+fn token_from(authkit: &str, mut changes: Value) -> String {
+    changes["iss"] = json!(authkit);
+    token(changes)
+}
+
+fn session_key() -> SessionKey {
+    SessionKey::from_secret(SECRET).unwrap()
+}
+
+fn served_with_sessions(authkit: &str) -> Served {
+    served_with(HttpConfig { session_key: Some(session_key()), ..http_config(authkit) })
+}
+
+/// AuthKit issuing tokens: for the code "good" (user_123's) or "stranger"
+/// (user_stranger's), and for the refresh token "good" (user_123's, with
+/// a new refresh token); a 400 for any other.
+fn authkit_issuing_tokens() -> (String, Arc<Mutex<Vec<Value>>>) {
+    fake_authkit_answering(|authkit, _, body| {
+        let issued = |sub: &str, refresh: &str| (200, json!({"access_token": token_from(authkit, json!({"sub": sub})), "refresh_token": refresh, "expires_in": 300, "token_type": "Bearer"}));
+        if body.contains("grant_type=authorization_code") {
+            if body.contains("code=good") {
+                issued("user_123", "refresh-1")
+            } else if body.contains("code=stranger") {
+                issued("user_stranger", "refresh-1")
+            } else {
+                (400, json!({"error": "invalid_grant", "error_description": "The code is unknown"}))
+            }
+        } else if body.contains("grant_type=refresh_token") && body.contains("refresh_token=good") {
+            issued("user_123", "refresh-2")
+        } else {
+            (400, json!({"error": "invalid_grant"}))
+        }
+    })
+}
+
+fn sign_in(served: &Served, origin: Option<&str>, code: &str) -> Answer {
+    let body = json!({"code": code, "code_verifier": "verifier", "redirect_uri": format!("{APP}/callback.html"), "client_id": "client_abc"}).to_string();
+    let mut headers = vec![("Content-Type", "application/json")];
+    if let Some(origin) = origin {
+        headers.push(("Origin", origin));
+    }
+    send("POST", &format!("{}/session", served.url), &headers, Some(body.as_bytes()))
+}
+
+/// The cookie `answer` set, as a Cookie header's value.
+fn cookie_set_by(answer: &Answer) -> String {
+    answer.header("set-cookie").expect("a Set-Cookie").split(';').next().unwrap().to_string()
+}
+
+/// The session in a cookie (a Cookie header's value).
+fn session_in(cookie: &str) -> Session {
+    session_key().open(cookie.strip_prefix(&format!("{}=", session::COOKIE)).unwrap()).expect("a session this server sealed")
+}
+
+fn sealed(session: &Session) -> String {
+    format!("{}={}", session::COOKIE, session_key().seal(session))
+}
+
+fn session_with(access_token: String, refresh_token: &str) -> Session {
+    Session { access_token, refresh_token: refresh_token.into(), client_id: "client_abc".into(), user: "user_123".into(), issued: now(), until: now() + session::MAX_AGE }
+}
+
+fn initialize_with_cookie(served: &Served, cookie: &str, origin: Option<&str>) -> Answer {
+    let body = json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}});
+    let mut headers = vec![("Cookie", cookie), ("Content-Type", "application/json"), ACCEPT];
+    if let Some(origin) = origin {
+        headers.push(("Origin", origin));
+    }
+    send("POST", &format!("{}/mcp", served.url), &headers, Some(body.to_string().as_bytes()))
+}
+
+#[test]
+fn the_session_secret_is_optional_but_must_be_long_enough() {
+    assert!(config(&[]).unwrap().session_key.is_none());
+    assert_eq!(config(&[("SESSION_SECRET", SECRET)]).unwrap().session_key, Some(session_key()));
+    let refused = config(&[("SESSION_SECRET", "short")]).err().unwrap().to_string();
+    assert!(refused.contains("SESSION_SECRET is too short"), "{refused}");
+    // A build that skips sign-in has nothing to keep signed in.
+    let config = disabled(&[("SESSION_SECRET", SECRET)]).unwrap();
+    assert!(config.session_key.is_none());
+    assert_eq!(config.ignored, vec!["SESSION_SECRET"]);
+}
+
+#[test]
+fn a_sign_in_sets_a_cookie_that_signs_requests() {
+    let (authkit, seen) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+
+    let answer = sign_in(&served, Some(APP), "good");
+
+    assert_eq!((answer.status, answer.body.as_str()), (204, ""));
+    let set = answer.header("set-cookie").unwrap();
+    for attribute in ["Path=/", "HttpOnly", "Secure", "SameSite=Lax", &format!("Max-Age={}", session::MAX_AGE)] {
+        assert!(set.contains(attribute), "{set}");
+    }
+    assert_eq!(answer.header("access-control-allow-credentials"), Some("true"));
+    assert_eq!(answer.header("cache-control"), Some("no-store"));
+    let cookie = cookie_set_by(&answer);
+    let session = session_in(&cookie);
+    assert_eq!((session.refresh_token.as_str(), session.client_id.as_str(), session.user.as_str()), ("refresh-1", "client_abc", "user_123"));
+    assert!(session.until - now() >= session::MAX_AGE - 5);
+    // The code was traded with everything the token endpoint needs.
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen.len(), 1);
+    let body = seen[0]["body"].as_str().unwrap();
+    for part in ["grant_type=authorization_code", "code=good", "code_verifier=verifier", "redirect_uri=https%3A%2F%2Ftracker.example%2Fcallback.html", "client_id=client_abc", "resource=https%3A%2F%2Fmy-service.onrender.com%2Fmcp"] {
+        assert!(body.contains(part), "{body}");
+    }
+    drop(seen);
+
+    let answer = initialize_with_cookie(&served, &cookie, Some(APP));
+    assert_eq!(answer.status, 200, "{}", answer.body);
+    assert!(answer.header("set-cookie").is_none(), "a fresh cookie isn't re-issued");
+    let answer = send("GET", &format!("{}/session", served.url), &[("Cookie", &cookie), ("Origin", APP)], None);
+    assert_eq!(answer.status, 204);
+}
+
+#[test]
+fn the_cookie_counts_only_from_an_allowed_origin() {
+    let (authkit, _) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+    let cookie = sealed(&session_with(token_from(&authkit, json!({})), "good"));
+
+    // A form on another site, or a page the CORS settings don't name.
+    for origin in [None, Some("https://evil.example")] {
+        let answer = initialize_with_cookie(&served, &cookie, origin);
+        assert_eq!(answer.status, 401, "{origin:?}");
+        assert!(answer.header("set-cookie").is_none(), "{origin:?}: the cookie isn't dropped for someone else's request");
+    }
+    // The server's own origin (the app it serves), and a local one.
+    for origin in ["https://my-service.onrender.com", "http://localhost:8765"] {
+        assert_eq!(initialize_with_cookie(&served, &cookie, Some(origin)).status, 200, "{origin}");
+    }
+    // A GET can't act for the user, so it needs no Origin.
+    assert_eq!(send("GET", &format!("{}/session", served.url), &[("Cookie", &cookie)], None).status, 204);
+}
+
+#[test]
+fn signing_in_needs_an_allowed_origin_and_a_whole_request() {
+    let (authkit, seen) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+
+    for origin in [None, Some("https://evil.example")] {
+        let answer = sign_in(&served, origin, "good");
+        assert_eq!(answer.status, 403, "{origin:?}");
+        assert!(answer.body.contains("access_denied"), "{}", answer.body);
+    }
+    let answer = send("POST", &format!("{}/session", served.url), &[("Content-Type", "application/json"), ("Origin", APP)], Some(br#"{"code": "good"}"#));
+    assert_eq!(answer.status, 400);
+    assert!(answer.body.contains("invalid_request"), "{}", answer.body);
+    assert!(seen.lock().unwrap().is_empty(), "nothing reached AuthKit");
+    assert_eq!(sign_in(&served, Some("https://my-service.onrender.com"), "good").status, 204);
+}
+
+#[test]
+fn a_stranger_cannot_sign_in_and_authkits_refusal_passes_through() {
+    let (authkit, _) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+
+    let answer = sign_in(&served, Some(APP), "stranger");
+    assert_eq!(answer.status, 403);
+    assert!(answer.body.contains("access_denied") && answer.header("set-cookie").is_none(), "{}", answer.body);
+
+    let answer = sign_in(&served, Some(APP), "bad");
+    assert_eq!(answer.status, 400);
+    assert_eq!(serde_json::from_str::<Value>(&answer.body).unwrap()["error_description"], json!("The code is unknown"));
+    assert!(answer.header("set-cookie").is_none());
+}
+
+#[test]
+fn an_expired_token_is_refreshed_through_the_cookie_once() {
+    let (authkit, seen) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+    let old = sealed(&session_with(token_from(&authkit, json!({"exp": now() - 10})), "good"));
+
+    let answer = initialize_with_cookie(&served, &old, Some(APP));
+
+    assert_eq!(answer.status, 200, "{}", answer.body);
+    let new = cookie_set_by(&answer);
+    let session = session_in(&new);
+    assert_eq!(session.refresh_token, "refresh-2");
+    assert!(session::token_expiry(&session.access_token).unwrap() > now());
+    assert!(session.issued >= now() - 5 && session.until >= now() + session::MAX_AGE - 5);
+    {
+        let seen = seen.lock().unwrap();
+        assert_eq!(seen.len(), 1);
+        let body = seen[0]["body"].as_str().unwrap();
+        for part in ["grant_type=refresh_token", "refresh_token=good", "client_id=client_abc", "resource=https%3A%2F%2Fmy-service.onrender.com%2Fmcp"] {
+            assert!(body.contains(part), "{body}");
+        }
+    }
+    // A request still carrying the old cookie (sent before the new one
+    // arrived) gets the new session, without AuthKit refusing a second
+    // refresh of the same token.
+    let answer = initialize_with_cookie(&served, &old, Some(APP));
+    assert_eq!(answer.status, 200);
+    assert_eq!(session_in(&cookie_set_by(&answer)).refresh_token, "refresh-2");
+    assert_eq!(seen.lock().unwrap().len(), 1);
+    // The new cookie works as it is.
+    let answer = initialize_with_cookie(&served, &new, Some(APP));
+    assert_eq!(answer.status, 200);
+    assert!(answer.header("set-cookie").is_none());
+    assert_eq!(seen.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn a_session_that_cannot_be_refreshed_or_is_no_good_is_dropped() {
+    let (authkit, _) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+    let dropped = format!("{}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0", session::COOKIE);
+    let other_key = SessionKey::from_secret(&"x".repeat(session::MIN_SECRET_CHARS)).unwrap();
+    let ended = Session { until: now() - 1, ..session_with(token_from(&authkit, json!({})), "good") };
+    let no_longer_allowed = Session { user: "user_stranger".into(), ..session_with(token_from(&authkit, json!({"sub": "user_stranger"})), "good") };
+
+    let cookies = [
+        ("a refresh AuthKit refuses", sealed(&session_with(token_from(&authkit, json!({"exp": now() - 10})), "dead"))),
+        ("an ended session", sealed(&ended)),
+        ("another key's cookie", format!("{}={}", session::COOKIE, other_key.seal(&session_with(token_from(&authkit, json!({})), "good")))),
+        ("garbage", format!("{}=not-a-cookie", session::COOKIE)),
+        ("a user no longer allowed", sealed(&no_longer_allowed)),
+    ];
+    for (what, cookie) in cookies {
+        let answer = initialize_with_cookie(&served, &cookie, Some(APP));
+        assert_eq!(answer.status, 401, "{what}");
+        assert_eq!(answer.header("set-cookie"), Some(dropped.as_str()), "{what}");
+        assert!(answer.header("www-authenticate").is_some(), "{what}");
+        let answer = send("GET", &format!("{}/session", served.url), &[("Cookie", &cookie)], None);
+        assert_eq!((answer.status, answer.header("set-cookie")), (401, Some(dropped.as_str())), "{what}");
+    }
+}
+
+#[test]
+fn a_cookie_in_use_is_renewed_hourly_so_the_session_slides() {
+    let (authkit, seen) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+    let session = session_with(token_from(&authkit, json!({})), "good");
+
+    let recent = Session { issued: now() - 10, ..session.clone() };
+    assert!(initialize_with_cookie(&served, &sealed(&recent), Some(APP)).header("set-cookie").is_none());
+
+    let old = Session { issued: now() - session::RENEW_AFTER, until: now() + 60, ..session };
+    let answer = initialize_with_cookie(&served, &sealed(&old), Some(APP));
+    assert_eq!(answer.status, 200);
+    let renewed = session_in(&cookie_set_by(&answer));
+    assert!(renewed.issued >= now() - 5 && renewed.until >= now() + session::MAX_AGE - 5);
+    assert_eq!((renewed.access_token, renewed.refresh_token), (old.access_token, old.refresh_token));
+    assert!(seen.lock().unwrap().is_empty(), "renewing takes no refresh");
+}
+
+#[test]
+fn signing_out_drops_the_cookie() {
+    let (authkit, _) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+
+    let answer = send("DELETE", &format!("{}/session", served.url), &[("Origin", APP)], None);
+    assert_eq!(answer.status, 204);
+    assert!(answer.header("set-cookie").unwrap().contains("Max-Age=0"));
+
+    for origin in [None, Some("https://evil.example")] {
+        let mut headers = Vec::new();
+        if let Some(origin) = origin {
+            headers.push(("Origin", origin));
+        }
+        let answer = send("DELETE", &format!("{}/session", served.url), &headers, None);
+        assert_eq!(answer.status, 403, "{origin:?}");
+        assert!(answer.header("set-cookie").is_none(), "{origin:?}");
+    }
+}
+
+#[test]
+fn a_bearer_token_is_taken_before_the_cookie() {
+    let (authkit, _) = authkit_issuing_tokens();
+    let served = served_with_sessions(&authkit);
+    let cookie = sealed(&session_with(token_from(&authkit, json!({})), "good"));
+    let body = json!({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}}});
+    let stranger = format!("Bearer {}", token_from(&authkit, json!({"sub": "user_stranger"})));
+
+    let answer = send("POST", &format!("{}/mcp", served.url), &[("Authorization", &stranger), ("Cookie", &cookie), ("Origin", APP), ("Content-Type", "application/json"), ACCEPT], Some(body.to_string().as_bytes()));
+
+    assert_eq!(answer.status, 401);
+    assert!(answer.header("set-cookie").is_none());
+}
+
+#[test]
+fn without_a_secret_or_sign_in_there_is_no_session_route() {
+    let (authkit, _) = authkit_issuing_tokens();
+    for served in [served(&authkit), served_with(HttpConfig { auth_disabled: true, session_key: Some(session_key()), ..http_config(&authkit) })] {
+        assert_eq!(sign_in(&served, Some(APP), "good").status, 404);
+        assert_eq!(send("GET", &format!("{}/session", served.url), &[], None).status, 404);
+    }
+}
+
+#[test]
+fn an_allowed_origin_may_send_credentials() {
+    let served = served(AUTHKIT);
+
+    assert_eq!(preflight(&served, APP).header("access-control-allow-credentials"), Some("true"));
+    assert_eq!(preflight(&served, "https://evil.example").header("access-control-allow-credentials"), None);
+    let answer = send("POST", &format!("{}/mcp", served.url), &[("Origin", APP), ("Content-Type", "application/json"), ACCEPT], Some(b"{}"));
+    assert_eq!((answer.status, answer.header("access-control-allow-credentials")), (401, Some("true")));
 }

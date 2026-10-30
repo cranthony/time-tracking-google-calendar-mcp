@@ -1,7 +1,8 @@
 //! MCP over streamable HTTP, as on Render (MCP_TRANSPORT=streamable-http):
 //! an OAuth resource server whose bearer tokens WorkOS AuthKit issues, CORS
-//! for browser clients (with_cors), the OAuth proxy to AuthKit, and each
-//! tool call's whole-request time for the health metrics (with_health).
+//! for browser clients (with_cors), the OAuth proxy to AuthKit, the web
+//! app's sign-in cookie (crate::mcp::session), and each tool call's
+//! whole-request time for the health metrics (with_health).
 //! A build that skips sign-in (crate::auth_mode) trusts every request, and
 //! serves neither the protected-resource metadata nor the OAuth proxy.
 //! Every answer -- status, headers that matter, body byte for byte -- is
@@ -10,6 +11,7 @@
 use crate::app::App;
 use crate::mcp::icon;
 use crate::mcp::proxy::{self, ProxyCheck};
+use crate::mcp::session::{self, Session, SessionKey};
 use axum::body::{Body, Bytes};
 use axum::extract::{Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode};
@@ -58,10 +60,14 @@ pub struct HttpConfig {
     /// The Secret Manager secret a browser setup adds each new Google
     /// token to (crate::setup): SETUP_TOKEN_SECRET, if set.
     pub token_secret: Option<String>,
+    /// The key the web app's sign-in cookie is sealed with
+    /// (crate::mcp::session): SESSION_SECRET, if set. Without it there
+    /// is no cookie, and the app signs in again on each page load.
+    pub session_key: Option<SessionKey>,
 }
 
 /// The settings only sign-in reads.
-const SIGN_IN_VARS: [&str; 2] = ["WORKOS_AUTHKIT_DOMAIN", "MCP_ALLOWED_USER_IDS"];
+const SIGN_IN_VARS: [&str; 3] = ["WORKOS_AUTHKIT_DOMAIN", "MCP_ALLOWED_USER_IDS", "SESSION_SECRET"];
 
 impl HttpConfig {
     pub fn from_env() -> anyhow::Result<HttpConfig> {
@@ -88,6 +94,7 @@ impl HttpConfig {
         let static_site = var("STATIC_SITE_DIR").map(|dir| static_site_dir(&dir)).transpose()?;
         let proxy = ProxyCheck::from_vars(&var)?;
         let token_secret = var("SETUP_TOKEN_SECRET").map(|name| token_secret_name(&name)).transpose()?;
+        let session_key = var("SESSION_SECRET").map(|secret| SessionKey::from_secret(&secret)).transpose()?;
         if auth_disabled {
             if var("RENDER_EXTERNAL_URL").is_some() {
                 anyhow::bail!(
@@ -110,6 +117,7 @@ impl HttpConfig {
                 static_site,
                 proxy,
                 token_secret,
+                session_key: None,
             });
         }
         let required = |name: &str, message: &str| var(name).ok_or_else(|| anyhow::anyhow!("{message}"));
@@ -137,7 +145,7 @@ impl HttpConfig {
                 "MCP_ALLOWED_USER_IDS is not set. Set it to your WorkOS user id (e.g. \"user_01ABC...\", from the Users page of the WorkOS dashboard) -- see the README's \"Deploying\" section."
             );
         }
-        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new(), static_site, proxy, token_secret })
+        Ok(HttpConfig { authkit_domain, resource, allowed_user_ids, cors_origins, port, auth_disabled, ignored: Vec::new(), static_site, proxy, token_secret, session_key })
     }
 
     /// The domain as an issuer URL (pydantic's AnyHttpUrl gives a bare host
@@ -165,6 +173,14 @@ impl HttpConfig {
         self.proxy.as_ref().map(|p| format!("https://{}", p.host))
     }
 
+    /// This server's own origin, from its public URL: where the web app
+    /// is when the server serves it (STATIC_SITE_DIR).
+    fn own_origin(&self) -> Option<String> {
+        let (scheme, rest) = self.resource.split_once("://")?;
+        let host = rest.split('/').next().filter(|h| !h.is_empty())?;
+        Some(format!("{scheme}://{host}"))
+    }
+
     fn resource_metadata_url(&self) -> String {
         let (scheme, rest) = self.resource.split_once("://").unwrap_or(("https", &self.resource));
         let (host, path) = match rest.find('/') {
@@ -181,6 +197,13 @@ struct Shared {
     sessions: Mutex<HashMap<String, crate::mcp::Session>>,
     keys: Mutex<Vec<Value>>,
     agent: ureq::Agent,
+    /// One cookie refresh at a time, so two requests with the same cookie
+    /// don't both spend its refresh token.
+    refreshing: Mutex<()>,
+    /// The sessions lately refreshed, by the refresh token they replaced:
+    /// a request still carrying the old cookie gets the new session
+    /// instead of a refresh AuthKit would refuse.
+    refreshed: Mutex<HashMap<String, (Session, Instant)>>,
 }
 
 pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
@@ -205,6 +228,9 @@ pub async fn serve(app: Arc<App>) -> anyhow::Result<()> {
         tracing::info!("A browser setup adds each new Google token to the secret {name}");
         app.setup.set_token_secret(crate::setup::TokenSecret::new(name));
     }
+    if config.session_key.is_some() && !config.auth_disabled {
+        tracing::info!("The web app can stay signed in with a cookie, for {} days at a time", session::DAYS);
+    }
     let router = router(shared(app, config));
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await?;
     tracing::info!("Uvicorn running on http://0.0.0.0:{port}");
@@ -219,12 +245,15 @@ fn shared(app: Arc<App>, config: HttpConfig) -> Arc<Shared> {
         sessions: Mutex::new(HashMap::new()),
         keys: Mutex::new(Vec::new()),
         agent: ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build(),
+        refreshing: Mutex::new(()),
+        refreshed: Mutex::new(HashMap::new()),
     })
 }
 
-/// The endpoints: MCP, its protected-resource metadata, and the OAuth
-/// proxy -- behind CORS. A build that skips sign-in has only MCP: nothing
-/// to send a client off to sign in.
+/// The endpoints: MCP, its protected-resource metadata, the OAuth proxy
+/// and, with SESSION_SECRET, the web app's sign-in cookie -- behind CORS.
+/// A build that skips sign-in has only MCP: nothing to send a client off
+/// to sign in.
 fn router(shared: Arc<Shared>) -> Router {
     let mut router = Router::new()
         .route("/mcp", get(mcp_get).post(mcp_post).delete(mcp_delete))
@@ -239,6 +268,9 @@ fn router(shared: Arc<Shared>) -> Router {
             .route(PROTECTED_RESOURCE_PATH, get(protected_resource))
             .route("/oauth/register", post(oauth_register))
             .route("/oauth/token", post(oauth_token));
+        if shared.config.session_key.is_some() {
+            router = router.route("/session", get(session_get).post(session_post).delete(session_delete));
+        }
     }
     router
         .method_not_allowed_fallback(method_not_allowed)
@@ -294,10 +326,15 @@ fn param(params: &[(String, String)], key: &str) -> Option<String> {
     params.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
 }
 
+/// The cookie `name` the browser sent, if any.
+fn cookie_value(headers: &HeaderMap, name: &str) -> Option<String> {
+    let cookies = headers.get_all("cookie").iter().filter_map(|c| c.to_str().ok()).collect::<Vec<_>>().join("; ");
+    cookies.split(';').filter_map(|c| c.trim().split_once('=')).find(|(k, _)| *k == name).map(|(_, v)| v.to_string())
+}
+
 /// The browser's setup session, from its cookie.
 fn setup_session(headers: &HeaderMap) -> Option<String> {
-    let cookies = headers.get_all("cookie").iter().filter_map(|c| c.to_str().ok()).collect::<Vec<_>>().join("; ");
-    cookies.split(';').filter_map(|c| c.trim().split_once('=')).find(|(k, _)| *k == crate::setup::COOKIE).map(|(_, v)| v.to_string())
+    cookie_value(headers, crate::setup::COOKIE)
 }
 
 /// Where the browser reached this server: its configured URL, or the Host
@@ -508,8 +545,22 @@ async fn method_not_allowed() -> Response {
     text_response(StatusCode::METHOD_NOT_ALLOWED, "Method Not Allowed")
 }
 
+/// Whether a page at `origin` may use this server: a local one, one of
+/// MCP_CORS_ALLOWED_ORIGINS, or this server's own.
 fn allowed_origin(shared: &Shared, origin: &str) -> bool {
-    LOCAL_ORIGIN.is_match(origin) || shared.config.cors_origins.iter().any(|o| o == origin)
+    LOCAL_ORIGIN.is_match(origin) || shared.config.cors_origins.iter().any(|o| o == origin) || shared.config.own_origin().as_deref() == Some(origin)
+}
+
+/// Whether a request may use the browser's sign-in cookie: a GET, or one
+/// whose Origin (which a browser always sends with anything else) is
+/// allowed. So a form on another site, which the browser would send the
+/// cookie with, can't act as the user -- nor can a page the server's CORS
+/// settings don't name.
+fn may_use_cookie(shared: &Shared, method: &Method, headers: &HeaderMap) -> bool {
+    match headers.get("origin").and_then(|o| o.to_str().ok()) {
+        Some(origin) => allowed_origin(shared, origin),
+        None => *method == Method::GET,
+    }
 }
 
 /// Starlette's CORSMiddleware, as with_cors configures it.
@@ -549,6 +600,7 @@ async fn cors(State(shared): State<Arc<Shared>>, request: Request, next: Next) -
         headers.insert("access-control-allow-headers", HeaderValue::from_static(ALLOWED_HEADERS));
         if allowed {
             headers.insert("access-control-allow-origin", HeaderValue::from_str(&origin).unwrap());
+            headers.insert("access-control-allow-credentials", HeaderValue::from_static("true"));
         }
         headers.insert("content-type", HeaderValue::from_static("text/plain; charset=utf-8"));
         return response;
@@ -558,6 +610,9 @@ async fn cors(State(shared): State<Arc<Shared>>, request: Request, next: Next) -
     headers.insert("access-control-expose-headers", HeaderValue::from_static(EXPOSED_HEADERS));
     if allowed_origin(&shared, &origin) {
         headers.insert("access-control-allow-origin", HeaderValue::from_str(&origin).unwrap());
+        // The web app sends its sign-in cookie: the browser shows it the
+        // answer only if the server says it takes credentials.
+        headers.insert("access-control-allow-credentials", HeaderValue::from_static("true"));
         headers.append("vary", HeaderValue::from_static("Origin"));
     }
     response
@@ -591,39 +646,183 @@ fn unauthorized(shared: &Shared) -> Response {
     response
 }
 
-/// WorkOSTokenVerifier: the token's signature against AuthKit's keys, its
-/// issuer, audience and expiry, and its user among those allowed. A build
-/// that skips sign-in trusts every request, token or not.
-async fn verify(shared: &Arc<Shared>, headers: &HeaderMap) -> bool {
-    if shared.config.auth_disabled {
-        return true;
+/// What verifying a request found: whether it's allowed, and the
+/// Set-Cookie its answer carries, if the browser's sign-in cookie is to
+/// change (renewed, refreshed, or dropped as no good).
+struct Auth {
+    ok: bool,
+    set_cookie: Option<String>,
+}
+
+impl Auth {
+    fn allowed() -> Auth {
+        Auth { ok: true, set_cookie: None }
     }
-    let Some(token) = headers
+
+    fn denied() -> Auth {
+        Auth { ok: false, set_cookie: None }
+    }
+
+    /// Denied, and the browser's cookie dropped: it's no good any more.
+    fn signed_out() -> Auth {
+        Auth { ok: false, set_cookie: Some(session::clear_cookie()) }
+    }
+
+    /// Allowed, with the browser's cookie replaced by `session`.
+    fn renewed(key: &SessionKey, session: &Session) -> Auth {
+        Auth { ok: true, set_cookie: Some(session::set_cookie(&key.seal(session))) }
+    }
+
+    /// `response` with the cookie change, if any.
+    fn apply(&self, mut response: Response) -> Response {
+        if let Some(cookie) = self.set_cookie.as_deref().and_then(|c| HeaderValue::from_str(c).ok()) {
+            response.headers_mut().insert("set-cookie", cookie);
+        }
+        response
+    }
+}
+
+/// WorkOSTokenVerifier: the token's signature against AuthKit's keys, its
+/// issuer, audience and expiry, and its user among those allowed. The
+/// token is the request's bearer token or, failing that, the one in the
+/// web app's sign-in cookie (session_auth). A build that skips sign-in
+/// trusts every request, token or not.
+async fn verify(shared: &Arc<Shared>, method: &Method, headers: &HeaderMap) -> Auth {
+    if shared.config.auth_disabled {
+        return Auth::allowed();
+    }
+    let bearer = headers
         .get("authorization")
         .and_then(|h| h.to_str().ok())
         .and_then(|h| h.strip_prefix("Bearer ").or_else(|| h.strip_prefix("bearer ")))
-        .map(str::to_string)
-    else {
-        return false;
+        .map(str::to_string);
+    if let Some(token) = bearer {
+        let shared = shared.clone();
+        return tokio::task::spawn_blocking(move || match check_token(&shared, &token) {
+            Ok(Some(_)) => Auth::allowed(),
+            Ok(None) => Auth::denied(),
+            Err(reason) => {
+                tracing::warn!(
+                    "Rejected bearer token: {reason} (expected issuer={}, audience={})",
+                    crate::py::repr(&shared.config.issuer()),
+                    crate::py::repr(&shared.config.resource)
+                );
+                Auth::denied()
+            }
+        })
+        .await
+        .unwrap_or(Auth::denied());
+    }
+    let (Some(key), Some(cookie)) = (shared.config.session_key.clone(), cookie_value(headers, session::COOKIE)) else {
+        return Auth::denied();
     };
+    if !may_use_cookie(shared, method, headers) {
+        tracing::warn!("Rejected a request with the sign-in cookie: its Origin {} isn't allowed", crate::py::repr(headers.get("origin").and_then(|o| o.to_str().ok()).unwrap_or("")));
+        return Auth::denied();
+    }
     let shared = shared.clone();
-    tokio::task::spawn_blocking(move || match check_token(&shared, &token) {
-        Ok(true) => true,
-        Ok(false) => false,
-        Err(reason) => {
-            tracing::warn!(
-                "Rejected bearer token: {reason} (expected issuer={}, audience={})",
-                crate::py::repr(&shared.config.issuer()),
-                crate::py::repr(&shared.config.resource)
-            );
-            false
-        }
-    })
-    .await
-    .unwrap_or(false)
+    tokio::task::spawn_blocking(move || session_auth(&shared, &key, &cookie)).await.unwrap_or(Auth::denied())
 }
 
-fn check_token(shared: &Shared, token: &str) -> Result<bool, String> {
+/// The sign-in cookie's session: allowed while its access token verifies
+/// (renewing the cookie hourly, so the session slides), refreshed through
+/// AuthKit once the token expires, and signed out when it has ended, was
+/// tampered with, can't be refreshed or its user is no longer allowed.
+fn session_auth(shared: &Shared, key: &SessionKey, cookie: &str) -> Auth {
+    let Some(session) = key.open(cookie) else {
+        tracing::warn!("Rejected a sign-in cookie: not one this server sealed");
+        return Auth::signed_out();
+    };
+    let now = chrono::Utc::now().timestamp();
+    if session.ended(now) {
+        tracing::info!("The sign-in cookie's session ended: signing the browser out");
+        return Auth::signed_out();
+    }
+    if session::token_expiry(&session.access_token).is_some_and(|exp| exp <= now + session::REFRESH_AHEAD) {
+        return match refresh_session(shared, &session, now) {
+            Ok(fresh) => Auth::renewed(key, &fresh),
+            Err(reason) => {
+                tracing::warn!("Couldn't refresh the sign-in cookie's session: {reason}; signing the browser out");
+                Auth::signed_out()
+            }
+        };
+    }
+    match check_token(shared, &session.access_token) {
+        Ok(Some(_)) if session.due_for_renewal(now) => Auth::renewed(key, &session.issued_at(now)),
+        Ok(Some(_)) => Auth::allowed(),
+        Ok(None) => Auth::signed_out(),
+        Err(reason) => {
+            tracing::warn!("Rejected the sign-in cookie's token: {reason}");
+            Auth::signed_out()
+        }
+    }
+}
+
+/// How long a refreshed session answers for the cookie it replaced.
+const REFRESHED_FOR: Duration = Duration::from_secs(120);
+
+/// `session` with new tokens from AuthKit, issued at `now`: one refresh
+/// at a time, and a cookie lately refreshed gets the session that
+/// replaced it (AuthKit rotates refresh tokens, so refreshing it again
+/// would fail).
+fn refresh_session(shared: &Shared, session: &Session, now: i64) -> Result<Session, String> {
+    let _one_at_a_time = shared.refreshing.lock().unwrap_or_else(|e| e.into_inner());
+    {
+        let mut refreshed = shared.refreshed.lock().unwrap_or_else(|e| e.into_inner());
+        refreshed.retain(|_, (_, at)| at.elapsed() < REFRESHED_FOR);
+        if let Some((fresh, _)) = refreshed.get(&session.refresh_token) {
+            return Ok(fresh.clone());
+        }
+    }
+    let (status, answer) = authkit_token(
+        shared,
+        &[("grant_type", "refresh_token"), ("refresh_token", &session.refresh_token), ("client_id", &session.client_id), ("resource", &shared.config.resource)],
+    )?;
+    if status != 200 {
+        return Err(format!("AuthKit answered {status}: {}", answer.get("error").and_then(Value::as_str).unwrap_or("no error given")));
+    }
+    let fresh = session_from(shared, &answer, &session.client_id, now).map_err(|(_, _, description)| description)?;
+    if fresh.user != session.user {
+        return Err(format!("the refreshed token is for {}, not {}", crate::py::repr(&fresh.user), crate::py::repr(&session.user)));
+    }
+    shared.refreshed.lock().unwrap_or_else(|e| e.into_inner()).insert(session.refresh_token.clone(), (fresh.clone(), Instant::now()));
+    Ok(fresh)
+}
+
+/// A session from AuthKit's token answer, issued at `now`, for the
+/// allowed user it names -- or the status, OAuth error and description
+/// to answer with.
+fn session_from(shared: &Shared, answer: &Value, client_id: &str, now: i64) -> Result<Session, (StatusCode, &'static str, String)> {
+    let Some(access_token) = answer.get("access_token").and_then(Value::as_str) else {
+        return Err((StatusCode::BAD_GATEWAY, "server_error", "AuthKit's answer has no access token".into()));
+    };
+    let Some(refresh_token) = answer.get("refresh_token").and_then(Value::as_str) else {
+        return Err((StatusCode::BAD_GATEWAY, "server_error", "AuthKit's answer has no refresh token: the client must be registered for the refresh_token grant".into()));
+    };
+    let user = match check_token(shared, access_token) {
+        Ok(Some(user)) => user,
+        Ok(None) => return Err((StatusCode::FORBIDDEN, "access_denied", "This user isn't allowed to use this server".into())),
+        Err(reason) => return Err((StatusCode::UNAUTHORIZED, "invalid_token", format!("The token AuthKit issued doesn't verify: {reason}"))),
+    };
+    Ok(Session { access_token: access_token.into(), refresh_token: refresh_token.into(), client_id: client_id.into(), user, issued: 0, until: 0 }.issued_at(now))
+}
+
+/// AuthKit's token endpoint's answer to `form`: its status and JSON.
+fn authkit_token(shared: &Shared, form: &[(&str, &str)]) -> Result<(u16, Value), String> {
+    let url = format!("{}/oauth2/token", shared.config.issuer());
+    let answered = match shared.agent.post(&url).set("User-Agent", PROXY_USER_AGENT).set("Accept", "application/json").send_form(form) {
+        Ok(response) => response,
+        Err(ureq::Error::Status(_, response)) => response,
+        Err(error) => return Err(format!("AuthKit couldn't be reached: {error}")),
+    };
+    let status = answered.status();
+    let text = answered.into_string().map_err(|e| format!("AuthKit's answer couldn't be read: {e}"))?;
+    Ok((status, serde_json::from_str(&text).unwrap_or(Value::Null)))
+}
+
+/// The token's user, if it verifies and the user is allowed: None for a
+/// good token of someone else's.
+fn check_token(shared: &Shared, token: &str) -> Result<Option<String>, String> {
     let header = jsonwebtoken::decode_header(token).map_err(|e| e.to_string())?;
     let kid = header.kid.ok_or_else(|| "the token has no kid".to_string())?;
     let key = signing_key(shared, &kid)?;
@@ -636,9 +835,9 @@ fn check_token(shared: &Shared, token: &str) -> Result<bool, String> {
     let user = claims.get("sub").and_then(Value::as_str).unwrap_or_default();
     if !shared.config.allowed_user_ids.iter().any(|u| u == user) {
         tracing::warn!("Rejected bearer token for user {}: not in MCP_ALLOWED_USER_IDS", crate::py::repr(user));
-        return Ok(false);
+        return Ok(None);
     }
-    Ok(true)
+    Ok(Some(user.to_string()))
 }
 
 /// AuthKit's signing key `kid`: from the cached keys, fetching them again
@@ -674,8 +873,9 @@ fn json_error(status: StatusCode, code: i64, message: &str) -> Response {
 
 async fn mcp_post(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: Bytes) -> Response {
     let started = Instant::now();
-    if !verify(&shared, &headers).await {
-        return unauthorized(&shared);
+    let auth = verify(&shared, &Method::POST, &headers).await;
+    if !auth.ok {
+        return auth.apply(unauthorized(&shared));
     }
     let accept = headers.get("accept").and_then(|a| a.to_str().ok()).unwrap_or_default();
     if !(accept.contains("application/json") && accept.contains("text/event-stream")) {
@@ -744,12 +944,13 @@ async fn mcp_post(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: B
     for (name, work_ms, ok) in timings {
         shared.app.health.record_call(&name, work_ms, Some(total_ms.max(work_ms)), ok);
     }
-    out
+    auth.apply(out)
 }
 
 async fn mcp_get(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Response {
-    if !verify(&shared, &headers).await {
-        return unauthorized(&shared);
+    let auth = verify(&shared, &Method::GET, &headers).await;
+    if !auth.ok {
+        return auth.apply(unauthorized(&shared));
     }
     let Some(id) = session_id_of(&headers) else {
         return json_error(StatusCode::BAD_REQUEST, -32600, "Bad Request: Missing session ID");
@@ -764,7 +965,7 @@ async fn mcp_get(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Respo
     response.headers_mut().insert("content-type", HeaderValue::from_static("text/event-stream"));
     response.headers_mut().insert("cache-control", HeaderValue::from_static("no-cache, no-transform"));
     response.headers_mut().insert("mcp-session-id", HeaderValue::from_str(&id).unwrap());
-    response
+    auth.apply(response)
 }
 
 fn futures_lite_pending() -> impl futures_core::Stream<Item = Result<Bytes, std::io::Error>> + Send {
@@ -779,8 +980,9 @@ fn futures_lite_pending() -> impl futures_core::Stream<Item = Result<Bytes, std:
 }
 
 async fn mcp_delete(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Response {
-    if !verify(&shared, &headers).await {
-        return unauthorized(&shared);
+    let auth = verify(&shared, &Method::DELETE, &headers).await;
+    if !auth.ok {
+        return auth.apply(unauthorized(&shared));
     }
     let Some(id) = session_id_of(&headers) else {
         return json_error(StatusCode::BAD_REQUEST, -32600, "Bad Request: Missing session ID");
@@ -790,6 +992,114 @@ async fn mcp_delete(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Re
     }
     StatusCode::OK.into_response()
 }
+
+// -- the web app's sign-in cookie (crate::mcp::session) ----------------------------------
+
+/// An OAuth-style JSON error, never cached.
+fn oauth_error(status: StatusCode, error: &str, description: &str) -> Response {
+    let mut response = Response::new(Body::from(json!({"error": error, "error_description": description}).to_string()));
+    *response.status_mut() = status;
+    response.headers_mut().insert("content-type", HeaderValue::from_static("application/json"));
+    response.headers_mut().insert("cache-control", HeaderValue::from_static("no-store"));
+    response
+}
+
+fn no_content() -> Response {
+    let mut response = Response::new(Body::empty());
+    *response.status_mut() = StatusCode::NO_CONTENT;
+    response.headers_mut().insert("cache-control", HeaderValue::from_static("no-store"));
+    response
+}
+
+/// POST /session: the web app, back from AuthKit with an authorization
+/// code, trades it for tokens -- which stay here, sealed in the cookie
+/// the answer sets, never in the page. The body is JSON: the code, the
+/// PKCE code_verifier, and the redirect_uri and client_id the app
+/// registered. AuthKit's refusal passes through as it is.
+async fn session_post(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: Bytes) -> Response {
+    if !may_use_cookie(&shared, &Method::POST, &headers) {
+        return oauth_error(StatusCode::FORBIDDEN, "access_denied", "This page's origin isn't allowed to sign in here");
+    }
+    if body.len() > MAX_PROXY_BODY {
+        return oauth_error(StatusCode::PAYLOAD_TOO_LARGE, "invalid_request", "Request body too large");
+    }
+    let request: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+    let field = |name: &str| request.get(name).and_then(Value::as_str).filter(|v| !v.is_empty()).map(str::to_string);
+    let (Some(code), Some(verifier), Some(redirect_uri), Some(client_id)) = (field("code"), field("code_verifier"), field("redirect_uri"), field("client_id")) else {
+        return oauth_error(StatusCode::BAD_REQUEST, "invalid_request", "The body must be JSON with code, code_verifier, redirect_uri and client_id");
+    };
+    let Some(key) = shared.config.session_key.clone() else {
+        return not_found().await;
+    };
+    let shared = shared.clone();
+    let answered = tokio::task::spawn_blocking(move || {
+        let now = chrono::Utc::now().timestamp();
+        let (status, answer) = authkit_token(
+            &shared,
+            &[
+                ("grant_type", "authorization_code"),
+                ("code", &code),
+                ("code_verifier", &verifier),
+                ("redirect_uri", &redirect_uri),
+                ("client_id", &client_id),
+                ("resource", &shared.config.resource),
+            ],
+        )
+        .map_err(|reason| (StatusCode::BAD_GATEWAY, "server_error", reason))?;
+        if status != 200 {
+            return Err((StatusCode::from_u16(status).unwrap_or(StatusCode::BAD_GATEWAY), "", answer.to_string()));
+        }
+        session_from(&shared, &answer, &client_id, now).map(|session| key.seal(&session))
+    })
+    .await;
+    match answered {
+        Ok(Ok(sealed)) => {
+            tracing::info!("The web app signed in; its session lasts {} days at a time", session::DAYS);
+            let mut response = no_content();
+            if let Ok(cookie) = HeaderValue::from_str(&session::set_cookie(&sealed)) {
+                response.headers_mut().insert("set-cookie", cookie);
+            }
+            response
+        }
+        // AuthKit's own refusal, as it is.
+        Ok(Err((status, "", body))) => {
+            let mut response = Response::new(Body::from(body));
+            *response.status_mut() = status;
+            response.headers_mut().insert("content-type", HeaderValue::from_static("application/json"));
+            response.headers_mut().insert("cache-control", HeaderValue::from_static("no-store"));
+            response
+        }
+        Ok(Err((status, error, description))) => {
+            tracing::warn!("The web app's sign-in failed: {description}");
+            oauth_error(status, error, &description)
+        }
+        Err(error) => oauth_error(StatusCode::INTERNAL_SERVER_ERROR, "server_error", &error.to_string()),
+    }
+}
+
+/// GET /session: whether the browser is signed in -- 204, with the cookie
+/// renewed or refreshed as a request would, or 401, dropping a cookie
+/// that's no good.
+async fn session_get(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Response {
+    let auth = verify(&shared, &Method::GET, &headers).await;
+    if auth.ok {
+        auth.apply(no_content())
+    } else {
+        auth.apply(oauth_error(StatusCode::UNAUTHORIZED, "invalid_token", "Not signed in"))
+    }
+}
+
+/// DELETE /session: signs the browser out by dropping its cookie. The
+/// tokens in it stay valid at AuthKit until they expire, but nothing
+/// holds them any more.
+async fn session_delete(State(shared): State<Arc<Shared>>, headers: HeaderMap) -> Response {
+    if !may_use_cookie(&shared, &Method::DELETE, &headers) {
+        return oauth_error(StatusCode::FORBIDDEN, "access_denied", "This page's origin isn't allowed to sign out here");
+    }
+    Auth::signed_out().apply(no_content())
+}
+
+// -- the OAuth proxy ---------------------------------------------------------------------
 
 async fn oauth_register(State(shared): State<Arc<Shared>>, headers: HeaderMap, body: Bytes) -> Response {
     forward(shared, "/oauth2/register", headers, body).await
