@@ -5,6 +5,7 @@
 pub mod http;
 pub mod icon;
 pub mod proxy;
+pub mod session;
 pub mod schema;
 pub mod stdio;
 

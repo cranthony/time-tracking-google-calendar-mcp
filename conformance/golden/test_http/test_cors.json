@@ -4,6 +4,7 @@
   {
    "body": "OK",
    "headers": {
+    "access-control-allow-credentials": "true",
     "access-control-allow-headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Last-Event-ID, Mcp-Protocol-Version, Mcp-Session-Id",
     "access-control-allow-methods": "GET, POST, DELETE",
     "access-control-allow-origin": "https://app.example",
@@ -24,6 +25,7 @@
   {
    "body": "OK",
    "headers": {
+    "access-control-allow-credentials": "true",
     "access-control-allow-headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Last-Event-ID, Mcp-Protocol-Version, Mcp-Session-Id",
     "access-control-allow-methods": "GET, POST, DELETE",
     "access-control-allow-origin": "http://localhost:5173",
@@ -44,6 +46,7 @@
   {
    "body": "OK",
    "headers": {
+    "access-control-allow-credentials": "true",
     "access-control-allow-headers": "Accept, Accept-Language, Authorization, Content-Language, Content-Type, Last-Event-ID, Mcp-Protocol-Version, Mcp-Session-Id",
     "access-control-allow-methods": "GET, POST, DELETE",
     "access-control-allow-origin": "http://127.0.0.1:8080",
@@ -83,6 +86,7 @@
   {
    "body": "{\"error\": \"invalid_token\", \"error_description\": \"Authentication required\"}",
    "headers": {
+    "access-control-allow-credentials": "true",
     "access-control-allow-origin": "https://app.example",
     "access-control-expose-headers": "Mcp-Session-Id, WWW-Authenticate",
     "content-type": "application/json",

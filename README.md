@@ -27,6 +27,7 @@ A Model Context Protocol (MCP) for managing a Google calendar with a set of non-
   - [On Render, with WorkOS sign-in](#on-render-with-workos-sign-in)
   - [Connecting from Claude.ai](#connecting-from-claudeai)
   - [Browser-based clients](#browser-based-clients)
+  - [Keeping the web app signed in](#keeping-the-web-app-signed-in)
   - [Serving the web app](#serving-the-web-app)
   - [Setting up Google access from a browser](#setting-up-google-access-from-a-browser)
   - [Without sign-in, behind a corporate proxy](#without-sign-in-behind-a-corporate-proxy)
@@ -109,6 +110,7 @@ The server reads its configuration from environment variables ([`rust/src/app.rs
 | `PROXY_AUDIENCE` | No | — | The `aud` the proxy's tokens are minted for, exactly as they carry it (e.g. a GCP project address). |
 | `PROXY_TOKEN_SIGNATURE` | No | — | The text the proxy leaves in place of the token's signature (e.g. `SIGNATURE_REMOVED_BY_GOOGLE`): set, a token must end in exactly that. Only with the three above. |
 | `SETUP_TOKEN_SECRET` | No | — | A Secret Manager secret (`projects/<project>/secrets/<secret>`) that a [browser setup](#setting-up-google-access-from-a-browser) adds each new Google token to as a new version, as the service's own account (on Cloud Run). Unset, the setup page shows the token for you to keep. |
+| `SESSION_SECRET` | No | — | Any long random text (32 characters at least) that seals the web app's sign-in cookie — see [Keeping the web app signed in](#keeping-the-web-app-signed-in). Unset, the web app signs in again on each page load. |
 | `PORT` | No | `10000` | The port `streamable-http` binds to (always alongside host `0.0.0.0`, as every Render web service requires). Render sets this for you automatically. |
 
 To supply these locally, copy [`.env.example`](.env.example) to `.env` and fill it in — the server and the tools read a `.env` in their working directory if there is one (a variable already set wins). `.env` is gitignored, so nothing personal ends up committed.
@@ -544,6 +546,19 @@ Claude.ai shows a custom connector with its host's favicon. The server serves th
 ### Browser-based clients
 
 A client running in a web page (like the Time Tracker web app) can't talk to AuthKit's registration and token endpoints directly: AuthKit answers them without CORS headers, so the browser hides the responses. For those clients only, this server offers `POST /oauth/register` and `POST /oauth/token`, which forward the request to the same endpoints under `WORKOS_AUTHKIT_DOMAIN` and return AuthKit's response unchanged (see [`rust/src/mcp/http.rs`](rust/src/mcp/http.rs)). Nothing to configure in WorkOS: the web client still registers itself through DCR, just via this server. Its origin does need to be allowed by `MCP_CORS_ALLOWED_ORIGINS` (localhost always is). Claude.ai and the native apps never use these routes.
+
+### Keeping the web app signed in
+
+A page can't keep a token safely: whatever it stores, a script in it can read and carry off, so the web app used to keep its tokens in memory and sign in again on each page load. With **`SESSION_SECRET`** set, it signs in through this server instead, and stays signed in with a cookie ([`rust/src/mcp/session.rs`](rust/src/mcp/session.rs)):
+
+- **`POST /session`** takes the authorization code the app got from AuthKit (JSON: `code`, `code_verifier`, `redirect_uri` and `client_id`), trades it for tokens at AuthKit, and sets them as the cookie `time_tracker_session`: sealed (ChaCha20-Poly1305, with a key derived from `SESSION_SECRET`) and `HttpOnly`, so the page never sees them. Only a user in `MCP_ALLOWED_USER_IDS` gets a cookie (a 403 for anyone else); AuthKit's refusal passes through as it is.
+- **`/mcp` takes the cookie in place of a bearer token.** The server opens it, checks the access token as it would a bearer token, and once that has expired refreshes it at AuthKit with the refresh token inside, setting a new cookie on the answer. A request with the cookie must come from an allowed origin (`MCP_CORS_ALLOWED_ORIGINS`, this server's own, or localhost): browsers send `Origin` with every request but a `GET`, so a form on another site can't act as the user. A bearer token, when there is one, is taken instead.
+- **`GET /session`** says whether the browser is signed in (a 204, or a 401), and **`DELETE /session`** signs it out by dropping the cookie.
+- A session lasts **7 days unused**: each use within that renews the cookie (hourly, not on every request), and one that has ended, can't be refreshed, or was tampered with is dropped (a 401, with the cookie cleared), so the app signs in afresh. WorkOS's own session limits apply underneath.
+
+The server keeps no sessions: every instance with the same `SESSION_SECRET` opens any cookie, a restart signs no one out, and changing the secret signs every browser out at once. Set it to any long random text (32 characters at least; `openssl rand -base64 48` makes one) -- the blueprint has Render generate one. Without it, the routes aren't served and the app signs in again on each page load, as before.
+
+Cookies travel only same-site, so the app must be served from the same site as this server: by the server itself ([below](#serving-the-web-app)), or from a subdomain of the server's domain (`app.example.com` beside `mcp.example.com`), named in `MCP_CORS_ALLOWED_ORIGINS`. From another site (GitHub Pages' own domain, say) the cookie would be third-party, which browsers drop. A build that skips sign-in has no sessions.
 
 ### Serving the web app
 

@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -31,7 +32,9 @@ from conformance.harness import DEFAULT_NOW, FakeGoogleServer, ROOT, _free_port,
 ALLOWED = "user_01ALLOWED"
 OTHER = "user_01STRANGER"
 ORIGIN = "https://app.example"
-KEPT_HEADERS = ("content-type", "www-authenticate", "access-control-allow-origin", "access-control-allow-methods", "access-control-allow-headers", "access-control-expose-headers", "access-control-allow-credentials", "cache-control", "x-dropped")
+KEPT_HEADERS = ("content-type", "www-authenticate", "access-control-allow-origin", "access-control-allow-methods", "access-control-allow-headers", "access-control-expose-headers", "access-control-allow-credentials", "cache-control", "set-cookie", "x-dropped")
+SESSION_SECRET = "a conformance secret, long enough to be taken as one"
+COOKIE = "time_tracker_session"
 
 
 class HttpServer:
@@ -57,6 +60,7 @@ class HttpServer:
             "MCP_PUBLIC_URL": self.resource,
             "MCP_ALLOWED_USER_IDS": f"{ALLOWED}, user_01SECOND",
             "MCP_CORS_ALLOWED_ORIGINS": ORIGIN,
+            "SESSION_SECRET": SESSION_SECRET,
             "TIME_TRACKER_NOW": DEFAULT_NOW,
             "TIME_TRACKER_DETERMINISTIC_IDS": "1",
             "TIME_TRACKER_HEALTH_WRITER": "off",
@@ -96,7 +100,10 @@ class HttpServer:
         kept = {name: response_headers[name] for name in KEPT_HEADERS if response_headers.get(name) is not None}
         if "www-authenticate" in kept:
             kept["www-authenticate"] = kept["www-authenticate"].replace(self.base, "<server>")
-        masked = {"authorization": "<token>", "mcp-session-id": "<session>"}
+        if "set-cookie" in kept:
+            # The sealed session differs each time (a fresh nonce).
+            kept["set-cookie"] = re.sub(rf"^{COOKIE}=[^;]+", f"{COOKIE}=<sealed>", kept["set-cookie"])
+        masked = {"authorization": "<token>", "mcp-session-id": "<session>", "cookie": "<cookie>"}
         sent = {k: masked.get(k.lower(), v) for k, v in (headers or {}).items()}
         self.exchanges.append({
             "request": {"method": method, "path": path, "headers": sent, "body": (body or b"").decode()},
@@ -106,11 +113,17 @@ class HttpServer:
         })
         return status, dict(response_headers), content
 
-    def rpc(self, method: str, params: dict | None = None, *, token: str | None = None) -> tuple[int, dict | None]:
+    def rpc(self, method: str, params: dict | None = None, *, token: str | None = None, cookie: str | None = None, origin: str | None = ORIGIN) -> tuple[int, dict | None]:
+        """A request with a bearer `token`, or the sign-in `cookie` (from
+        the page at `origin`, as a browser would say)."""
         self._next_id += 1
         headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-06-18"}
         if token is not None:
             headers["Authorization"] = f"Bearer {token}"
+        if cookie is not None:
+            headers["Cookie"] = cookie
+            if origin is not None:
+                headers["Origin"] = origin
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id
         status, response_headers, content = self.fetch("POST", "/mcp", headers=headers, body=json.dumps({"jsonrpc": "2.0", "id": self._next_id, "method": method, "params": params or {}}).encode())
@@ -125,13 +138,17 @@ class HttpServer:
         data = [line[len("data:"):].strip() for line in text.splitlines() if line.startswith("data:")]
         return status, json.loads(data[-1]) if data else None
 
-    def initialize(self, token: str) -> None:
-        status, result = self.rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "conformance", "version": "1"}}, token=token)
+    def initialize(self, token: str | None = None, *, cookie: str | None = None) -> None:
+        status, result = self.rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "conformance", "version": "1"}}, token=token, cookie=cookie)
         assert status == 200, status
-        self.rpc_notify("notifications/initialized", token)
+        self.rpc_notify("notifications/initialized", token, cookie=cookie)
 
-    def rpc_notify(self, method: str, token: str) -> None:
-        headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Authorization": f"Bearer {token}", "Mcp-Session-Id": self._session_id or "", "MCP-Protocol-Version": "2025-06-18"}
+    def rpc_notify(self, method: str, token: str | None, *, cookie: str | None = None) -> None:
+        headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "Mcp-Session-Id": self._session_id or "", "MCP-Protocol-Version": "2025-06-18"}
+        if token is not None:
+            headers["Authorization"] = f"Bearer {token}"
+        if cookie is not None:
+            headers.update({"Cookie": cookie, "Origin": ORIGIN})
         self.fetch("POST", "/mcp", headers=headers, body=json.dumps({"jsonrpc": "2.0", "method": method}).encode())
 
     def stop(self) -> None:
@@ -144,8 +161,11 @@ class HttpServer:
 
 
 def _normalized(text: str, base: str, issuer: str) -> str:
-    """Addresses that change from run to run, made fixed."""
-    text = unversioned(text.replace(base, "<server>").replace(issuer, "<authkit>"))
+    """Addresses that change from run to run, made fixed -- as they are,
+    and as a form (a token request's body) encodes them."""
+    text = text.replace(base, "<server>").replace(issuer, "<authkit>")
+    text = text.replace(urllib.parse.quote(base, safe=""), "<server>").replace(urllib.parse.quote(issuer, safe=""), "<authkit>")
+    text = unversioned(text)
     return "".join(_with_argument_errors(line) for line in text.splitlines(keepends=True))
 
 
@@ -232,6 +252,76 @@ def test_cors(http):
     status, headers, _ = http.fetch("POST", "/mcp", headers={"Origin": ORIGIN, "Content-Type": "application/json"}, body=b"{}")
     assert status == 401
     assert headers.get("access-control-allow-origin") == ORIGIN or headers.get("Access-Control-Allow-Origin") == ORIGIN
+
+
+def _set_cookie(headers: dict) -> str | None:
+    return next((v for k, v in headers.items() if k.lower() == "set-cookie"), None)
+
+
+def test_session(http, google):
+    """The web app's sign-in cookie (the README's "Keeping the web app
+    signed in"): set by POST /session for an allowed user from an allowed
+    origin, taken by /mcp in place of a bearer token, refreshed through
+    AuthKit once its token expires, dropped when that fails, and
+    dropped by DELETE /session."""
+    def issue(form: dict) -> tuple[int, dict]:
+        issued = lambda access, refresh: (200, {"access_token": access, "refresh_token": refresh, "expires_in": 3600, "token_type": "Bearer"})
+        if form.get("grant_type") == "authorization_code":
+            match form.get("code"):
+                case "good":
+                    return issued(http.token(), "refresh-good")
+                case "expiring":
+                    return issued(http.token(expires_in=20), "refresh-good")
+                case "doomed":
+                    return issued(http.token(expires_in=20), "refresh-dead")
+                case "stranger":
+                    return issued(http.token(sub=OTHER), "refresh-good")
+            return 400, {"error": "invalid_grant", "error_description": "The code is unknown"}
+        if form.get("grant_type") == "refresh_token" and form.get("refresh_token") == "refresh-good":
+            return issued(http.token(), "refresh-next")
+        return 400, {"error": "invalid_grant"}
+    google.authkit_tokens = issue
+
+    def sign_in(code: str, origin: str | None = ORIGIN) -> tuple[int, dict, bytes]:
+        headers = {"Content-Type": "application/json", **({"Origin": origin} if origin else {})}
+        body = {"code": code, "code_verifier": "verifier", "redirect_uri": f"{ORIGIN}/callback.html", "client_id": "client_web"}
+        return http.fetch("POST", "/session", headers=headers, body=json.dumps(body).encode())
+
+    # No origin, another site's, a stranger's code, a code AuthKit refuses: no cookie.
+    assert sign_in("good", origin=None)[0] == 403
+    assert sign_in("good", origin="https://evil.example")[0] == 403
+    status, headers, _ = sign_in("stranger")
+    assert status == 403 and _set_cookie(headers) is None
+    assert sign_in("bad")[0] == 400
+    assert http.fetch("POST", "/session", headers={"Content-Type": "application/json", "Origin": ORIGIN}, body=b'{"code": "good"}')[0] == 400
+    # Signed in: the cookie stands in for the bearer token, from an allowed origin.
+    status, headers, _ = sign_in("good")
+    assert status == 204
+    set_cookie = _set_cookie(headers)
+    assert set_cookie.startswith(f"{COOKIE}=") and "HttpOnly" in set_cookie and "SameSite=Lax" in set_cookie, set_cookie
+    cookie = set_cookie.split(";")[0]
+    http.initialize(cookie=cookie)
+    status, listed = http.rpc("tools/list", cookie=cookie)
+    assert status == 200 and len(listed["result"]["tools"]) == 82
+    assert http.rpc("tools/list", cookie=cookie, origin=None)[0] == 401
+    assert http.rpc("tools/list", cookie=cookie, origin="https://evil.example")[0] == 401
+    assert http.fetch("GET", "/session", headers={"Cookie": cookie})[0] == 204
+    assert http.fetch("GET", "/session")[0] == 401
+    # A token about to expire is refreshed through the cookie, the answer setting a new one.
+    status, headers, _ = sign_in("expiring")
+    expiring = _set_cookie(headers).split(";")[0]
+    http._session_id = None
+    status, headers, _ = http.fetch("POST", "/mcp", headers={"Content-Type": "application/json", "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-06-18", "Cookie": expiring, "Origin": ORIGIN}, body=json.dumps({"jsonrpc": "2.0", "id": 99, "method": "initialize", "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "conformance", "version": "1"}}}).encode())
+    assert status == 200 and _set_cookie(headers).startswith(f"{COOKIE}=") and "Max-Age=0" not in _set_cookie(headers)
+    # One that can't be refreshed is dropped.
+    status, headers, _ = sign_in("doomed")
+    doomed = _set_cookie(headers).split(";")[0]
+    status, headers, _ = http.fetch("GET", "/session", headers={"Cookie": doomed})
+    assert status == 401 and "Max-Age=0" in _set_cookie(headers)
+    # Signing out drops the cookie.
+    status, headers, _ = http.fetch("DELETE", "/session", headers={"Origin": ORIGIN})
+    assert status == 204 and "Max-Age=0" in _set_cookie(headers)
+    assert http.fetch("DELETE", "/session")[0] == 403
 
 
 def test_oauth_proxy(http):
