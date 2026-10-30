@@ -943,15 +943,24 @@ impl Goals {
     }
 
     pub fn create_goal(&self, goal: &Goal, zone: &Tz) -> anyhow::Result<CreatedGoal> {
-        let changed = self.change_goals(std::slice::from_ref(goal), &[], &[], zone)?;
-        let made = changed.goals.into_iter().next().expect("a create gives its goal");
-        Ok(CreatedGoal { created_id: made.id.clone().unwrap_or_default(), goal: made })
+        // Not the change's first goal: a goal activated on the way comes
+        // before it.
+        let (changed, made_ids) = self.change(std::slice::from_ref(goal), &[], &[], zone)?;
+        let id = made_ids.into_iter().next().expect("a create makes its goal");
+        let made = changed.goals.into_iter().find(|g| g.id.as_deref() == Some(id.as_str())).expect("a create gives its goal");
+        Ok(CreatedGoal { created_id: id, goal: made })
     }
 
     /// Make `creates`, apply `updates` and delete `removals`, all at once:
     /// checked whole, so a goal can be marked done while its sub-goals
     /// are closed or moved, and a new parent made for them, in one change.
     pub fn change_goals(&self, creates: &[Goal], updates: &[GoalEdit], removals: &[GoalRemoval], zone: &Tz) -> anyhow::Result<ChangedGoals> {
+        Ok(self.change(creates, updates, removals, zone)?.0)
+    }
+
+    /// change_goals, with the ids of `creates`' goals, in order (one made
+    /// already by its own).
+    fn change(&self, creates: &[Goal], updates: &[GoalEdit], removals: &[GoalRemoval], zone: &Tz) -> anyhow::Result<(ChangedGoals, Vec<String>)> {
         // Those ready activated first, as a read shows them.
         let (mut goals, swept) = self.current(zone)?;
         let instant = crate::determinism::now();
@@ -1050,14 +1059,17 @@ impl Goals {
             goals[index] = after;
             touched.push(id);
         }
+        let mut made_ids: Vec<String> = Vec::new();
         for given in creates {
             let id = match rows::created(given, &goals, &[])? {
                 rows::Created::New(id) => id,
                 rows::Created::Again(made) => {
                     touched.extend(made.id.clone());
+                    made_ids.extend(made.id.clone());
                     continue;
                 }
             };
+            made_ids.push(id.clone());
             let status = given.status.unwrap_or(GoalStatus::Active);
             let history = given.history.clone().unwrap_or_else(|| {
                 stamped.push(id.clone());
@@ -1112,7 +1124,7 @@ impl Goals {
             .filter_map(|id| goals.iter().find(|g| g.id.as_deref() == Some(id.as_str())))
             .map(|g| listed(g, &goals, zone))
             .collect();
-        Ok(ChangedGoals { goals: dedup_listed(shown), deleted_ids: deleted })
+        Ok((ChangedGoals { goals: dedup_listed(shown), deleted_ids: deleted }, made_ids))
     }
 }
 
