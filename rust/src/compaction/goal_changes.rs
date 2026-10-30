@@ -377,7 +377,8 @@ pub fn apply(store: &Goals, change: &GoalChange, zone: &Tz) -> anyhow::Result<Li
         anyhow::bail!("{}: retry_deadline goes with status missed", label(&goal));
     }
     let made = store.change_goals(&[], &[edit_for(&goal, change)], &[], zone)?;
-    made.goals.into_iter().next().ok_or_else(|| anyhow::anyhow!("{} wasn't changed", label(&goal)))
+    // Its own goal, not one activated on the way.
+    made.goals.into_iter().find(|g| g.id == goal.id).ok_or_else(|| anyhow::anyhow!("{} wasn't changed", label(&goal)))
 }
 
 /// The changes as a proposal shows them: each with its goal's title and

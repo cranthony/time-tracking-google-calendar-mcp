@@ -599,7 +599,13 @@ fn a_time_come_activates_a_goal_on_the_next_read_and_the_next_write_keeps_it() {
     assert_eq!((read["status"].clone(), read["history"][1]["at"].clone()), (json!("active"), json!("2026-10-19T00:00:00-04:00")));
     // Not written by the read; written, as read, by the next change.
     assert_eq!(f.goals.all().unwrap()[0].status, Some(GoalStatus::Inactive));
-    f.create(json!({"title": "Other", "deadline": "2026-11-01"})).unwrap();
+    // The create gives its own goal, not the one activated on the way.
+    let other = {
+        let _held = WRITE_LOCK.hold();
+        f.goals.create_goal(&goal(json!({"title": "Other", "deadline": "2026-11-01"})), &ZONE).unwrap()
+    };
+    assert_ne!(other.created_id, id);
+    assert_eq!((other.goal.id.as_deref(), other.goal.title.as_deref()), (Some(other.created_id.as_str()), Some("Other")));
     let kept = f.goals.all().unwrap().into_iter().find(|g| g.id.as_deref() == Some(id.as_str())).unwrap();
     assert_eq!((kept.status, kept.activate_when), (Some(GoalStatus::Active), None));
 }
