@@ -12,6 +12,7 @@ use crate::stores::cancellations::Cancellations;
 use crate::stores::shares::share_problems;
 use crate::timeline::{build_timeline, Timeline, TimelineEvent};
 use chrono::{Duration, FixedOffset, Offset};
+use std::collections::HashSet;
 
 pub const RESEND_RULE: &str = "Nothing was changed. Resend the whole batch so that, together, it is valid: every event it creates or updates must end after it starts, and must not overlap any other event -- neither one already on the calendar nor another in the batch. Fix each problem below by moving, shortening or cancelling events in the same call (each cancel saying whether it counts against follow-through), and check the result against every event listed here, not just the ones named.";
 
@@ -547,15 +548,40 @@ impl EventChanges {
     /// Write `batch`'s changes; the events as written. A patch Calendar
     /// refuses as made to an older version of the event (a 412, given its
     /// etag) is a `StaleEvent`, with the event as it is now.
+    ///
+    /// An instance of a series not edited on its own has its series'
+    /// version, which Calendar moves on as any of its instances is written:
+    /// one written earlier in the batch moves on the rest's. So a 412 to an
+    /// instance of a series the batch has written to already, the instance
+    /// otherwise just as it was checked, is that write's, not a change made
+    /// since: it's written again, once, onto the version it has now.
     pub fn apply(&self, batch: &Batch, source: &str) -> anyhow::Result<Vec<Event>> {
-        let patch = |patch: &Event| -> anyhow::Result<Event> {
-            self.client.update_event(patch).map_err(|error| match (&patch.etag.0, &patch.id) {
-                (Some(expected), Some(id)) if status_of(&error) == Some(412) => {
-                    let now = self.client.client().fresh_event(id).ok().filter(|e| !e.is_cancelled());
-                    StaleEvent { event_id: id.clone(), expected: expected.clone(), event: now }.into()
+        let mut written_series: HashSet<String> = HashSet::new();
+        let patch = |change: &Change, written_series: &HashSet<String>| -> anyhow::Result<Event> {
+            let patch = change.patch.as_ref().unwrap();
+            let (Some(expected), Some(id)) = (&patch.etag.0, &patch.id) else { return self.client.update_event(patch) };
+            let stale = |error: anyhow::Error, now: Option<Event>| -> anyhow::Error {
+                if status_of(&error) == Some(412) {
+                    StaleEvent { event_id: id.clone(), expected: expected.clone(), event: now.filter(|e| !e.is_cancelled()) }.into()
+                } else {
+                    error
                 }
-                _ => error,
-            })
+            };
+            let error = match self.client.update_event(patch) {
+                Err(error) if status_of(&error) == Some(412) => error,
+                written => return written,
+            };
+            let now = self.client.fresh_event(id).ok();
+            let ours = change.before.as_ref().zip(now.as_ref()).is_some_and(|(before, now)| {
+                before.recurring_event_id.as_ref().is_some_and(|s| written_series.contains(s)) && !now.is_cancelled() && now == before
+            });
+            match now {
+                Some(now) if ours => {
+                    let again = Event { etag: now.etag.clone(), ..patch.clone() };
+                    self.client.update_event(&again).map_err(|error| stale(error, self.client.fresh_event(id).ok()))
+                }
+                now => Err(stale(error, now)),
+            }
         };
         let mut written = batch.again.clone();
         // What's been written, as said if it stops partway.
@@ -574,7 +600,8 @@ impl EventChanges {
         for change in &batch.changes {
             match change.action.as_str() {
                 "update" => {
-                    let event = patch(change.patch.as_ref().unwrap()).map_err(|e| stopped(e, &done, &made_unnamed))?;
+                    let event = patch(change, &written_series).map_err(|e| stopped(e, &done, &made_unnamed))?;
+                    written_series.extend(change.before.as_ref().and_then(|b| b.recurring_event_id.clone()));
                     done.push(format!("updated {}", event.id.clone().unwrap_or_default()));
                     written.push(event);
                 }
@@ -590,7 +617,8 @@ impl EventChanges {
                 }
                 _ => {
                     let before = change.before.as_ref().unwrap();
-                    let event = patch(change.patch.as_ref().unwrap()).map_err(|e| stopped(e, &done, &made_unnamed))?;
+                    let event = patch(change, &written_series).map_err(|e| stopped(e, &done, &made_unnamed))?;
+                    written_series.extend(before.recurring_event_id.clone());
                     done.push(format!("cancelled {}", event.id.clone().unwrap_or_default()));
                     written.push(event);
                     if change.counts_against_follow_through {

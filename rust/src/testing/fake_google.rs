@@ -170,6 +170,11 @@ pub struct State {
     /// Import "<id>_R<time>" as a plain event, not splitting series <id>
     /// (it's undocumented, so it might stop).
     pub imports_dont_split: bool,
+    /// Give a series a new etag when one of its instances is patched on
+    /// its own -- and so every instance not edited on its own, which has
+    /// its series' etag -- as Google is thought to (see the probe's
+    /// instance_etags).
+    pub instance_edits_touch_series: bool,
     /// Each version added to a Secret Manager secret: (secret, its data).
     pub secret_versions: Vec<(String, String)>,
     ids: u64,
@@ -985,7 +990,15 @@ impl State {
         patched["etag"] = json!(self.etag());
         let times_changed = body.get("start").is_some() || body.get("end").is_some();
         self.apply_master_change(cid, &current, &patched, Some(times_changed))?;
+        let touched = master.filter(|_| self.instance_edits_touch_series).map(|mut m| {
+            m["etag"] = json!(self.etag());
+            m
+        });
         let cal = self.calendar(cid)?;
+        if let Some(master) = touched {
+            let id = master["id"].as_str().unwrap_or_default().to_string();
+            cal.put(&id, master);
+        }
         cal.put(eid, patched.clone());
         Ok(Self::present(cal, &patched))
     }

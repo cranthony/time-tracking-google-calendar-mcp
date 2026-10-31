@@ -17,6 +17,7 @@
 //!     batch             that Calendar's batch endpoint answers each request in it on its own
 //!     cancelled_events  whether events.list shows cancelled events, and what they keep
 //!     instance_cap      how far Google expands a long series, and reaching instances past that
+//!     instance_etags    whether editing one instance moves on its series' etag, and its other instances'
 //!     clear_fields      that clearing an event's fields (clear_fields) removes them
 //!     expansion_on_calendar  local_expansion's comparison on the configured calendar, read only
 //!     label_lifecycle   what an event does when its label is removed, then added back
@@ -44,6 +45,7 @@ use time_tracker::facts::Facts;
 use time_tracker::google::calendar::CalendarClient;
 use time_tracker::google::{segment, status_of, BatchRequest, Google};
 use time_tracker::stores::action_calendar::ActionCalendar;
+use time_tracker::stores::event_changes::EventChanges;
 use time_tracker::stores::locations::Location;
 use time_tracker::stores::recurrences::{split_series_id, Recurrences, Repeat};
 use time_tracker::write_lock::WRITE_LOCK;
@@ -77,7 +79,7 @@ fn main() {
 
 fn run() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: probe <batch|cancelled_events|clear_fields|instance_cap|expansion_on_calendar|label_lifecycle|local_expansion|metadata_tabs|other_client|series_edits|series_deletes|series_splits|raw_round_trip|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
+    let usage = "usage: probe <batch|cancelled_events|clear_fields|instance_cap|instance_etags|expansion_on_calendar|label_lifecycle|local_expansion|metadata_tabs|other_client|series_edits|series_deletes|series_splits|raw_round_trip|server|sheets_version|sync_masters|sync_tokens> [--keep] [--pause] [--raw] [--days N] [--server PATH] [--client PATH]";
     let Some(name) = args.first().cloned() else { anyhow::bail!("{usage}") };
     let mut options = Options { keep: false, pause: false, raw: false, days: 14, server: None, client: None };
     let mut i = 1;
@@ -118,6 +120,7 @@ fn run() -> anyhow::Result<()> {
         "batch" => ("Time tracker batch probe (safe to delete)", Some(TIME_ZONE)),
         "clear_fields" => ("Time tracker clear-fields probe (safe to delete)", Some(TIME_ZONE)),
         "instance_cap" => ("Time tracker instance cap probe (safe to delete)", Some(TIME_ZONE)),
+        "instance_etags" => ("Time tracker instance etag probe (safe to delete)", Some(TIME_ZONE)),
         "label_lifecycle" => ("Time tracker label probe (safe to delete)", None),
         "metadata_tabs" => ("Time tracker tabs probe (safe to delete)", None),
         "series_edits" => ("Time tracker series probe (safe to delete)", Some(TIME_ZONE)),
@@ -134,6 +137,7 @@ fn run() -> anyhow::Result<()> {
         "batch" => batch(&raw),
         "clear_fields" => clear_fields(&raw),
         "instance_cap" => instance_cap(&raw),
+        "instance_etags" => instance_etags(&raw),
         "label_lifecycle" => label_lifecycle(&raw, &options),
         "metadata_tabs" => metadata_tabs(&raw, &config),
         "series_edits" => series_edits(&raw, &options),
@@ -243,6 +247,12 @@ impl Raw {
 
     fn patch(&self, event_id: &str, body: Value) -> anyhow::Result<Value> {
         self.call("PATCH", &format!("/events/{}", segment(event_id)), &[], Some(&body))
+    }
+
+    /// `patch`, made on version `etag` (If-Match): a 412 if it's not.
+    fn patch_at(&self, event_id: &str, body: Value, etag: &str) -> anyhow::Result<Value> {
+        let url = self.google.calendar_url(&format!("calendars/{}/events/{}", segment(&self.calendar_id), segment(event_id)));
+        self.google.request("PATCH", &url, &[], Some(&body), Some(etag))
     }
 
     fn update(&self, event_id: &str, body: Value) -> anyhow::Result<Value> {
@@ -2075,6 +2085,103 @@ fn raw_round_trip(raw: &Raw) -> anyhow::Result<()> {
         }
     }
     println!("{} of {} values read back changed", changed, rows.len());
+    Ok(())
+}
+
+// -- instance_etags -------------------------------------------------------------
+
+/// Whether editing one instance of a series on its own moves on the etag of
+/// the series and of its other instances -- those not edited on their own,
+/// which have their series' etag (see local_expansion). If it does, a batch
+/// changing several such instances, each sent with the etag it was read
+/// at, has every write after the first refused (a 412), the version moved
+/// on by its own first write; EventChanges::apply writes those again onto
+/// the version they have now, if they're otherwise as they were read.
+///
+/// Steps: a daily series of six; edit instance 1 on its own (If-Match its
+/// etag), and see what moved; patch instance 2 at its etag from before
+/// (refused?), then at its etag now; cancel instance 3 at its etag from
+/// before; edit instance 1 again (an exception now: does that move the
+/// series on too?); then, through the server's own EventChanges, rename
+/// instances 4 and 5 in one batch, each at the etag it was read at.
+///
+/// Found: not run yet.
+fn instance_etags(raw: &Raw) -> anyhow::Result<()> {
+    let start = tomorrow_at(9);
+    let master_id = raw
+        .insert(json!({
+            "summary": "Probe series",
+            "start": when(&start),
+            "end": when(&(start + Duration::minutes(30))),
+            "recurrence": ["RRULE:FREQ=DAILY;COUNT=6"],
+        }))?["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let etag = |e: &Value| e["etag"].as_str().unwrap_or_default().to_string();
+    let master = raw.get(&master_id)?;
+    let items = raw.instances(&master_id, false)?;
+    let ids: Vec<String> = items.iter().map(|i| i["id"].as_str().unwrap().to_string()).collect();
+    let first: Vec<String> = items.iter().map(etag).collect();
+    println!("Series {master_id}: etag {}; instances {:?}", etag(&master), first);
+    check("every instance has its series' etag", first.iter().all(|e| *e == etag(&master)), &first);
+    let same_but_etag = |a: &Value, b: &Value| ["summary", "description", "start", "end", "status", "extendedProperties"].iter().all(|k| a.get(k) == b.get(k));
+
+    println!("\n1. Edit instance 1 on its own, at its etag");
+    raw.patch_at(&ids[0], json!({"summary": "Probe series (one edited)"}), &first[0])?;
+    let master_after = raw.get(&master_id)?;
+    let second = raw.get(&ids[1])?;
+    println!("  series etag: {} -> {}", etag(&master), etag(&master_after));
+    println!("  instance 2's etag: {} -> {}", first[1], etag(&second));
+    println!("  instance 2 otherwise as it was: {}", same_but_etag(&items[1], &second));
+    println!("  instance 2 has its series' etag still: {}", etag(&second) == etag(&master_after));
+
+    println!("\n2. Patch instance 2 at its etag from before step 1");
+    match raw.patch_at(&ids[1], json!({"summary": "Probe series (two edited)"}), &first[1]) {
+        Ok(_) => println!("  written"),
+        Err(error) => {
+            println!("  refused ({}): {error:#}", status_of(&error).map_or("-".into(), |s| s.to_string()));
+            let now = raw.get(&ids[1])?;
+            match raw.patch_at(&ids[1], json!({"summary": "Probe series (two edited)"}), &etag(&now)) {
+                Ok(_) => println!("  at its etag now ({}): written", etag(&now)),
+                Err(error) => println!("  at its etag now ({}): refused too: {error:#}", etag(&now)),
+            }
+        }
+    }
+
+    println!("\n3. Cancel instance 3 at its etag from before step 1");
+    match raw.patch_at(&ids[2], json!({"status": "cancelled"}), &first[2]) {
+        Ok(_) => println!("  cancelled"),
+        Err(error) => println!("  refused ({}): {error:#}", status_of(&error).map_or("-".into(), |s| s.to_string())),
+    }
+
+    println!("\n4. Edit instance 1 again (an exception now)");
+    let before = etag(&raw.get(&master_id)?);
+    let fourth_before = etag(&raw.get(&ids[3])?);
+    raw.patch_at(&ids[0], json!({"description": "edited again"}), &etag(&raw.get(&ids[0])?))?;
+    println!("  series etag: {before} -> {}", etag(&raw.get(&master_id)?));
+    println!("  instance 4's etag: {fourth_before} -> {}", etag(&raw.get(&ids[3])?));
+
+    println!("\n5. Through EventChanges: rename instances 4 and 5 in one batch");
+    let mut config = Config::from_env();
+    config.calendar_id = Some(raw.calendar_id.clone());
+    let app = Arc::new(App::new(config));
+    app.set_self();
+    let changes = EventChanges::new(ActionCalendar::new(raw.client(), app.actions()?), None);
+    let client = raw.client();
+    let updates: Vec<Event> = [3, 4]
+        .iter()
+        .map(|&i| -> anyhow::Result<Event> {
+            Ok(Event { id: Some(ids[i].clone()), summary: Some(format!("Probe series ({} renamed)", i + 1)), etag: client.get_event(&ids[i])?.etag, ..Default::default() })
+        })
+        .collect::<anyhow::Result<_>>()?;
+    let outcome = match changes.check(updates, vec![], vec![], None, false)? {
+        Err(refused) => Err(anyhow!("checked, refused: {refused}")),
+        Ok(batch) => changes.apply(&batch, "probe"),
+    };
+    check("both written", outcome.as_ref().is_ok_and(|w| w.len() == 2), outcome.as_ref().map(|w| w.len()).map_err(|e| format!("{e:#}")));
+    let summaries: Vec<Value> = [3, 4].iter().map(|&i| raw.get(&ids[i]).map(|e| e["summary"].clone())).collect::<anyhow::Result<_>>()?;
+    check("both renamed", summaries == [json!("Probe series (4 renamed)"), json!("Probe series (5 renamed)")], &summaries);
     Ok(())
 }
 

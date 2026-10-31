@@ -387,3 +387,108 @@ fn a_batch_stopped_partway_says_what_it_wrote() {
     assert!(told.starts_with("1 of the batch's 3 changes were written (updated email) before"), "{told}");
     assert!(told.contains("Sending the batch again"), "{told}");
 }
+
+// -- instances of one series -------------------------------------------------------
+
+/// A daily 09:00-09:30 series from Jan 1, on a fake Google that gives a
+/// series a new etag as any of its instances is edited on its own.
+fn daily_series() -> Fixture {
+    let series = Event {
+        id: Some("series1".into()),
+        summary: Some("Standup".into()),
+        start: Some(time_at("09:00")),
+        end: Some(time_at("09:30")),
+        time_zone: Some("UTC".into()),
+        recurrence: Some(vec!["RRULE:FREQ=DAILY;COUNT=5".into()]),
+        ..Default::default()
+    };
+    let f = fixture(vec![series], false);
+    f.t.fake.with(|s| s.instance_edits_touch_series = true);
+    f
+}
+
+fn day_of(day: u32) -> String {
+    format!("series1_202601{day:02}T090000Z")
+}
+
+fn renamed(f: &Fixture, id: &str, summary: &str) -> Event {
+    Event { id: Some(id.into()), summary: Some(summary.into()), etag: Etag(f.event(id).etag.0), ..Default::default() }
+}
+
+#[test]
+fn instances_of_one_series_not_edited_on_their_own_share_its_etag() {
+    let f = daily_series();
+
+    assert_eq!(f.event(&day_of(1)).etag.0, f.event(&day_of(2)).etag.0);
+}
+
+#[test]
+fn several_instances_of_one_series_are_changed_in_one_batch() {
+    let f = daily_series();
+    let updates = vec![renamed(&f, &day_of(1), "Standup (short)"), renamed(&f, &day_of(2), "Standup (remote)"), renamed(&f, &day_of(3), "Standup (late)")];
+
+    let written = f.apply(&f.check(Asked { updates, ..Default::default() }).unwrap(), "update_event");
+
+    assert_eq!(written.len(), 3);
+    let summaries: Vec<Option<String>> = (1..=3).map(|d| f.event(&day_of(d)).summary).collect();
+    assert_eq!(summaries, [Some("Standup (short)".into()), Some("Standup (remote)".into()), Some("Standup (late)".into())]);
+    assert_eq!(f.event(&day_of(4)).summary.as_deref(), Some("Standup"));
+}
+
+#[test]
+fn several_instances_of_one_series_are_cancelled_in_one_batch() {
+    let f = daily_series();
+    let cancels: Vec<Cancel> = [2, 3].into_iter().map(|d| Cancel { etag: f.event(&day_of(d)).etag.0, ..cancel(&day_of(d), false) }).collect();
+
+    let written = f.apply(&f.check(Asked { cancels, ..Default::default() }).unwrap(), "delete_event");
+
+    assert!(written.len() == 2 && written.iter().all(Event::is_cancelled), "{written:?}");
+    let client = f.t.app.calendar_client().unwrap();
+    assert!([2, 3].iter().all(|d| client.get_event(&day_of(*d)).map_or(true, |e| e.is_cancelled())), "both cancelled");
+    assert_eq!(f.event(&day_of(4)).summary.as_deref(), Some("Standup"));
+}
+
+#[test]
+fn an_instance_changed_elsewhere_after_the_check_is_still_stale() {
+    let f = daily_series();
+    // The first edited on its own already, so it has an etag of its own,
+    // which an edit to the second doesn't move on.
+    {
+        let _held = WRITE_LOCK.hold();
+        let client = f.t.app.calendar_client().unwrap();
+        client.update_event(&Event { id: Some(day_of(1)), description: Some("Agenda".into()), ..Default::default() }).unwrap();
+    }
+    let updates = vec![renamed(&f, &day_of(1), "Standup (short)"), renamed(&f, &day_of(2), "Standup (remote)")];
+    let batch = f.check(Asked { updates, ..Default::default() }).unwrap();
+    // The second changed elsewhere between the check and the write.
+    {
+        let _held = WRITE_LOCK.hold();
+        let client = f.t.app.calendar_client().unwrap();
+        client.update_event(&Event { id: Some(day_of(2)), summary: Some("Standup (moved room)".into()), ..Default::default() }).unwrap();
+    }
+
+    let _held = WRITE_LOCK.hold();
+    let error = f.changes.apply(&batch, "update_event").unwrap_err();
+
+    let stopped = error.downcast_ref::<StaleEvents>().unwrap();
+    assert_eq!(stopped.items[0].event_id, day_of(2));
+    assert_eq!(stopped.items[0].event.as_ref().unwrap().summary.as_deref(), Some("Standup (moved room)"));
+    assert_eq!(stopped.partly.as_ref().map(|p| p.written.clone()), Some(vec![format!("updated {}", day_of(1))]));
+}
+
+#[test]
+fn a_series_moved_on_by_a_write_outside_the_batch_is_still_stale() {
+    let f = daily_series();
+    let batch = f.check(Asked { updates: vec![renamed(&f, &day_of(2), "Standup (remote)")], ..Default::default() }).unwrap();
+    // Another instance edited elsewhere: the series' etag, and the second's, move on.
+    {
+        let _held = WRITE_LOCK.hold();
+        let client = f.t.app.calendar_client().unwrap();
+        client.update_event(&Event { id: Some(day_of(3)), summary: Some("Standup (late)".into()), ..Default::default() }).unwrap();
+    }
+
+    let _held = WRITE_LOCK.hold();
+    let error = f.changes.apply(&batch, "update_event").unwrap_err();
+
+    assert_eq!(error.downcast_ref::<StaleEvents>().unwrap().items[0].event_id, day_of(2));
+}

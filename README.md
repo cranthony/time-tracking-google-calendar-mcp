@@ -256,6 +256,7 @@ The tools are built with the server (see [Setup](#setup)), into `rust/target/rel
 - `cancelled_events [--days N] [--raw]` — what Google Calendar returns for your cancelled events. Nothing reads them from Calendar any more (`list_events` leaves them out, and the Cancellations tab records the ones that count). It lists the configured calendar's last days with and without `showDeleted`, and only reads.
 - `clear_fields` — that clearing an event's fields (`clear_fields`) removes them, on events and series.
 - `instance_cap` — how far Google expands a long recurring series (730 instances from its start, past which they aren't there at all), and what reaches the ones after.
+- `instance_etags` — whether editing one instance of a recurring series on its own gives the series, and its other instances, a new etag, and that `update_event` changes several of its instances in one batch all the same.
 - `label_lifecycle [--pause]` — what an event does when its label is removed, then added back.
 - `other_client --client PATH` — whether another OAuth client (a web application's, for [`/setup`](#setting-up-google-access-from-a-browser)) can see the calendar `GOOGLE_CALENDAR_ID` names, which your usual client made: it signs in with that client in the browser (register `http://localhost:8765/` as one of its redirect URIs) into a throwaway token, and only reads.
 - `metadata_tabs` — the actions, groups, people, circles and locations tabs end to end, and facts on events. It leaves its scratch spreadsheet in Drive, for you to trash by hand: this app can't.
