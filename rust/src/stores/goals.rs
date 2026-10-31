@@ -707,43 +707,29 @@ fn last_freed(goals: &[Goal], zone: &Tz, now: NaiveDateTime) -> Option<NaiveDate
         .max()
 }
 
-/// Whether `goal` and its inactive parents can start at `at`: each with
-/// a deadline after it, or one measured from its start or another's --
-/// not one it's already past, or none at all.
-fn can_start(goal: &Goal, goals: &[Goal], at: NaiveDateTime) -> bool {
-    let parents = ancestor_ids(goal, goals);
-    std::iter::once(goal).chain(parents.iter().filter_map(|id| by_id(goals, id)).filter(|g| g.status == Some(GoalStatus::Inactive))).all(|g| {
-        match (set(g.deadline.as_deref()).and_then(deadline_end), &g.deadline_rule) {
-            (Some(due), _) => due > at,
-            (None, rule) => rule.is_some(),
-        }
-    })
+/// Whether `goal` can start at `at`: with a deadline after it, or one
+/// measured from its start or another's -- not one it's already past, or
+/// none at all.
+fn can_start(goal: &Goal, at: NaiveDateTime) -> bool {
+    match (set(goal.deadline.as_deref()).and_then(deadline_end), &goal.deadline_rule) {
+        (Some(due), _) => due > at,
+        (None, rule) => rule.is_some(),
+    }
 }
 
-/// Activates the goal at `index` at `at` -- and its inactive parents --
-/// clearing what each waited for. The ids of those activated.
-fn activate(goals: &mut [Goal], index: usize, at: &DateTimeText) -> Vec<String> {
-    let mut ids: Vec<String> = goals[index].id.clone().into_iter().collect();
-    ids.extend(ancestor_ids(&goals[index], goals));
-    let mut activated = Vec::new();
-    for id in ids {
-        let Some(goal) = goals.iter_mut().find(|g| g.id.as_deref() == Some(id.as_str())) else { continue };
-        goal.activate_when = None;
-        if goal.status != Some(GoalStatus::Inactive) {
-            continue;
-        }
-        goal.status = Some(GoalStatus::Active);
-        goal.history.get_or_insert_with(Vec::new).push(StatusChange { status: GoalStatus::Active, at: at.clone(), deadline: None, note: None });
-        activated.push(id);
-    }
-    activated
+/// Activates `goal` at `at`, clearing what it waited for --
+/// not its inactive parents, which may have active sub-goals.
+fn activate(goal: &mut Goal, at: &DateTimeText) {
+    goal.activate_when = None;
+    goal.status = Some(GoalStatus::Active);
+    goal.history.get_or_insert_with(Vec::new).push(StatusChange { status: GoalStatus::Active, at: at.clone(), deadline: None, note: None });
 }
 
 /// Activates each inactive goal whose activate_when is ready by `now`
 /// and isn't held -- the highest priority first, then the soonest due,
 /// counting those activated before it -- each at the moment it became
-/// ready (or, held, at the latest a hold may have let go), and its
-/// inactive parents with it. The ids of those activated.
+/// ready (or, held, at the latest a hold may have let go), its inactive
+/// parents left as they are. The ids of those activated.
 fn sweep(goals: &mut [Goal], zone: &Tz, now: &Moment) -> Vec<String> {
     let now_local = local(now, zone);
     let mut activated: Vec<String> = Vec::new();
@@ -770,12 +756,13 @@ fn sweep(goals: &mut [Goal], zone: &Tz, now: &Moment) -> Vec<String> {
                 }
                 // Never before its last change, or after now.
                 let at = at.max(last.unwrap_or(at)).min(now_local);
-                can_start(g, goals, at).then_some((i, at))
+                can_start(g, at).then_some((i, at))
             })
             .collect();
         ready.sort_by_key(|(i, _)| (priority_of(&goals[*i], goals), goals[*i].deadline.as_deref().and_then(deadline_end)));
         let Some((index, at)) = ready.first().copied() else { break };
-        activated.extend(activate(goals, index, &stamp_of(at, zone)));
+        activate(&mut goals[index], &stamp_of(at, zone));
+        activated.extend(goals[index].id.clone());
     }
     activated
 }
@@ -970,8 +957,6 @@ impl Goals {
         // The goals whose history this change appends to itself: their
         // new entry takes the goal's deadline once every deadline is set.
         let mut stamped: Vec<String> = swept;
-        // Those activated by hand: their inactive parents are too.
-        let mut started: Vec<String> = Vec::new();
         // Every goal changed since it was read, not just the first.
         let mut stale: Vec<rows::Conflict> = Vec::new();
         let gather = |result: anyhow::Result<bool>, stale: &mut Vec<rows::Conflict>| -> anyhow::Result<Option<bool>> {
@@ -1052,7 +1037,6 @@ impl Goals {
             // matters.
             if after.status == Some(GoalStatus::Active) && before.status != Some(GoalStatus::Active) {
                 after.activate_when = None;
-                started.push(id.clone());
             } else if before.status == Some(GoalStatus::Inactive) && after.status.is_some_and(|s| s.is_closed()) && edit.goal.activate_when.is_none() {
                 after.activate_when = None;
             }
@@ -1076,16 +1060,7 @@ impl Goals {
                 vec![StatusChange { status, at: now.clone(), deadline: None, note: None }]
             });
             goals.push(Goal { id: Some(id.clone()), status: Some(status), history: Some(history), version: None, ..given.clone() });
-            if status == GoalStatus::Active {
-                started.push(id.clone());
-            }
             touched.push(id);
-        }
-        for id in &started {
-            let Some(index) = goals.iter().position(|g| g.id.as_deref() == Some(id.as_str())) else { continue };
-            let parents = activate(&mut goals, index, &now);
-            touched.extend(parents.iter().cloned());
-            stamped.extend(parents);
         }
         touched.extend(resolve_deadlines(&mut goals, zone));
         // What this change closed may let others start.
