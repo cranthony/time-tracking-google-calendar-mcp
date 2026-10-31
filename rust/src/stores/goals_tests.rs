@@ -251,22 +251,26 @@ fn a_missed_goal_is_closed_like_a_done_one() {
 }
 
 #[test]
-fn activating_a_goal_activates_its_inactive_parents_but_an_inactive_one_may_have_active_sub_goals() {
+fn activating_a_goal_leaves_its_inactive_parents_inactive() {
     let f = fixture();
     let top = f.create(json!({"title": "Top", "deadline": "2026-12-01"})).unwrap();
     let sub = f.create(json!({"title": "Sub", "parent_id": top, "deadline": "2026-11-01"})).unwrap();
     f.change(&[], vec![edit(json!({"id": top, "status": "inactive"}))], vec![]).unwrap();
     assert_eq!(f.get(&sub)["status"], json!("active"));
 
-    // Activated by hand, it takes its inactive parents with it, each
-    // with the deadline that follows from its start.
+    // Activated by hand, it starts alone: its inactive parent, even one
+    // with no deadline until it starts, stays as it was.
     let quiet = f.create(json!({"title": "Quiet", "status": "inactive", "deadline_rule": {"after_start": {"days": 30}}})).unwrap();
     let eager = f.create(json!({"title": "Eager", "parent_id": quiet, "status": "inactive", "deadline": "2026-11-01"})).unwrap();
     let changed = f.change(&[], vec![edit(json!({"id": eager, "status": "active"}))], vec![]).unwrap();
-    assert_eq!(changed.goals.len(), 2);
+    assert_eq!(changed.goals.len(), 1);
+    assert_eq!(f.get(&eager)["status"], json!("active"));
     let parent = f.get(&quiet);
-    assert_eq!((parent["status"].clone(), parent["due"].clone()), (json!("active"), json!("2026-11-16")));
-    assert_eq!(parent["history"][1], json!({"status": "active", "at": "2026-10-17T09:00:00-04:00", "deadline": "2026-11-16"}));
+    assert_eq!((parent["status"].clone(), parent["history"].as_array().unwrap().len()), (json!("inactive"), 1));
+
+    // Made active under an inactive parent, too.
+    let made = f.create(json!({"title": "Made", "parent_id": quiet, "deadline": "2026-11-01"})).unwrap();
+    assert_eq!((f.get(&made)["status"].clone(), f.get(&quiet)["status"].clone()), (json!("active"), json!("inactive")));
 }
 
 #[test]
@@ -670,13 +674,15 @@ fn of_two_ready_for_one_place_the_higher_priority_goes_first() {
 }
 
 #[test]
-fn a_goal_activated_waiting_takes_its_inactive_parents_and_by_hand_ignores_what_it_waits_for() {
+fn a_goal_activated_waiting_leaves_its_inactive_parents_and_by_hand_ignores_what_it_waits_for() {
     let f = fixture();
-    let parent = f.create(json!({"title": "Parent", "status": "inactive", "deadline": "2026-12-01"})).unwrap();
+    let parent = f.create(json!({"title": "Parent", "status": "inactive", "deadline": "2026-12-01", "activate_when": {"after": [{"at": "2026-11-20"}]}})).unwrap();
     let child = f
         .create(json!({"title": "Child", "parent_id": parent, "status": "inactive", "deadline": "2026-11-01", "activate_when": {"after": [{"at": "2026-10-16"}]}}))
         .unwrap();
-    assert_eq!((f.get(&child)["status"].clone(), f.get(&parent)["status"].clone()), (json!("active"), json!("active")));
+    assert_eq!((f.get(&child)["status"].clone(), f.get(&parent)["status"].clone()), (json!("active"), json!("inactive")));
+    // The parent still waits for its own.
+    assert_eq!(f.get(&parent)["activate_when"], json!({"after": [{"at": "2026-11-20"}]}));
 
     let later = f.create(json!({"title": "Later", "status": "inactive", "deadline": "2026-12-01", "activate_when": {"after": [{"at": "2026-11-20"}]}})).unwrap();
     f.change(&[], vec![edit(json!({"id": later, "status": "active"}))], vec![]).unwrap();

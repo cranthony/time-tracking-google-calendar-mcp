@@ -45,9 +45,9 @@ moves or changes another goal to make things fit.
 - An open sub-goal (inactive or active) is due no later than its parent,
   and expected to take no longer (each sub-goal on its own, not their
   total). A parent with no expected time puts no limit on its sub-goals.
-- An inactive goal may have active sub-goals, but activating a goal --
-  by hand or as it waited to be -- activates its inactive parents too,
-  each dated then, and clears what each waited for.
+- An inactive goal may have active sub-goals: activating a goal -- by
+  hand or as it waited to be -- activates it alone, and clears what it
+  waited for; its inactive parents stay inactive.
 - A done, missed or obsolete goal has no open sub-goals: closing a goal
   means marking each of its open sub-goals done, missed or obsolete, or
   moving it under another goal (or the top level), in the same change.

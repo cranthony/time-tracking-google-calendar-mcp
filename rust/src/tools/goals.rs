@@ -212,7 +212,7 @@ pub struct GoalDelete {
 /// a priority or "own"}}] (held back while that many other goals of that
 /// priority are active, its own parents and sub-goals not counted)}.
 /// Ready and not held, it's activated -- dated when it became ready --
-/// with its inactive parents; activating it by hand ignores it, and
+/// on its own (its inactive parents stay so); activating it by hand ignores it, and
 /// either way it's cleared -- as it is when the goal is closed (done,
 /// missed or obsolete) while it waits. expected_start is when one waiting is
 /// expected to be: when what it waits for is due, then its delay; none
@@ -265,7 +265,7 @@ pub fn get_goal(app: &App, id_or_title: String) -> Result<ListedGoal, ToolError>
 /// expected_minutes, activate_when, description, definition_of_done
 /// (each with its format: markdown for yours), attribution_hints,
 /// with_ids and for_ids. Active unless given a
-/// status; activating a goal activates its inactive parents. Its history
+/// status; activating a goal leaves its inactive parents so. Its history
 /// starts with its status, now, unless given one (to backdate it, say).
 /// A sub-goal can't be due after its parent, or be expected to take
 /// longer, or be open (inactive or active) under a done, missed or
