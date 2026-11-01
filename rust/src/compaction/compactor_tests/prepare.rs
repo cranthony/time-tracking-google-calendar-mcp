@@ -23,6 +23,10 @@ fn offers_the_days_notes_with_candidates_and_the_days_events() {
     assert!(DECISION_GUIDE.contains("SILENCE MEANS ON SCHEDULE"));
     assert!(DECISION_GUIDE.contains("READ EACH NOTE'S TENSE"));
     assert!(DECISION_GUIDE.contains("never the start_note of an event doing what it names"));
+    assert!(DECISION_GUIDE.contains("NOTES ARE WRITTEN AFTER THE FACT"));
+    assert!(DECISION_GUIDE.contains("(2) ONGOING: a note in the progressive"));
+    assert!(DECISION_GUIDE.contains("(3) START, only when the note says so"));
+    assert!(!DECISION_GUIDE.contains("now working on"));
     assert_eq!(context.to_json()["instructions"], json!(DECISION_GUIDE));
 }
 
