@@ -9,7 +9,8 @@ series' start (_INSTANCE_CAP) -- instances edited on their own as
 exceptions, series listed unexpanded (singleEvents=false), what a patch to a series' master does to them, a series
 ended early by UNTIL, series split by importing
 "<id>_R<time>@google.com", extendedProperties.private merged by a patch
-with null removing a key, calendar etags checked by If-Match, deleted
+with null removing a key, calendar and event etags checked by If-Match
+(412 for one that's changed), deleted
 events answering 410, inserting an event with a label the calendar hasn't
 got answering 400, and Sheets' grid that values.update grows but
 batchUpdateByDataFilter doesn't, and Calendar's batch endpoint answering
@@ -615,11 +616,12 @@ class FakeGoogle:
             calendar.events[exception["id"]] = exception
         return self._present(calendar, rest)
 
-    def update_event(self, calendar_id: str, event_id: str, body: dict) -> dict:
+    def update_event(self, calendar_id: str, event_id: str, body: dict, if_match: str | None = None) -> dict:
         """PUT: replace the event in full."""
         calendar = self.calendar(calendar_id)
         event_id = unquote(event_id)
         current, master = self._find(calendar, event_id)
+        _check_if_match(current, if_match)
         replacement = copy.deepcopy(body)
         for kept in ("recurringEventId", "originalStartTime", "iCalUID"):
             if kept in current and kept not in replacement:
@@ -631,10 +633,11 @@ class FakeGoogle:
         calendar.events[event_id] = event
         return self._present(calendar, event)
 
-    def patch_event(self, calendar_id: str, event_id: str, body: dict) -> dict:
+    def patch_event(self, calendar_id: str, event_id: str, body: dict, if_match: str | None = None) -> dict:
         calendar = self.calendar(calendar_id)
         event_id = unquote(event_id)
         current, master = self._find(calendar, event_id)
+        _check_if_match(current, if_match)
         patched = copy.deepcopy(current)
         for key, value in body.items():
             if key in ("id", "etag", "kind"):
@@ -1042,8 +1045,8 @@ class FakeGoogle:
             cid, eid = event.groups()
             handlers = {
                 "GET": lambda r, b: self.get_event(cid, eid),
-                "PUT": lambda r, b: self.update_event(cid, eid, b),
-                "PATCH": lambda r, b: self.patch_event(cid, eid, b),
+                "PUT": lambda r, b: self.update_event(cid, eid, b, r.headers.get("if-match")),
+                "PATCH": lambda r, b: self.patch_event(cid, eid, b, r.headers.get("if-match")),
                 "DELETE": lambda r, b: self.delete_event(cid, eid),
             }
             if method in handlers:
@@ -1092,8 +1095,8 @@ class FakeGoogle:
         cid, eid = request.path_params["cid"], request.path_params["eid"]
         handlers = {
             "GET": lambda r, b: self.get_event(cid, eid),
-            "PUT": lambda r, b: self.update_event(cid, eid, b),
-            "PATCH": lambda r, b: self.patch_event(cid, eid, b),
+            "PUT": lambda r, b: self.update_event(cid, eid, b, r.headers.get("if-match")),
+            "PATCH": lambda r, b: self.patch_event(cid, eid, b, r.headers.get("if-match")),
             "DELETE": lambda r, b: self.delete_event(cid, eid),
         }
         return await self._handler(handlers[request.method])(request)
@@ -1103,6 +1106,14 @@ class FakeGoogle:
         if request.method == "GET":
             return await self._handler(lambda r, b: self.get_values(sid, rng))(request)
         return await self._handler(lambda r, b: self.update_values(sid, rng, b))(request)
+
+
+def _check_if_match(event: dict, if_match: str | None) -> None:
+    """Refuse a write sent with If-Match an etag `event` no longer has --
+    as Google does, with 412. An instance not edited on its own has its
+    series' etag (as _find gives it)."""
+    if if_match is not None and if_match != event.get("etag"):
+        raise GoogleError(412, "Precondition Failed")
 
 
 class _SeriesDeleted(Exception):

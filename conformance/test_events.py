@@ -132,6 +132,23 @@ async def test_move_resize_and_overlap_in_batch(session):
     assert [e["end"] for e in result["events"]] == ["2026-10-07T10:30:00-04:00", "2026-10-07T11:30:00-04:00"]
 
 
+async def test_update_refuses_a_stale_etag(session):
+    """An update giving an etag the event has had since is refused, with
+    the event as it is now in _meta.conflicts -- and nothing written."""
+    [event] = (await session.call("create_event", events=[{"summary": "Practice", "start": at(9), "end": at(10)}]))["events"]
+    stale = event["etag"]
+    [changed] = (await session.call("update_event", updates=[{"event": {"id": event["id"], "summary": "Piano practice"}}]))["events"]
+    assert changed["etag"] != stale
+    refused = await session.attempt("update_event", updates=[{"event": {"id": event["id"], "etag": stale, "location": "home"}}])
+    assert refused.is_error
+    [conflict] = refused.meta["conflicts"]
+    assert conflict["id"] == event["id"]
+    assert conflict["current"]["summary"] == "Piano practice"
+    assert conflict["current"]["etag"] == changed["etag"]
+    now = await session.call("get_event", id=event["id"])
+    assert (now["summary"], now["location"], now["etag"]) == ("Piano practice", None, changed["etag"])
+
+
 async def test_cancel(session):
     a, b = (e["id"] for e in (await session.call(
         "create_event",
