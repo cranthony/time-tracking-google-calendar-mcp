@@ -390,8 +390,8 @@ fn a_batch_stopped_partway_says_what_it_wrote() {
 
 // -- instances of one series -------------------------------------------------------
 
-/// A daily 09:00-09:30 series from Jan 1, on a fake Google that gives a
-/// series a new etag as any of its instances is edited on its own.
+/// A daily 09:00-09:30 series from Jan 1 (the fake gives a series a new
+/// etag as any of its instances is first edited on its own, as Google does).
 fn daily_series() -> Fixture {
     let series = Event {
         id: Some("series1".into()),
@@ -402,9 +402,7 @@ fn daily_series() -> Fixture {
         recurrence: Some(vec!["RRULE:FREQ=DAILY;COUNT=5".into()]),
         ..Default::default()
     };
-    let f = fixture(vec![series], false);
-    f.t.fake.with(|s| s.instance_edits_touch_series = true);
-    f
+    fixture(vec![series], false)
 }
 
 fn day_of(day: u32) -> String {

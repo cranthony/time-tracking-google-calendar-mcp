@@ -2105,7 +2105,14 @@ fn raw_round_trip(raw: &Raw) -> anyhow::Result<()> {
 /// series on too?); then, through the server's own EventChanges, rename
 /// instances 4 and 5 in one batch, each at the etag it was read at.
 ///
-/// Found: not run yet.
+/// Found (2026-10-31): it does. Editing instance 1 on its own gave the
+/// series a new etag, and the untouched instances with it (still their
+/// series' etag, otherwise as they were). So patching instance 2 at its
+/// etag from before was refused (412), and written at its etag now; and
+/// cancelling instance 3 at its etag from before was refused (412) too.
+/// Editing instance 1 again, an exception by then, moved on neither the
+/// series' etag nor an untouched instance's. Through EventChanges, both
+/// instances renamed in one batch were written.
 fn instance_etags(raw: &Raw) -> anyhow::Result<()> {
     let start = tomorrow_at(9);
     let master_id = raw
