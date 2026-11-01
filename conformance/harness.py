@@ -103,6 +103,10 @@ class Call:
     """The text content, which is what a model reads: for a structured
     result, its JSON as the server rendered it."""
 
+    meta: dict | None = None
+    """The result's _meta, if it has one (a conflict's, say) -- not
+    recorded: the text says the same."""
+
     def as_dict(self) -> dict:
         return {"tool": self.tool, "arguments": self.arguments, "is_error": self.is_error, "content": self.content, "text": self.text}
 
@@ -257,7 +261,7 @@ class Session:
             content = argument_errors(unversioned(content))
         content = masked_http_errors(content)
         text = masked_http_errors(argument_errors(unversioned(text)))
-        call = Call(tool, arguments, bool(result.is_error), content, text)
+        call = Call(tool, arguments, bool(result.is_error), content, text, getattr(result, "meta", None))
         self.calls.append(call)
         return call
 
