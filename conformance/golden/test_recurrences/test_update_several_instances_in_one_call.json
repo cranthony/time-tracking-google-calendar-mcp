@@ -1,0 +1,2751 @@
+{
+ "calls": [
+  {
+   "arguments": {
+    "max_time": "2026-10-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-07T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-08T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-08T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-10T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261010T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-10T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-11T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261011T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-11T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-12T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261012T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-12T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-14T09:30:00-04:00",
+     "etag": "\"0000000000000004\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261014T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-14T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261007T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261008T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261010T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-10T09:00:00-04:00\",\n  \"end\": \"2026-10-10T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261011T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261012T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-12T09:00:00-04:00\",\n  \"end\": \"2026-10-12T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261014T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-14T09:00:00-04:00\",\n  \"end\": \"2026-10-14T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}",
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "updates": [
+     {
+      "event": {
+       "etag": "\"0000000000000004\"",
+       "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+       "summary": "Standup (short)"
+      }
+     },
+     {
+      "event": {
+       "etag": "\"0000000000000004\"",
+       "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+       "summary": "Standup (remote)"
+      }
+     }
+    ]
+   },
+   "content": {
+    "dry_run": false,
+    "events": [
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "description_format": null,
+      "effective_priority": null,
+      "end": "2026-10-05T09:30:00-04:00",
+      "etag": "\"0000000000000029\"",
+      "event_label_id": null,
+      "facts": null,
+      "goals": null,
+      "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+      "is_cancelled": false,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+      "start": "2026-10-05T09:00:00-04:00",
+      "summary": "Standup (short)"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "description_format": null,
+      "effective_priority": null,
+      "end": "2026-10-06T09:30:00-04:00",
+      "etag": "\"0000000000000031\"",
+      "event_label_id": null,
+      "facts": null,
+      "goals": null,
+      "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+      "is_cancelled": false,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+      "start": "2026-10-06T09:00:00-04:00",
+      "summary": "Standup (remote)"
+     }
+    ],
+    "timeline": null
+   },
+   "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n      \"summary\": \"Standup (short)\",\n      \"start\": \"2026-10-05T09:00:00-04:00\",\n      \"end\": \"2026-10-05T09:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000029\\\"\"\n    },\n    {\n      \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n      \"summary\": \"Standup (remote)\",\n      \"start\": \"2026-10-06T09:00:00-04:00\",\n      \"end\": \"2026-10-06T09:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000031\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "tool": "update_event"
+  },
+  {
+   "arguments": {
+    "max_time": "2026-10-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "etag": "\"0000000000000029\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup (short)"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "etag": "\"0000000000000031\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup (remote)"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-07T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-07T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-08T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-08T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-10T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261010T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-10T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-11T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261011T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-11T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-12T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261012T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-12T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-14T09:30:00-04:00",
+     "etag": "\"0000000000000032\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261014T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-14T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup (short)\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000029\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n  \"summary\": \"Standup (remote)\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000031\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261007T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261008T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-08T09:00:00-04:00\",\n  \"end\": \"2026-10-08T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261010T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-10T09:00:00-04:00\",\n  \"end\": \"2026-10-10T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261011T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261012T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-12T09:00:00-04:00\",\n  \"end\": \"2026-10-12T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261014T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-14T09:00:00-04:00\",\n  \"end\": \"2026-10-14T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000032\\\"\"\n}",
+   "tool": "list_events"
+  },
+  {
+   "arguments": {
+    "cancels": [
+     {
+      "counts_against_follow_through": false,
+      "etag": "\"0000000000000032\"",
+      "event_id": "b9e1e9b068c94af0129d20f775_20261007T130000Z"
+     },
+     {
+      "counts_against_follow_through": false,
+      "etag": "\"0000000000000032\"",
+      "event_id": "b9e1e9b068c94af0129d20f775_20261008T130000Z"
+     }
+    ]
+   },
+   "content": {
+    "dry_run": false,
+    "events": [
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "description_format": null,
+      "effective_priority": null,
+      "end": "2026-10-07T09:30:00-04:00",
+      "etag": "\"0000000000000033\"",
+      "event_label_id": null,
+      "facts": null,
+      "goals": null,
+      "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+      "is_cancelled": true,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+      "start": "2026-10-07T09:00:00-04:00",
+      "summary": "Standup"
+     },
+     {
+      "action_ids": null,
+      "action_names": null,
+      "actions_from_label": false,
+      "description": null,
+      "description_format": null,
+      "effective_priority": null,
+      "end": "2026-10-08T09:30:00-04:00",
+      "etag": "\"0000000000000035\"",
+      "event_label_id": null,
+      "facts": null,
+      "goals": null,
+      "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+      "is_cancelled": true,
+      "judgments": null,
+      "location": null,
+      "priority": null,
+      "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+      "start": "2026-10-08T09:00:00-04:00",
+      "summary": "Standup"
+     }
+    ],
+    "timeline": "09:00 ✕ Standup · cancelled (was\n        09:00–09:30)\n09:00 ✕ Standup · cancelled (was\n        09:00–09:30)\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
+   },
+   "is_error": false,
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"b9e1e9b068c94af0129d20f775_20261007T130000Z\",\n      \"summary\": \"Standup\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T09:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    },\n    {\n      \"id\": \"b9e1e9b068c94af0129d20f775_20261008T130000Z\",\n      \"summary\": \"Standup\",\n      \"start\": \"2026-10-08T09:00:00-04:00\",\n      \"end\": \"2026-10-08T09:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": null,\n      \"is_cancelled\": true,\n      \"effective_priority\": null,\n      \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ✕ Standup · cancelled (was\\n        09:00–09:30)\\n09:00 ✕ Standup · cancelled (was\\n        09:00–09:30)\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "tool": "delete_event"
+  },
+  {
+   "arguments": {
+    "max_time": "2026-10-31T00:00:00-04:00",
+    "min_time": "2026-10-01T00:00:00-04:00"
+   },
+   "content": [
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-05T09:30:00-04:00",
+     "etag": "\"0000000000000029\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-05T09:00:00-04:00",
+     "summary": "Standup (short)"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-06T09:30:00-04:00",
+     "etag": "\"0000000000000031\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-06T09:00:00-04:00",
+     "summary": "Standup (remote)"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-09T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261009T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-09T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-10T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261010T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-10T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-11T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261011T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-11T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-12T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261012T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-12T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-13T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261013T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-13T09:00:00-04:00",
+     "summary": "Standup"
+    },
+    {
+     "action_ids": null,
+     "action_names": null,
+     "actions_from_label": false,
+     "description": null,
+     "description_format": null,
+     "effective_priority": null,
+     "end": "2026-10-14T09:30:00-04:00",
+     "etag": "\"0000000000000036\"",
+     "event_label_id": null,
+     "facts": null,
+     "goals": null,
+     "id": "b9e1e9b068c94af0129d20f775_20261014T130000Z",
+     "is_cancelled": false,
+     "judgments": null,
+     "location": null,
+     "priority": null,
+     "recurring_event_id": "b9e1e9b068c94af0129d20f775",
+     "start": "2026-10-14T09:00:00-04:00",
+     "summary": "Standup"
+    }
+   ],
+   "is_error": false,
+   "text": "{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261005T130000Z\",\n  \"summary\": \"Standup (short)\",\n  \"start\": \"2026-10-05T09:00:00-04:00\",\n  \"end\": \"2026-10-05T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000029\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261006T130000Z\",\n  \"summary\": \"Standup (remote)\",\n  \"start\": \"2026-10-06T09:00:00-04:00\",\n  \"end\": \"2026-10-06T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000031\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261009T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-09T09:00:00-04:00\",\n  \"end\": \"2026-10-09T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261010T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-10T09:00:00-04:00\",\n  \"end\": \"2026-10-10T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261011T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-11T09:00:00-04:00\",\n  \"end\": \"2026-10-11T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261012T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-12T09:00:00-04:00\",\n  \"end\": \"2026-10-12T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261013T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-13T09:00:00-04:00\",\n  \"end\": \"2026-10-13T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}\n{\n  \"id\": \"b9e1e9b068c94af0129d20f775_20261014T130000Z\",\n  \"summary\": \"Standup\",\n  \"start\": \"2026-10-14T09:00:00-04:00\",\n  \"end\": \"2026-10-14T09:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"b9e1e9b068c94af0129d20f775\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
+   "tool": "list_events"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata (do not edit by hand)"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "actions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Actions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note",
+        "commute",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "actions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "action-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Action Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000009,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000009
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "action-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "people"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "People"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000011,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "traits",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000011
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "people",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "circles"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Circles"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000013,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "note",
+        "scoring",
+        "kind",
+        "traits",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000013
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "circles",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "locations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Locations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000015,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "hint",
+        "map_location",
+        "group_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000015
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "locations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "location-groups"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Location Groups"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000017,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000017
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "location-groups",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "travel-times"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Travel Times"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000019,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000019
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "travel-times",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "traits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Traits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000021,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "status",
+        "definition",
+        "parts",
+        "scoring",
+        "facts",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 6,
+        "sheetId": 1000021,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "thoughtful",
+        "Thoughtful",
+        "active",
+        "Remember what matters to them, and prepare for it.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
+        "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
+        ""
+       ],
+       [
+        "reliable",
+        "Reliable",
+        "active",
+        "Do what I said I would, and keep contact going -- reliable to myself too.",
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
+        "",
+        ""
+       ],
+       [
+        "creative",
+        "Creative",
+        "active",
+        "Make something together with them (making something alone is taking care of myself).",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
+        "",
+        "",
+        ""
+       ],
+       [
+        "adventurous",
+        "Adventurous",
+        "active",
+        "Share new experiences with them: new activities, new places.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
+        "",
+        ""
+       ],
+       [
+        "generous",
+        "Generous",
+        "active",
+        "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
+        "",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000021
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "traits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "habits"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Habits"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000023,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "person_id",
+        "circle_id",
+        "recurring_goal",
+        "status",
+        "note",
+        "note_format",
+        "traits",
+        "foundations",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000023
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "habits",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "cancellations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Cancellations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000025,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "engagement",
+        "summary",
+        "start",
+        "end",
+        "action_ids",
+        "parts",
+        "cancelled_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000025
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "cancellations",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "compactions"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Compactions"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000027
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "compactions",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 8,
+        "endRowIndex": 1,
+        "sheetId": 1000027,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "compaction_id",
+        "step",
+        "kind",
+        "event_id",
+        "before",
+        "after",
+        "status",
+        "detail"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": {
+    "summary": "Standup (short)"
+   },
+   "if_match": "\"0000000000000004\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261005T130000Z",
+   "query": {}
+  },
+  {
+   "body": {
+    "summary": "Standup (remote)"
+   },
+   "if_match": "\"0000000000000004\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261006T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261006T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261006T130000Z",
+   "query": {}
+  },
+  {
+   "body": {
+    "summary": "Standup (remote)"
+   },
+   "if_match": "\"0000000000000030\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261006T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "1"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "5"
+    ]
+   }
+  },
+  {
+   "body": {
+    "status": "cancelled"
+   },
+   "if_match": "\"0000000000000032\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261007T130000Z",
+   "query": {}
+  },
+  {
+   "body": {
+    "status": "cancelled"
+   },
+   "if_match": "\"0000000000000032\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261008T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261008T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261008T130000Z",
+   "query": {}
+  },
+  {
+   "body": {
+    "status": "cancelled"
+   },
+   "if_match": "\"0000000000000034\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events/b9e1e9b068c94af0129d20f775_20261008T130000Z",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com/events",
+   "query": {
+    "maxResults": [
+     "2500"
+    ],
+    "showDeleted": [
+     "true"
+    ],
+    "singleEvents": [
+     "false"
+    ],
+    "syncToken": [
+     "5"
+    ]
+   }
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {
+     "b9e1e9b068c94af0129d20f775": {
+      "end": {
+       "dateTime": "2026-10-05T09:30:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "b9e1e9b068c94af0129d20f775@google.com",
+      "id": "b9e1e9b068c94af0129d20f775",
+      "kind": "calendar#event",
+      "recurrence": [
+       "RRULE:FREQ=DAILY;COUNT=10"
+      ],
+      "start": {
+       "dateTime": "2026-10-05T09:00:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Standup"
+     },
+     "b9e1e9b068c94af0129d20f775_20261005T130000Z": {
+      "end": {
+       "dateTime": "2026-10-05T09:30:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "b9e1e9b068c94af0129d20f775@google.com",
+      "id": "b9e1e9b068c94af0129d20f775_20261005T130000Z",
+      "kind": "calendar#event",
+      "originalStartTime": {
+       "dateTime": "2026-10-05T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "recurringEventId": "b9e1e9b068c94af0129d20f775",
+      "start": {
+       "dateTime": "2026-10-05T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Standup (short)"
+     },
+     "b9e1e9b068c94af0129d20f775_20261006T130000Z": {
+      "end": {
+       "dateTime": "2026-10-06T09:30:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "b9e1e9b068c94af0129d20f775@google.com",
+      "id": "b9e1e9b068c94af0129d20f775_20261006T130000Z",
+      "kind": "calendar#event",
+      "originalStartTime": {
+       "dateTime": "2026-10-06T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "recurringEventId": "b9e1e9b068c94af0129d20f775",
+      "start": {
+       "dateTime": "2026-10-06T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "confirmed",
+      "summary": "Standup (remote)"
+     },
+     "b9e1e9b068c94af0129d20f775_20261007T130000Z": {
+      "end": {
+       "dateTime": "2026-10-07T09:30:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "b9e1e9b068c94af0129d20f775@google.com",
+      "id": "b9e1e9b068c94af0129d20f775_20261007T130000Z",
+      "kind": "calendar#event",
+      "originalStartTime": {
+       "dateTime": "2026-10-07T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "recurringEventId": "b9e1e9b068c94af0129d20f775",
+      "start": {
+       "dateTime": "2026-10-07T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "cancelled",
+      "summary": "Standup"
+     },
+     "b9e1e9b068c94af0129d20f775_20261008T130000Z": {
+      "end": {
+       "dateTime": "2026-10-08T09:30:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "iCalUID": "b9e1e9b068c94af0129d20f775@google.com",
+      "id": "b9e1e9b068c94af0129d20f775_20261008T130000Z",
+      "kind": "calendar#event",
+      "originalStartTime": {
+       "dateTime": "2026-10-08T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "recurringEventId": "b9e1e9b068c94af0129d20f775",
+      "start": {
+       "dateTime": "2026-10-08T09:00:00-04:00",
+       "timeZone": "America/New_York"
+      },
+      "status": "cancelled",
+      "summary": "Standup"
+     }
+    },
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "cd4333c8ed488b7a1ea6d69c9bxxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "actions",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000009
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "action-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000011
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "people",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000013
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "circles",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000015
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "locations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000017
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "location-groups",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000019
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "travel-times",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000021
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "traits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000023
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "habits",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000025
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "cancellations",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000027
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "compactions",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata (do not edit by hand)"
+    },
+    "tabs": {
+     "Action Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000009,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Action Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "background_color",
+        "priority",
+        "note",
+        "version"
+       ]
+      ]
+     },
+     "Actions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Actions"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "status",
+        "label_id",
+        "background_color",
+        "priority",
+        "note",
+        "commute",
+        "version"
+       ]
+      ]
+     },
+     "Cancellations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000025,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Cancellations"
+      },
+      "rows": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "engagement",
+        "summary",
+        "start",
+        "end",
+        "action_ids",
+        "parts",
+        "cancelled_at",
+        "source"
+       ]
+      ]
+     },
+     "Circles": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000013,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Circles"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "note",
+        "scoring",
+        "kind",
+        "traits",
+        "version"
+       ]
+      ]
+     },
+     "Compactions": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000027,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Compactions"
+      },
+      "rows": [
+       [
+        "compaction_id",
+        "step",
+        "kind",
+        "event_id",
+        "before",
+        "after",
+        "status",
+        "detail"
+       ]
+      ]
+     },
+     "Habits": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000023,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Habits"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "action_id",
+        "person_id",
+        "circle_id",
+        "recurring_goal",
+        "status",
+        "note",
+        "note_format",
+        "traits",
+        "foundations",
+        "version"
+       ]
+      ]
+     },
+     "Location Groups": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000017,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Location Groups"
+      },
+      "rows": [
+       [
+        "id",
+        "group_id",
+        "name",
+        "note",
+        "version"
+       ]
+      ]
+     },
+     "Locations": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000015,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Locations"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "hint",
+        "map_location",
+        "group_id",
+        "version"
+       ]
+      ]
+     },
+     "People": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000011,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "People"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "context",
+        "status",
+        "circles",
+        "traits",
+        "version"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     },
+     "Traits": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000021,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Traits"
+      },
+      "rows": [
+       [
+        "id",
+        "name",
+        "status",
+        "definition",
+        "parts",
+        "scoring",
+        "facts",
+        "version"
+       ],
+       [
+        "thoughtful",
+        "Thoughtful",
+        "active",
+        "Remember what matters to them, and prepare for it.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
+        "",
+        "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]"
+       ],
+       [
+        "reliable",
+        "Reliable",
+        "active",
+        "Do what I said I would, and keep contact going -- reliable to myself too.",
+        "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]"
+       ],
+       [
+        "creative",
+        "Creative",
+        "active",
+        "Make something together with them (making something alone is taking care of myself).",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]"
+       ],
+       [
+        "adventurous",
+        "Adventurous",
+        "active",
+        "Share new experiences with them: new activities, new places.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]"
+       ],
+       [
+        "generous",
+        "Generous",
+        "active",
+        "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
+        "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]"
+       ]
+      ]
+     },
+     "Travel Times": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000019,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Travel Times"
+      },
+      "rows": [
+       [
+        "id",
+        "from_id",
+        "to_id",
+        "one_way",
+        "times",
+        "note",
+        "version"
+       ]
+      ]
+     }
+    }
+   }
+  }
+ }
+}
