@@ -10,7 +10,8 @@ exceptions, series listed unexpanded (singleEvents=false), what a patch to a ser
 ended early by UNTIL, series split by importing
 "<id>_R<time>@google.com", extendedProperties.private merged by a patch
 with null removing a key, calendar and event etags checked by If-Match
-(412 for one that's changed), deleted
+(412 for one that's changed), an instance's first edit on its own giving
+its series a new etag, deleted
 events answering 410, inserting an event with a label the calendar hasn't
 got answering 400, and Sheets' grid that values.update grows but
 batchUpdateByDataFilter doesn't, and Calendar's batch endpoint answering
@@ -663,6 +664,11 @@ class FakeGoogle:
         self._check_event(calendar, patched)
         patched["etag"] = self._etag()
         self._apply_master_change(calendar, current, patched, times_changed="start" in body or "end" in body)
+        if master is not None and event_id not in calendar.events:
+            # An instance's first edit on its own gives its series a new
+            # etag -- and so every instance not edited on its own, which has
+            # its series' (the instance_etags probe).
+            calendar.events[master["id"]] = {**calendar.events[master["id"]], "etag": self._etag()}
         calendar.events[event_id] = patched
         return self._present(calendar, patched)
 

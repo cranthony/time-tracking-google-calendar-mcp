@@ -50,6 +50,28 @@ async def test_rules_repeat_cant_say(session, google, calendar_id):
     assert google.calendars[calendar_id].events[master]["recurrence"] == ["RRULE:FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;COUNT=4"]
 
 
+async def test_update_several_instances_in_one_call(session, google, calendar_id):
+    """Instances not edited on their own share their series' etag, which the
+    first one's write moves on: the rest, as they were read, are written
+    all the same -- updates and cancels alike."""
+    series(google, calendar_id)
+    listed = await instances(session)
+    assert len({e["etag"] for e in listed[:5]}) == 1
+    updated = await session.call("update_event", updates=[
+        {"event": {"id": listed[0]["id"], "etag": listed[0]["etag"], "summary": "Standup (short)"}},
+        {"event": {"id": listed[1]["id"], "etag": listed[1]["etag"], "summary": "Standup (remote)"}},
+    ])
+    assert [e["summary"] for e in updated["events"]] == ["Standup (short)", "Standup (remote)"]
+    # Read again: the first edit moved the rest's version on.
+    listed = await instances(session)
+    await session.call("delete_event", cancels=[
+        {"event_id": e["id"], "etag": e["etag"], "counts_against_follow_through": False} for e in listed[2:4]
+    ])
+    after = await instances(session)
+    assert [e["summary"] for e in after[:3]] == ["Standup (short)", "Standup (remote)", "Standup"]
+    assert after[2]["id"] == listed[4]["id"]
+
+
 async def test_update_whole_series(session, google, calendar_id):
     action = (await session.call("create_action", action={"name": "attend standup", "status": "active", "priority": 1}))["created_id"]
     master = series(google, calendar_id)

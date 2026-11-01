@@ -41,6 +41,13 @@ impl ActionCalendar {
         }
     }
 
+    /// Event `event_id` as Calendar has it now (see
+    /// `CalendarClient::fresh_event`), filled in as `get_event` fills it.
+    pub fn fresh_event(&self, event_id: &str) -> anyhow::Result<Event> {
+        let event = self.client.fresh_event(event_id)?;
+        Ok(fill_in_from_actions(&[event], &self.actions.tree()?).remove(0))
+    }
+
     pub fn update_event(&self, event: &Event) -> anyhow::Result<Event> {
         let labelled = self.with_label(event, false)?;
         match self.client.update_event(&labelled) {
