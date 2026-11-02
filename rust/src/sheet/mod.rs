@@ -37,6 +37,8 @@ pub const PERSON_FACTS: (&str, &str) = ("person-facts", "Person Facts");
 pub const FACT_LOGS: (&str, &str) = ("fact-logs", "Fact Logs");
 pub const HEALTH: (&str, &str) = ("health", "Health");
 pub const SCORING_DEFAULTS: (&str, &str) = ("scoring-defaults", "Scoring Defaults");
+pub const NATURAL_WAKE_TIMES: (&str, &str) = ("natural-wake-times", "Natural Wake Times");
+pub const CIRCADIAN_WINDOWS: (&str, &str) = ("circadian-windows", "Circadian Windows");
 
 /// This calendar's metadata spreadsheet id, if it has one yet.
 pub fn spreadsheet_of(calendar: &CalendarClient) -> anyhow::Result<Option<String>> {

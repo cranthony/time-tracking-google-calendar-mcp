@@ -1,0 +1,842 @@
+{
+ "calls": [
+  {
+   "arguments": {},
+   "content": {
+    "days": null,
+    "revisions": [],
+    "time_zone": "America/New_York",
+    "windows": {
+     "bright_after_minutes": 240,
+     "dim_before_minutes": 360,
+     "minimum_before_waking_minutes": 120
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"time_zone\": \"America/New_York\",\n  \"windows\": {\n    \"minimum_before_waking_minutes\": 120,\n    \"dim_before_minutes\": 360,\n    \"bright_after_minutes\": 240\n  },\n  \"revisions\": [],\n  \"days\": null\n}",
+   "tool": "get_circadian_rhythm"
+  },
+  {
+   "arguments": {
+    "date": "2026-10-30",
+    "note": "woke without alarm",
+    "time": "7:10"
+   },
+   "content": {
+    "revisions": [
+     {
+      "date": "2026-10-30",
+      "id": "co2yzn",
+      "note": "woke without alarm",
+      "temperature_minimum": "05:10",
+      "time": "07:10"
+     }
+    ],
+    "time_zone": "America/New_York",
+    "windows": {
+     "bright_after_minutes": 240,
+     "dim_before_minutes": 360,
+     "minimum_before_waking_minutes": 120
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"time_zone\": \"America/New_York\",\n  \"windows\": {\n    \"minimum_before_waking_minutes\": 120,\n    \"dim_before_minutes\": 360,\n    \"bright_after_minutes\": 240\n  },\n  \"revisions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"date\": \"2026-10-30\",\n      \"time\": \"07:10\",\n      \"note\": \"woke without alarm\",\n      \"temperature_minimum\": \"05:10\"\n    }\n  ]\n}",
+   "tool": "set_natural_wake_time"
+  },
+  {
+   "arguments": {
+    "date": "2026-11-02",
+    "time": "06:40"
+   },
+   "content": {
+    "revisions": [
+     {
+      "date": "2026-10-30",
+      "id": "co2yzn",
+      "note": "woke without alarm",
+      "temperature_minimum": "05:10",
+      "time": "07:10"
+     },
+     {
+      "date": "2026-11-02",
+      "id": "3dnjav",
+      "note": null,
+      "temperature_minimum": "04:40",
+      "time": "06:40"
+     }
+    ],
+    "time_zone": "America/New_York",
+    "windows": {
+     "bright_after_minutes": 240,
+     "dim_before_minutes": 360,
+     "minimum_before_waking_minutes": 120
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"time_zone\": \"America/New_York\",\n  \"windows\": {\n    \"minimum_before_waking_minutes\": 120,\n    \"dim_before_minutes\": 360,\n    \"bright_after_minutes\": 240\n  },\n  \"revisions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"date\": \"2026-10-30\",\n      \"time\": \"07:10\",\n      \"note\": \"woke without alarm\",\n      \"temperature_minimum\": \"05:10\"\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"date\": \"2026-11-02\",\n      \"time\": \"06:40\",\n      \"note\": null,\n      \"temperature_minimum\": \"04:40\"\n    }\n  ]\n}",
+   "tool": "set_natural_wake_time"
+  },
+  {
+   "arguments": {
+    "date": "2026-10-30",
+    "time": "07:00"
+   },
+   "content": {
+    "revisions": [
+     {
+      "date": "2026-10-30",
+      "id": "co2yzn",
+      "note": null,
+      "temperature_minimum": "05:00",
+      "time": "07:00"
+     },
+     {
+      "date": "2026-11-02",
+      "id": "3dnjav",
+      "note": null,
+      "temperature_minimum": "04:40",
+      "time": "06:40"
+     }
+    ],
+    "time_zone": "America/New_York",
+    "windows": {
+     "bright_after_minutes": 240,
+     "dim_before_minutes": 360,
+     "minimum_before_waking_minutes": 120
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"time_zone\": \"America/New_York\",\n  \"windows\": {\n    \"minimum_before_waking_minutes\": 120,\n    \"dim_before_minutes\": 360,\n    \"bright_after_minutes\": 240\n  },\n  \"revisions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"date\": \"2026-10-30\",\n      \"time\": \"07:00\",\n      \"note\": null,\n      \"temperature_minimum\": \"05:00\"\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"date\": \"2026-11-02\",\n      \"time\": \"06:40\",\n      \"note\": null,\n      \"temperature_minimum\": \"04:40\"\n    }\n  ]\n}",
+   "tool": "set_natural_wake_time"
+  },
+  {
+   "arguments": {
+    "date": "2026-02-30",
+    "time": "07:00"
+   },
+   "content": "Error executing tool set_natural_wake_time: '2026-02-30' isn't a date: give it as \"YYYY-MM-DD\" (e.g. \"2026-11-02\")",
+   "is_error": true,
+   "text": "Error executing tool set_natural_wake_time: '2026-02-30' isn't a date: give it as \"YYYY-MM-DD\" (e.g. \"2026-11-02\")",
+   "tool": "set_natural_wake_time"
+  },
+  {
+   "arguments": {
+    "date": "2026-11-02",
+    "time": "7pm"
+   },
+   "content": "Error executing tool set_natural_wake_time: '7pm' isn't a time of day: give it as \"HH:MM\", 24-hour (e.g. \"06:40\")",
+   "is_error": true,
+   "text": "Error executing tool set_natural_wake_time: '7pm' isn't a time of day: give it as \"HH:MM\", 24-hour (e.g. \"06:40\")",
+   "tool": "set_natural_wake_time"
+  },
+  {
+   "arguments": {
+    "date": "2027-10-08",
+    "time": "07:00"
+   },
+   "content": "Error executing tool set_natural_wake_time: 2027-10-08 is more than a year from today (2026-10-07): give a date on or before 2027-10-07",
+   "is_error": true,
+   "text": "Error executing tool set_natural_wake_time: 2027-10-08 is more than a year from today (2026-10-07): give a date on or before 2027-10-07",
+   "tool": "set_natural_wake_time"
+  },
+  {
+   "arguments": {
+    "date": "2026-11-02",
+    "note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "time": "07:00"
+   },
+   "content": "Error executing tool set_natural_wake_time: the note is longer than 500 characters",
+   "is_error": true,
+   "text": "Error executing tool set_natural_wake_time: the note is longer than 500 characters",
+   "tool": "set_natural_wake_time"
+  },
+  {
+   "arguments": {
+    "from": "2026-10-29",
+    "to": "2026-11-02"
+   },
+   "content": {
+    "days": [
+     {
+      "bright": {
+       "end": "2026-10-30T09:00:00-04:00",
+       "start": "2026-10-30T05:00:00-04:00"
+      },
+      "date": "2026-10-30",
+      "dim": {
+       "end": "2026-10-30T05:00:00-04:00",
+       "start": "2026-10-29T23:00:00-04:00"
+      },
+      "revision_id": "co2yzn",
+      "temperature_minimum": "2026-10-30T05:00:00-04:00",
+      "wake_time": "07:00"
+     },
+     {
+      "bright": {
+       "end": "2026-10-31T09:00:00-04:00",
+       "start": "2026-10-31T05:00:00-04:00"
+      },
+      "date": "2026-10-31",
+      "dim": {
+       "end": "2026-10-31T05:00:00-04:00",
+       "start": "2026-10-30T23:00:00-04:00"
+      },
+      "revision_id": "co2yzn",
+      "temperature_minimum": "2026-10-31T05:00:00-04:00",
+      "wake_time": "07:00"
+     },
+     {
+      "bright": {
+       "end": "2026-11-01T09:00:00-05:00",
+       "start": "2026-11-01T05:00:00-05:00"
+      },
+      "date": "2026-11-01",
+      "dim": {
+       "end": "2026-11-01T05:00:00-05:00",
+       "start": "2026-11-01T00:00:00-04:00"
+      },
+      "revision_id": "co2yzn",
+      "temperature_minimum": "2026-11-01T05:00:00-05:00",
+      "wake_time": "07:00"
+     },
+     {
+      "bright": {
+       "end": "2026-11-02T08:40:00-05:00",
+       "start": "2026-11-02T04:40:00-05:00"
+      },
+      "date": "2026-11-02",
+      "dim": {
+       "end": "2026-11-02T04:40:00-05:00",
+       "start": "2026-11-01T22:40:00-05:00"
+      },
+      "revision_id": "3dnjav",
+      "temperature_minimum": "2026-11-02T04:40:00-05:00",
+      "wake_time": "06:40"
+     }
+    ],
+    "revisions": [
+     {
+      "date": "2026-10-30",
+      "id": "co2yzn",
+      "note": null,
+      "temperature_minimum": "05:00",
+      "time": "07:00"
+     },
+     {
+      "date": "2026-11-02",
+      "id": "3dnjav",
+      "note": null,
+      "temperature_minimum": "04:40",
+      "time": "06:40"
+     }
+    ],
+    "time_zone": "America/New_York",
+    "windows": {
+     "bright_after_minutes": 240,
+     "dim_before_minutes": 360,
+     "minimum_before_waking_minutes": 120
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"time_zone\": \"America/New_York\",\n  \"windows\": {\n    \"minimum_before_waking_minutes\": 120,\n    \"dim_before_minutes\": 360,\n    \"bright_after_minutes\": 240\n  },\n  \"revisions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"date\": \"2026-10-30\",\n      \"time\": \"07:00\",\n      \"note\": null,\n      \"temperature_minimum\": \"05:00\"\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"date\": \"2026-11-02\",\n      \"time\": \"06:40\",\n      \"note\": null,\n      \"temperature_minimum\": \"04:40\"\n    }\n  ],\n  \"days\": [\n    {\n      \"date\": \"2026-10-30\",\n      \"revision_id\": \"co2yzn\",\n      \"wake_time\": \"07:00\",\n      \"temperature_minimum\": \"2026-10-30T05:00:00-04:00\",\n      \"dim\": {\n        \"start\": \"2026-10-29T23:00:00-04:00\",\n        \"end\": \"2026-10-30T05:00:00-04:00\"\n      },\n      \"bright\": {\n        \"start\": \"2026-10-30T05:00:00-04:00\",\n        \"end\": \"2026-10-30T09:00:00-04:00\"\n      }\n    },\n    {\n      \"date\": \"2026-10-31\",\n      \"revision_id\": \"co2yzn\",\n      \"wake_time\": \"07:00\",\n      \"temperature_minimum\": \"2026-10-31T05:00:00-04:00\",\n      \"dim\": {\n        \"start\": \"2026-10-30T23:00:00-04:00\",\n        \"end\": \"2026-10-31T05:00:00-04:00\"\n      },\n      \"bright\": {\n        \"start\": \"2026-10-31T05:00:00-04:00\",\n        \"end\": \"2026-10-31T09:00:00-04:00\"\n      }\n    },\n    {\n      \"date\": \"2026-11-01\",\n      \"revision_id\": \"co2yzn\",\n      \"wake_time\": \"07:00\",\n      \"temperature_minimum\": \"2026-11-01T05:00:00-05:00\",\n      \"dim\": {\n        \"start\": \"2026-11-01T00:00:00-04:00\",\n        \"end\": \"2026-11-01T05:00:00-05:00\"\n      },\n      \"bright\": {\n        \"start\": \"2026-11-01T05:00:00-05:00\",\n        \"end\": \"2026-11-01T09:00:00-05:00\"\n      }\n    },\n    {\n      \"date\": \"2026-11-02\",\n      \"revision_id\": \"3dnjav\",\n      \"wake_time\": \"06:40\",\n      \"temperature_minimum\": \"2026-11-02T04:40:00-05:00\",\n      \"dim\": {\n        \"start\": \"2026-11-01T22:40:00-05:00\",\n        \"end\": \"2026-11-02T04:40:00-05:00\"\n      },\n      \"bright\": {\n        \"start\": \"2026-11-02T04:40:00-05:00\",\n        \"end\": \"2026-11-02T08:40:00-05:00\"\n      }\n    }\n  ]\n}",
+   "tool": "get_circadian_rhythm"
+  },
+  {
+   "arguments": {
+    "from": "2026-11-02",
+    "to": "2026-11-01"
+   },
+   "content": "Error executing tool get_circadian_rhythm: to (2026-11-01) is before from (2026-11-02): give from first, then to, on or after it",
+   "is_error": true,
+   "text": "Error executing tool get_circadian_rhythm: to (2026-11-01) is before from (2026-11-02): give from first, then to, on or after it",
+   "tool": "get_circadian_rhythm"
+  },
+  {
+   "arguments": {
+    "from": "2026-11-02"
+   },
+   "content": "Error executing tool get_circadian_rhythm: Give both from and to (\"YYYY-MM-DD\") for days, or neither",
+   "is_error": true,
+   "text": "Error executing tool get_circadian_rhythm: Give both from and to (\"YYYY-MM-DD\") for days, or neither",
+   "tool": "get_circadian_rhythm"
+  },
+  {
+   "arguments": {
+    "bright_after_minutes": 180,
+    "dim_before_minutes": 300,
+    "minimum_before_waking_minutes": 90
+   },
+   "content": {
+    "revisions": [
+     {
+      "date": "2026-10-30",
+      "id": "co2yzn",
+      "note": null,
+      "temperature_minimum": "05:30",
+      "time": "07:00"
+     },
+     {
+      "date": "2026-11-02",
+      "id": "3dnjav",
+      "note": null,
+      "temperature_minimum": "05:10",
+      "time": "06:40"
+     }
+    ],
+    "time_zone": "America/New_York",
+    "windows": {
+     "bright_after_minutes": 180,
+     "dim_before_minutes": 300,
+     "minimum_before_waking_minutes": 90
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"time_zone\": \"America/New_York\",\n  \"windows\": {\n    \"minimum_before_waking_minutes\": 90,\n    \"dim_before_minutes\": 300,\n    \"bright_after_minutes\": 180\n  },\n  \"revisions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"date\": \"2026-10-30\",\n      \"time\": \"07:00\",\n      \"note\": null,\n      \"temperature_minimum\": \"05:30\"\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"date\": \"2026-11-02\",\n      \"time\": \"06:40\",\n      \"note\": null,\n      \"temperature_minimum\": \"05:10\"\n    }\n  ]\n}",
+   "tool": "set_circadian_windows"
+  },
+  {
+   "arguments": {
+    "bright_after_minutes": 180,
+    "dim_before_minutes": 1441,
+    "minimum_before_waking_minutes": 90
+   },
+   "content": "Error executing tool set_circadian_windows: dim_before_minutes is 1441: give a whole number of minutes from 0 to 1440",
+   "is_error": true,
+   "text": "Error executing tool set_circadian_windows: dim_before_minutes is 1441: give a whole number of minutes from 0 to 1440",
+   "tool": "set_circadian_windows"
+  },
+  {
+   "arguments": {
+    "from": "2026-11-02",
+    "to": "2026-11-02"
+   },
+   "content": {
+    "days": [
+     {
+      "bright": {
+       "end": "2026-11-02T08:10:00-05:00",
+       "start": "2026-11-02T05:10:00-05:00"
+      },
+      "date": "2026-11-02",
+      "dim": {
+       "end": "2026-11-02T05:10:00-05:00",
+       "start": "2026-11-02T00:10:00-05:00"
+      },
+      "revision_id": "3dnjav",
+      "temperature_minimum": "2026-11-02T05:10:00-05:00",
+      "wake_time": "06:40"
+     }
+    ],
+    "revisions": [
+     {
+      "date": "2026-10-30",
+      "id": "co2yzn",
+      "note": null,
+      "temperature_minimum": "05:30",
+      "time": "07:00"
+     },
+     {
+      "date": "2026-11-02",
+      "id": "3dnjav",
+      "note": null,
+      "temperature_minimum": "05:10",
+      "time": "06:40"
+     }
+    ],
+    "time_zone": "America/New_York",
+    "windows": {
+     "bright_after_minutes": 180,
+     "dim_before_minutes": 300,
+     "minimum_before_waking_minutes": 90
+    }
+   },
+   "is_error": false,
+   "text": "{\n  \"time_zone\": \"America/New_York\",\n  \"windows\": {\n    \"minimum_before_waking_minutes\": 90,\n    \"dim_before_minutes\": 300,\n    \"bright_after_minutes\": 180\n  },\n  \"revisions\": [\n    {\n      \"id\": \"co2yzn\",\n      \"date\": \"2026-10-30\",\n      \"time\": \"07:00\",\n      \"note\": null,\n      \"temperature_minimum\": \"05:30\"\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"date\": \"2026-11-02\",\n      \"time\": \"06:40\",\n      \"note\": null,\n      \"temperature_minimum\": \"05:10\"\n    }\n  ],\n  \"days\": [\n    {\n      \"date\": \"2026-11-02\",\n      \"revision_id\": \"3dnjav\",\n      \"wake_time\": \"06:40\",\n      \"temperature_minimum\": \"2026-11-02T05:10:00-05:00\",\n      \"dim\": {\n        \"start\": \"2026-11-02T00:10:00-05:00\",\n        \"end\": \"2026-11-02T05:10:00-05:00\"\n      },\n      \"bright\": {\n        \"start\": \"2026-11-02T05:10:00-05:00\",\n        \"end\": \"2026-11-02T08:10:00-05:00\"\n      }\n    }\n  ]\n}",
+   "tool": "get_circadian_rhythm"
+  }
+ ],
+ "requests": [
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "properties": {
+     "title": "Calendar Metadata (do not edit by hand)"
+    }
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets",
+   "query": {
+    "fields": [
+     "spreadsheetId"
+    ]
+   }
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]"
+   },
+   "if_match": "\"0000000000000002\"",
+   "method": "PATCH",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "natural-wake-times"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Natural Wake Times"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "date",
+        "time",
+        "note"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000005
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "natural-wake-times",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "circadian-windows"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Circadian Windows"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "minutes"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000007
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "circadian-windows",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "2026-10-30",
+        "07:10",
+        "woke without alarm"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 3,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 2
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "3dnjav",
+        "2026-11-02",
+        "06:40",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 2,
+        "sheetId": 1000005,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "co2yzn",
+        "2026-10-30",
+        "07:00",
+        ""
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 4,
+        "sheetId": 1000007,
+        "startColumnIndex": 0,
+        "startRowIndex": 1
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "minimum_before_waking_minutes",
+        "90"
+       ],
+       [
+        "dim_before_minutes",
+        "300"
+       ],
+       [
+        "bright_after_minutes",
+        "180"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  }
+ ],
+ "state": {
+  "calendars": {
+   "9c738956aad29c37be54c43467@group.calendar.google.com": {
+    "events": {},
+    "resource": {
+     "description": "[cascading-time-tracker:calendar-metadata-spreadsheet-id=d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx]",
+     "id": "9c738956aad29c37be54c43467@group.calendar.google.com",
+     "kind": "calendar#calendar",
+     "summary": "Time Tracking",
+     "timeZone": "America/New_York"
+    }
+   }
+  },
+  "spreadsheets": {
+   "d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx": {
+    "developer_metadata": [
+     {
+      "location": {
+       "sheetId": 1000005
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "natural-wake-times",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000007
+      },
+      "metadataKey": "sheet-role",
+      "metadataValue": "circadian-windows",
+      "visibility": "PROJECT"
+     }
+    ],
+    "properties": {
+     "title": "Calendar Metadata (do not edit by hand)"
+    },
+    "tabs": {
+     "Circadian Windows": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000007,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Circadian Windows"
+      },
+      "rows": [
+       [
+        "id",
+        "minutes"
+       ],
+       [
+        "minimum_before_waking_minutes",
+        "90"
+       ],
+       [
+        "dim_before_minutes",
+        "300"
+       ],
+       [
+        "bright_after_minutes",
+        "180"
+       ]
+      ]
+     },
+     "Natural Wake Times": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000005,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Natural Wake Times"
+      },
+      "rows": [
+       [
+        "id",
+        "date",
+        "time",
+        "note"
+       ],
+       [
+        "co2yzn",
+        "2026-10-30",
+        "07:00"
+       ],
+       [
+        "3dnjav",
+        "2026-11-02",
+        "06:40"
+       ]
+      ]
+     },
+     "Sheet1": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 0,
+       "sheetType": "GRID",
+       "title": "Sheet1"
+      },
+      "rows": []
+     }
+    }
+   }
+  }
+ }
+}

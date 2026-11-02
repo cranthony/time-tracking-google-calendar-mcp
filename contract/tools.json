@@ -33932,6 +33932,396 @@
     }
   },
   {
+    "description": "The user's circadian rhythm. They say when they woke naturally (no\nalarm) on a day, and it applies from that day on, until a later one.\nFrom it comes their temperature minimum, the low point of their body\nclock (by default 2 hours before waking), and two windows around it:\ndim, the hours before the minimum (by default 6), when bright light\nand hard exercise shift their schedule later -- so keep them dim and\ncalm; and bright, the hours after it (by default 4), when bright light\nand exercise hold their schedule or shift it earlier -- so seek them.\nPlan routines with these: wind down in the dim window, get outside or\nexercise in the bright one.\n\nwindows are the lengths, in minutes; revisions are the wake times,\noldest first, each with its own date's temperature_minimum (\"HH:MM\").\nWith `from` and `to` (\"YYYY-MM-DD\", inclusive, at most 400 days),\ndays gives each day's temperature minimum and windows as instants in\nthe calendar's time_zone (days before the first revision are left\nout); the dim window can start the evening before. Read-only.",
+    "inputSchema": {
+      "properties": {
+        "from": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "title": "get_circadian_rhythmArguments"
+    },
+    "name": "get_circadian_rhythm",
+    "outputSchema": {
+      "properties": {
+        "time_zone": {
+          "description": "The calendar's time zone, which wake times are in; null if it has none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "windows": {
+          "$ref": "#/$defs/Windows"
+        },
+        "revisions": {
+          "description": "Oldest first; each applies from its date until the next one's.",
+          "items": {
+            "$ref": "#/$defs/Revision"
+          },
+          "type": "array"
+        },
+        "days": {
+          "description": "Each day from `from` to `to` with a revision on or before it --\nonly when both are given, and null otherwise.",
+          "items": {
+            "$ref": "#/$defs/CircadianDay"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "windows",
+        "revisions"
+      ],
+      "type": "object",
+      "$defs": {
+        "CircadianDay": {
+          "description": "One day's temperature minimum and windows, from the revision that\napplies to it.",
+          "properties": {
+            "date": {
+              "description": "\"YYYY-MM-DD\".",
+              "type": "string"
+            },
+            "revision_id": {
+              "description": "The revision applying: the one with the latest date on or before it.",
+              "type": "string"
+            },
+            "wake_time": {
+              "description": "\"HH:MM\": the revision's wake time.",
+              "type": "string"
+            },
+            "temperature_minimum": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "dim": {
+              "$ref": "#/$defs/Window",
+              "description": "Avoid bright light and hard exercise: they shift the schedule later."
+            },
+            "bright": {
+              "$ref": "#/$defs/Window",
+              "description": "Seek bright light and exercise: they hold the schedule, or shift it earlier."
+            }
+          },
+          "required": [
+            "date",
+            "revision_id",
+            "wake_time",
+            "temperature_minimum",
+            "dim",
+            "bright"
+          ],
+          "type": "object"
+        },
+        "Revision": {
+          "description": "A wake time as get_circadian_rhythm gives it.",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "date": {
+              "description": "The day it applies from (\"YYYY-MM-DD\"), until the next revision's.",
+              "type": "string"
+            },
+            "time": {
+              "description": "When the user woke naturally (\"HH:MM\", 24-hour, in the calendar's time zone).",
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "temperature_minimum": {
+              "description": "The clock time (\"HH:MM\") of the temperature minimum on its own date.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "date",
+            "time",
+            "temperature_minimum"
+          ],
+          "type": "object"
+        },
+        "Window": {
+          "description": "A window, from start to end.",
+          "properties": {
+            "start": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "end": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "start",
+            "end"
+          ],
+          "type": "object"
+        },
+        "Windows": {
+          "description": "How the temperature minimum and the windows around it are derived\nfrom a wake time, each a whole number of minutes from 0 to 1440.",
+          "properties": {
+            "minimum_before_waking_minutes": {
+              "description": "How long before waking the temperature minimum is (default 120).",
+              "type": "integer"
+            },
+            "dim_before_minutes": {
+              "description": "How long the dim window, ending at the minimum, is (default 360).",
+              "type": "integer"
+            },
+            "bright_after_minutes": {
+              "description": "How long the bright window, starting at the minimum, is (default 240).",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minimum_before_waking_minutes",
+            "dim_before_minutes",
+            "bright_after_minutes"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Record the time the user woke naturally (without an alarm) on `date`\n(\"YYYY-MM-DD\"), at `time` (\"HH:MM\", 24-hour, in the calendar's time\nzone), with an optional note (at most 500 characters). It applies from\nthat date on, until a later one: their temperature minimum and dim and\nbright windows follow it (see get_circadian_rhythm). A date already\nset is replaced, its note too (leave note out to clear it). Wake times\ndated more than 366 days before the newest are dropped. Returns the\nwake times and windows as saved.",
+    "inputSchema": {
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "date",
+        "time"
+      ],
+      "type": "object",
+      "title": "set_natural_wake_timeArguments"
+    },
+    "name": "set_natural_wake_time",
+    "outputSchema": {
+      "properties": {
+        "time_zone": {
+          "description": "The calendar's time zone, which wake times are in; null if it has none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "windows": {
+          "$ref": "#/$defs/Windows"
+        },
+        "revisions": {
+          "description": "Oldest first; each applies from its date until the next one's.",
+          "items": {
+            "$ref": "#/$defs/Revision"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "revisions"
+      ],
+      "type": "object",
+      "$defs": {
+        "Revision": {
+          "description": "A wake time as get_circadian_rhythm gives it.",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "date": {
+              "description": "The day it applies from (\"YYYY-MM-DD\"), until the next revision's.",
+              "type": "string"
+            },
+            "time": {
+              "description": "When the user woke naturally (\"HH:MM\", 24-hour, in the calendar's time zone).",
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "temperature_minimum": {
+              "description": "The clock time (\"HH:MM\") of the temperature minimum on its own date.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "date",
+            "time",
+            "temperature_minimum"
+          ],
+          "type": "object"
+        },
+        "Windows": {
+          "description": "How the temperature minimum and the windows around it are derived\nfrom a wake time, each a whole number of minutes from 0 to 1440.",
+          "properties": {
+            "minimum_before_waking_minutes": {
+              "description": "How long before waking the temperature minimum is (default 120).",
+              "type": "integer"
+            },
+            "dim_before_minutes": {
+              "description": "How long the dim window, ending at the minimum, is (default 360).",
+              "type": "integer"
+            },
+            "bright_after_minutes": {
+              "description": "How long the bright window, starting at the minimum, is (default 240).",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minimum_before_waking_minutes",
+            "dim_before_minutes",
+            "bright_after_minutes"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
+    "description": "Set how the user's temperature minimum and windows are derived from\ntheir wake time, each a whole number of minutes from 0 to 1440:\nminimum_before_waking_minutes (how long before waking the minimum is;\ndefault 120), dim_before_minutes (how long the dim window before the\nminimum is; default 360) and bright_after_minutes (how long the bright\nwindow after it is; default 240). All three are given; to change one,\nget the others first (get_circadian_rhythm). Returns the wake times and\nwindows as saved.",
+    "inputSchema": {
+      "properties": {
+        "minimum_before_waking_minutes": {
+          "type": "integer"
+        },
+        "dim_before_minutes": {
+          "type": "integer"
+        },
+        "bright_after_minutes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "minimum_before_waking_minutes",
+        "dim_before_minutes",
+        "bright_after_minutes"
+      ],
+      "type": "object",
+      "title": "set_circadian_windowsArguments"
+    },
+    "name": "set_circadian_windows",
+    "outputSchema": {
+      "properties": {
+        "time_zone": {
+          "description": "The calendar's time zone, which wake times are in; null if it has none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "windows": {
+          "$ref": "#/$defs/Windows"
+        },
+        "revisions": {
+          "description": "Oldest first; each applies from its date until the next one's.",
+          "items": {
+            "$ref": "#/$defs/Revision"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "windows",
+        "revisions"
+      ],
+      "type": "object",
+      "$defs": {
+        "Revision": {
+          "description": "A wake time as get_circadian_rhythm gives it.",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "date": {
+              "description": "The day it applies from (\"YYYY-MM-DD\"), until the next revision's.",
+              "type": "string"
+            },
+            "time": {
+              "description": "When the user woke naturally (\"HH:MM\", 24-hour, in the calendar's time zone).",
+              "type": "string"
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "temperature_minimum": {
+              "description": "The clock time (\"HH:MM\") of the temperature minimum on its own date.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "date",
+            "time",
+            "temperature_minimum"
+          ],
+          "type": "object"
+        },
+        "Windows": {
+          "description": "How the temperature minimum and the windows around it are derived\nfrom a wake time, each a whole number of minutes from 0 to 1440.",
+          "properties": {
+            "minimum_before_waking_minutes": {
+              "description": "How long before waking the temperature minimum is (default 120).",
+              "type": "integer"
+            },
+            "dim_before_minutes": {
+              "description": "How long the dim window, ending at the minimum, is (default 360).",
+              "type": "integer"
+            },
+            "bright_after_minutes": {
+              "description": "How long the bright window, starting at the minimum, is (default 240).",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minimum_before_waking_minutes",
+            "dim_before_minutes",
+            "bright_after_minutes"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
     "description": "Set the calendar's time zone to an IANA name, e.g.\n\"America/New_York\" -- the user's own, so that times come back in their\nlocal time and days, weeks and months are dated as they live them.\nSet it when times come back in a zone that isn't the user's (e.g.\nUTC, with a \"Z\"), or when they say they've moved or are travelling.\nEvents keep their moments; only how they're shown changes. Returns\nthe zone set.",
     "inputSchema": {
       "properties": {

@@ -4,6 +4,7 @@
 //! executing tool <name>: <message>".
 
 mod actions;
+mod circadian;
 mod compaction;
 mod events;
 mod goals;
@@ -160,6 +161,9 @@ pub fn registry() -> &'static [crate::contract::ToolDef] {
             compaction::abandon_compaction_tool(),
             events::get_compaction_schedule_hints_tool(),
             events::set_compaction_schedule_hints_tool(),
+            circadian::get_circadian_rhythm_tool(),
+            circadian::set_natural_wake_time_tool(),
+            circadian::set_circadian_windows_tool(),
             events::set_time_zone_tool(),
             health::get_health_tool(),
             setup::google_setup_link_tool(),

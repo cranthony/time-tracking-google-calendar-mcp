@@ -230,7 +230,7 @@ def test_tokens(http):
         http._session_id = None
         http.initialize(token)
         status, listed = http.rpc("tools/list", token=token)
-        assert status == 200 and len(listed["result"]["tools"]) == 82
+        assert status == 200 and len(listed["result"]["tools"]) == 85
 
 
 def test_tool_calls_over_http(http):
@@ -302,7 +302,7 @@ def test_session(http, google):
     cookie = set_cookie.split(";")[0]
     http.initialize(cookie=cookie)
     status, listed = http.rpc("tools/list", cookie=cookie)
-    assert status == 200 and len(listed["result"]["tools"]) == 82
+    assert status == 200 and len(listed["result"]["tools"]) == 85
     assert http.rpc("tools/list", cookie=cookie, origin=None)[0] == 401
     assert http.rpc("tools/list", cookie=cookie, origin="https://evil.example")[0] == 401
     assert http.fetch("GET", "/session", headers={"Cookie": cookie})[0] == 204

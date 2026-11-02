@@ -1,6 +1,7 @@
 pub mod action_calendar;
 pub mod actions;
 pub mod cancellations;
+pub mod circadian;
 pub mod event_changes;
 pub mod foundations;
 pub mod goals;
