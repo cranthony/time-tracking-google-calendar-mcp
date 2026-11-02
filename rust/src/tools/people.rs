@@ -590,13 +590,23 @@ pub fn get_habit(app: &App, id_or_name: String) -> Result<ListedHabit, ToolError
 /// A recurring goal's habit has a recurring_goal in place of action_id:
 /// {period: day | week | month | quarter | year, title?, priority?, expected_minutes?,
 /// description?, definition_of_done?, attribution_hints?, with_ids?,
-/// for_ids?, rate_periods?} -- a goal for each period on the calendar
+/// for_ids?, rate_periods?, sub_goals?} -- a goal for each period on the calendar
 /// (weeks run Sunday to Saturday, quarters from January), made by the server as each begins,
 /// once the one before is done or obsolete, and tried again through the
 /// next period when it's missed; titled by the habit's name unless it
 /// gives one. Its goals have its id and the period's start as theirs
 /// ("<habit id>_2026-11-01") and are its (habit_id); its events are
-/// those tagged with them. It's scored by its goal rate -- the share of
+/// those tagged with them. sub_goals are made under each goal as it's
+/// made: [{key (letters, digits and "-"; the sub-goal's id is the goal's
+/// and "_<key>"), title, required?, priority?, expected_minutes?,
+/// description?, definition_of_done?, attribution_hints?, with_ids?,
+/// for_ids?, deadline?: {days | minutes} (how far before the goal's
+/// deadline it's due, following it as it moves; none, the goal's own),
+/// activate_when?: as a goal's, goal_closed naming another sub-goal's
+/// key, and before_parent in place of at}] -- one with activate_when made
+/// inactive to wait, one without active. So setting the goal's deadline
+/// (the day of a dinner, say) times the whole chain. A missed goal tried
+/// again reopens its missed sub-goals with it. It's scored by its goal rate -- the share of
 /// its last rate_periods periods (by default 7 days, 6 weeks, 4 months,
 /// 4 quarters or 2 years) with a goal done -- and
 /// by its traits only once given some (it's made with {"select": []}).

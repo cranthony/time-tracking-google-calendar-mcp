@@ -160,6 +160,105 @@ fn after_a_long_gap_the_next_goal_is_the_period_under_ways() {
     assert_eq!(goals[1].history.as_deref().unwrap()[0].at, stamp(at("2026-10-25T00:00"), &ZONE));
 }
 
+fn sub(value: serde_json::Value) -> SubGoal {
+    serde_json::from_value(value).unwrap()
+}
+
+/// A dinner each quarter, with a chain of sub-goals timed from it.
+fn dinner() -> Template {
+    Template {
+        habit_id: "hab2".into(),
+        name: "Dinner".into(),
+        goal: RecurringGoal {
+            period: Some(Period::Quarter),
+            sub_goals: Some(vec![
+                sub(serde_json::json!({"key": "shop", "title": "Shop", "deadline": {"days": 2}, "activate_when": {"after": [{"before_parent": {"days": 7}}]}})),
+                sub(serde_json::json!({"key": "cook", "title": "Cook", "required": true, "expected_minutes": 30, "activate_when": {"after": [{"goal_closed": "shop"}, {"before_parent": {"minutes": 120}}]}})),
+                sub(serde_json::json!({"key": "set-table", "title": "Set the table"})),
+            ]),
+            ..RecurringGoal::default()
+        },
+    }
+}
+
+#[test]
+fn a_goals_sub_goals_are_made_under_it_timed_from_its_deadline() {
+    let mut goals = Vec::new();
+    let made = renew(&mut goals, &[dinner()], &ZONE, at("2026-11-02T09:00"));
+    assert_eq!(made, vec!["hab2_2026-10-01", "hab2_2026-10-01_shop", "hab2_2026-10-01_cook", "hab2_2026-10-01_set-table"]);
+    let (shop, cook, table) = (&goals[1], &goals[2], &goals[3]);
+    for g in [shop, cook, table] {
+        assert_eq!((g.parent_id.as_deref(), g.habit_id.as_deref()), (Some("hab2_2026-10-01"), Some("hab2")));
+        assert_eq!(habit_of_id(g.id.as_deref().unwrap()), Some("hab2"));
+    }
+    assert_eq!((shop.deadline.as_deref(), shop.status), (Some("2026-12-29"), Some(GoalStatus::Inactive)));
+    assert_eq!(shop.deadline_rule, Some(Deadline { before_parent: Some(Offset { days: Some(2), minutes: None }), ..Deadline::default() }));
+    assert_eq!((cook.deadline.as_deref(), cook.required, cook.expected_minutes), (Some("2026-12-31"), Some(true), Some(30)));
+    // Waiting for its sibling by id.
+    assert_eq!(cook.activate_when.as_ref().unwrap().after.as_ref().unwrap()[0].goal_closed.as_deref(), Some("hab2_2026-10-01_shop"));
+    // Waiting for nothing, it's active with its goal.
+    assert_eq!((table.status, table.history.as_deref().unwrap()[0].at.clone()), (Some(GoalStatus::Active), stamp(at("2026-10-01T00:00"), &ZONE)));
+    // Its goals still one at a time: the sub-goals don't count as one.
+    assert!(renew(&mut goals, &[dinner()], &ZONE, at("2026-11-03T09:00")).is_empty());
+}
+
+#[test]
+fn a_sub_goals_id_names_its_habit() {
+    assert_eq!(sub_goal_id("hab1_2026-11-01", "shop"), "hab1_2026-11-01_shop");
+    assert_eq!(habit_of_id("hab1_2026-11-01_shop"), Some("hab1"));
+    assert_eq!(habit_of_id("hab1_2026-11-01_"), None);
+    assert_eq!(habit_of_id("hab1_2026-11-01_a_b"), None);
+}
+
+#[test]
+fn a_missed_goal_tried_again_reopens_its_missed_sub_goals() {
+    let mut goals = Vec::new();
+    renew(&mut goals, &[dinner()], &ZONE, at("2026-11-02T09:00"));
+    let missed_at = stamp(at("2027-01-01T00:00"), &ZONE);
+    for g in goals.iter_mut() {
+        // The table set; the rest missed with their goal.
+        let status = if g.id.as_deref() == Some("hab2_2026-10-01_set-table") { GoalStatus::Done } else { GoalStatus::Missed };
+        g.history.as_mut().unwrap().push(StatusChange { status, at: missed_at.clone(), deadline: g.deadline.clone(), note: None });
+        g.status = Some(status);
+        g.activate_when = None;
+    }
+    let retried = renew(&mut goals, &[dinner()], &ZONE, at("2027-01-01T09:00"));
+    assert_eq!(retried, vec!["hab2_2026-10-01", "hab2_2026-10-01_shop", "hab2_2026-10-01_cook"]);
+    let (shop, cook, table) = (&goals[1], &goals[2], &goals[3]);
+    assert_eq!((shop.status, shop.deadline.as_deref()), (Some(GoalStatus::Inactive), Some("2027-03-29")));
+    assert!(shop.activate_when.is_some());
+    assert_eq!(shop.history.as_deref().unwrap().iter().map(|c| c.status).collect::<Vec<_>>(), vec![GoalStatus::Inactive, GoalStatus::Missed, GoalStatus::Inactive]);
+    assert_eq!(cook.deadline.as_deref(), Some("2027-03-31"));
+    assert_eq!(table.status, Some(GoalStatus::Done));
+}
+
+#[test]
+fn sub_goals_are_checked_as_the_goals_theyd_make() {
+    let with = |subs: Vec<serde_json::Value>| RecurringGoal { period: Some(Period::Week), expected_minutes: Some(60), sub_goals: Some(subs.into_iter().map(sub).collect()), ..RecurringGoal::default() };
+    assert!(problems(&dinner().goal).is_empty(), "{:?}", problems(&dinner().goal));
+    assert_eq!(problems(&with(vec![serde_json::json!({"title": "A"})])), vec!["sub_goals[0] needs a key"]);
+    assert_eq!(problems(&with(vec![serde_json::json!({"key": "a_b", "title": "A"})])), vec!["sub_goals[0]'s key 'a_b' has more than letters, digits and \"-\""]);
+    assert_eq!(
+        problems(&with(vec![serde_json::json!({"key": "a", "title": "A"}), serde_json::json!({"key": "a", "title": "B"})])),
+        vec!["sub_goals[1]'s key 'a' is used more than once"]
+    );
+    assert_eq!(
+        problems(&with(vec![serde_json::json!({"key": "a", "title": "A", "activate_when": {"after": [{"goal_closed": "b"}, {"at": "2026-11-01"}]}})])),
+        vec![
+            "sub_goals[0]'s activate_when waits for 'b', which isn't another sub-goal's key",
+            "sub_goals[0]'s activate_when waits for a time given: a sub-goal waits for one before its goal's deadline (before_parent)"
+        ]
+    );
+    let refused = problems(&with(vec![serde_json::json!({"key": "a", "title": "A", "expected_minutes": 90})]));
+    assert!(refused.len() == 1 && refused[0].contains("expected to take longer (90 minutes) than its parent"), "{refused:?}");
+    let round = problems(&with(vec![
+        serde_json::json!({"key": "a", "title": "A", "activate_when": {"after": [{"goal_closed": "b"}]}}),
+        serde_json::json!({"key": "b", "title": "B", "activate_when": {"after": [{"goal_closed": "a"}]}}),
+    ]));
+    assert!(round.iter().any(|p| p.contains("waits, through others, for the goal itself")), "{round:?}");
+    assert!(problems(&with(vec![serde_json::json!({"key": "a"})])).iter().any(|p| p.contains("needs a title")));
+}
+
 #[test]
 fn only_a_template_with_a_period_makes_goals() {
     let template = Template { goal: RecurringGoal::default(), ..weekly() };

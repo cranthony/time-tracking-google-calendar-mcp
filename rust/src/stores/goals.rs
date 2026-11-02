@@ -1295,7 +1295,7 @@ pub fn goal_problems(goals: &[Goal], zone: &Tz) -> Vec<(Vec<String>, String)> {
         // Only a habit's goal is named for it, and always.
         let named_for = goal.id.as_deref().and_then(habit_goals::habit_of_id);
         if named_for != set(goal.habit_id.as_deref()) {
-            problems.push((me.clone(), format!("{name} is a habit's goal exactly when its id is \"<habit id>_<its period's start>\": the server makes them")));
+            problems.push((me.clone(), format!("{name} is a habit's goal exactly when its id is \"<habit id>_<its period's start>\" (or, a sub-goal of one, that and \"_<key>\"): the server makes them")));
         }
         if let Some(minutes) = goal.expected_minutes.filter(|m| *m <= 0) {
             problems.push((me.clone(), format!("{name}'s expected_minutes must be more than 0, not {minutes}")));
