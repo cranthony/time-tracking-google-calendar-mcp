@@ -18,7 +18,7 @@ events have none.
 | `expected_minutes` | Optional. How long it's expected to take, compared with the time spent purely as a guide for estimating; never enforced. |
 | `deadline` | As set: `{at}` -- a date ("2026-11-01", due at the end of that day) or a date and time ("2026-11-01T17:00"), in the calendar's time zone -- or measured from something, and kept so while the goal is open: `{before_parent: {days \| minutes}}`, `{after_start: {days \| minutes}}` (from when it becomes active: days, the end of that many days after the day it started) or `{after_goal: {id, days \| minutes}}`. Days keep a date a date; minutes give a date and time. Setting a date unties it; so does moving a goal measured from its parent's to the top level. |
 | `due` | Read-only: when the deadline falls, worked out; none until a goal measured from its start starts. Kept in the tab's `deadline` column, with what it's measured from in `deadline_rule`. |
-| `activate_when` | Optional, for an inactive goal: what it waits for before it's activated -- `after` (every one of `{goal_closed: id}`, done, missed or obsolete, and `{at: date or date and time}`), then `delay` (`"next_day"`, the start of the day after, or `{minutes}`), and `hold_while` (`[{active_at_least: n, priority?: {at_or_above \| exactly: a priority or "own"}}]`: held back while that many other goals of that priority are active, its own parents and sub-goals not counted). Cleared once it's activated, by the server or by hand. |
+| `activate_when` | Optional, for an inactive goal: what it waits for before it's activated -- `after` (every one of `{goal_closed: id}`, done, missed or obsolete, `{at: date or date and time}`, and `{before_parent: {days \| minutes}}`, that long before its parent's due, following it as it moves), then `delay` (`"next_day"`, the start of the day after, or `{minutes}`), and `hold_while` (`[{active_at_least: n, priority?: {at_or_above \| exactly: a priority or "own"}}]`: held back while that many other goals of that priority are active, its own parents and sub-goals not counted). Cleared once it's activated, by the server or by hand. |
 | `expected_start` | Read-only, for a goal waiting: when it's expected to be activated -- what it waits for at its due (a goal measured from a start that hasn't come, from when that's expected), then its delay. None while it's held, or something it waits for has no due yet. |
 | `status` | `inactive`, `active`, `done`, `missed` (its deadline passed without it) or `obsolete` (no longer wanted). New goals are active unless made inactive. A missed goal can be reopened with a new deadline; its history keeps each deadline it missed, so a goal can be missed and retried any number of times. |
 | `history` | Every change of status and when, oldest first, starting with the status it was made in, each with the `deadline` in force at that change (if it had one; older entries may have none). A change the server records itself -- a status set without a history, a create without one -- carries the goal's deadline after the change; a history given whole keeps its entries' deadlines as given. Entries can be backdated or removed; the history must stay in order and end with the status. A goal started when it first became active, and was finished when it last became done, missed or obsolete. |
@@ -73,7 +73,10 @@ Of those ready, the highest priority goes first, then the soonest due,
 each counted in the holds of the next. A read shows the goals so; the
 next change of goals writes them. One that would start past its own
 deadline, or with a parent that has none, keeps waiting. A missed goal
-tried again stays open, so what waits for it waits on. Deleting a goal
+tried again stays open, so what waits for it waits on. A goal waiting
+for a time before its parent's deadline waits while its parent has no
+due yet, and once activated stays so if the parent's deadline later
+moves out; a top-level goal can't wait for one. Deleting a goal
 takes it out of what waits for it, and a deadline measured from it keeps
 the date it had.
 

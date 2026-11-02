@@ -206,7 +206,9 @@ pub struct GoalDelete {
 /// measured from its start starts). Every open goal needs a deadline,
 /// and an active one a due. An inactive goal can wait to be activated
 /// (activate_when): {after: [{goal_closed: id} (done, missed or
-/// obsolete) | {at: a date or a date and time}] -- every one -- then
+/// obsolete) | {at: a date or a date and time} | {before_parent: {days
+/// | minutes}} (that long before its parent's due, following it as it
+/// moves)] -- every one -- then
 /// delay: "next_day" (the start of the day after) or {minutes}, and
 /// hold_while: [{active_at_least: n, priority?: {at_or_above | exactly:
 /// a priority or "own"}}] (held back while that many other goals of that
