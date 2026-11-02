@@ -48,6 +48,7 @@ fn filled() -> Filled {
         event_at("22:00-06:00+1").id("sleep").summary("Sleep").priority(0).build(),
     ]);
     s.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:30:00+00:00", "description": "walked"}}));
+    s.ok("set_natural_wake_time", json!({"date": "2026-01-01", "time": "06:40"}));
     // Finding a tab is a one-time read, whichever tool's first.
     s.ok("get_compaction_status", json!({}));
     Filled { s, walk, outdoors, sam, family, home, brooklyn, outside }
@@ -112,6 +113,10 @@ fn the_requests_each_tool_makes() {
         // Notes only.
         ("get_notes", "get_notes", json!({}), [0, 0, 0, 0]),
         ("note", "note", json!({"noted_time": {"timestamp": "2026-01-01T12:00:00+00:00", "description": "washed up"}}), [0, 1, 0, 0]),
+        // The circadian rhythm: its two tabs, and the calendar's time zone.
+        ("get_circadian_rhythm", "get_circadian_rhythm", json!({"from": "2026-01-01", "to": "2026-01-07"}), [0, 0, 0, 0]),
+        ("set_natural_wake_time", "set_natural_wake_time", json!({"date": "2026-01-02", "time": "07:00"}), [0, 1, 0, 0]),
+        ("set_circadian_windows", "set_circadian_windows", json!({"minimum_before_waking_minutes": 90, "dim_before_minutes": 300, "bright_after_minutes": 180}), [0, 1, 0, 0]),
         // Deleting tabs' rows: last, since they remove what others use.
         ("delete_circle", "delete_circle", json!({"circle_id": f.family}), [0, 1, 0, 0]),
         ("delete_location", "delete_location", json!({"location_id": f.home}), [0, 1, 0, 0]),

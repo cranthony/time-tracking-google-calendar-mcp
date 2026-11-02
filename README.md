@@ -22,6 +22,7 @@ A Model Context Protocol (MCP) for managing a Google calendar with a set of non-
   - [Goals](#goals)
   - [Traits](#traits)
   - [Event colors](#event-colors)
+  - [Circadian rhythm](#circadian-rhythm)
   - [Compacting notes](#compacting-notes)
 - [Deploying](#deploying)
   - [On Render, with WorkOS sign-in](#on-render-with-workos-sign-in)
@@ -192,6 +193,9 @@ The server exposes the calendar as MCP tools ([`rust/src/tools/`](rust/src/tools
 | `get_compaction_status` | `() -> CompactionStatus` |
 | `get_compaction_schedule_hints` | `() -> CompactionScheduleHints` |
 | `set_compaction_schedule_hints` | `(hints: list[ScheduleHint]) -> CompactionScheduleHints` |
+| `get_circadian_rhythm` | `(from: str \| None, to: str \| None) -> CircadianRhythm` |
+| `set_natural_wake_time` | `(date: str, time: str, note: str \| None) -> CircadianSettings` |
+| `set_circadian_windows` | `(minimum_before_waking_minutes: int, dim_before_minutes: int, bright_after_minutes: int) -> CircadianSettings` |
 | `get_health` | `(tool_name: str \| None = None, samples: bool = True) -> HealthReport` |
 | `google_setup_link` | `() -> SetupLink` |
 | `note` | `(noted_time: NotedTime) -> NoteWithId` |
@@ -373,6 +377,8 @@ The server keeps its own copy of every tab it reads ([`rust/src/google/kept.rs`]
 - **Outcome Goals** — one row per goal: id, title, parent, deadline, status and its history (JSON), and the rest. See [Goals](#goals) below. (Not the **Goals** tab, which the old goals, replaced by actions, may have left.)
 - **Compaction Schedule** — when the user's scheduled routines (compacting notes, answering the notes left on a proposal) usually run: one row per hint, its `time` ("HH:MM", 24-hour, in the calendar's time zone) and an optional `label` ([`rust/src/stores/schedule.rs`](rust/src/stores/schedule.rs)). Nothing runs at them: a routine sets them with `set_compaction_schedule_hints`, the whole list at once, and the user's app reads them with `get_compaction_schedule_hints` to fetch soon after each, so it has what the routine made.
 - **Scoring Defaults** — how scores combine wherever nothing says otherwise: one row per level (`traits`, `circles`, `habit_layers`), its `scoring` an aggregation as JSON ([`rust/src/stores/scoring.rs`](rust/src/stores/scoring.rs); see [Traits](#traits)). Set with `set_scoring_defaults`, read with `get_scoring_defaults`.
+- **Natural Wake Times** — when the user woke naturally: one row per revision, its `date` ("YYYY-MM-DD"), `time` ("HH:MM", 24-hour, in the calendar's time zone) and an optional `note` ([`rust/src/stores/circadian.rs`](rust/src/stores/circadian.rs); see [Circadian rhythm](#circadian-rhythm)). Set a date at a time with `set_natural_wake_time`; rows dated more than 366 days before the newest are dropped.
+- **Circadian Windows** — how long the windows around the temperature minimum are: one row per setting (`minimum_before_waking_minutes`, `dim_before_minutes`, `bright_after_minutes`), its `minutes`. Empty until `set_circadian_windows` sets them; until then, and for any row missing, the defaults apply (120, 360 and 240).
 - **Health** — the server's health metrics ([`rust/src/health.rs`](rust/src/health.rs)), for `get_health` to give back to graph: one row per series, its samples compactly encoded (about a kilobyte for a hundred). Each tool's last 100 calls -- when each ended, how long the tool's own work took, how long the whole request took (auth and transport included, when it came over HTTP), and whether it succeeded; the server's resident memory, sampled after each call and each background refresh of what it keeps and kept per interval at its highest (a minute: `MEMORY_INTERVAL_SECONDS` in [`rust/src/health.rs`](rust/src/health.rs), which `get_health` reports as `memory_interval_seconds` for the app to go by), for the last 500 intervals anything happened in -- with what made it up (`memory-parts`): an estimate of each kept Sheet tab and of the kept calendar (the heap blocks each holds, as glibc's malloc sets them aside: [`rust/src/heap.rs`](rust/src/heap.rs), checked against a counting allocator by [`rust/tests/memory_estimates.rs`](rust/tests/memory_estimates.rs)), the rest being the rest of the server, for `get_health` to give as each sample's `parts`, and the app to stack; and its last 100 starts (there's one server, so each after the first is a restart -- a crash or a deploy). A call is recorded in memory, a few microseconds' work; a background thread writes what changed every 30 seconds, and as the server exits, holding a lock of its own rather than the one tools' writes hold, so it never makes a tool wait. A `source` column leaves room for the app's own series. The `sheet-warnings` row holds the last 100 hand edits the server found in the spreadsheet, as JSON.
 - **Noted Times** — time notes: three columns, **Timestamp**, **Description** (optional) and **Compaction ID** (blank until the note has been compacted; see [Compacting notes](#compacting-notes)). A note's id is its timestamp and row together, and stamping a note verifies its row still holds that timestamp — which also catches a row shifted by garbage collection (below), not just a hand edit.
 - **Compactions** — the write-ahead journal of note compactions: one row per fact (each proposal's revisions, each decision, each calendar change with its before/after state and whether it's been applied, and the user's edits and feedback). See `rust/src/stores/journal.rs` and [docs/compaction-proposals.md](docs/compaction-proposals.md).
@@ -442,6 +448,16 @@ An event's color is its label's. An event doing actions gets its first action's 
 The server never writes an event's own `colorId`: it overrides the label's color, and writing one -- even clearing it -- can drop the event's label.
 
 `event_label_id` (the API's own `eventLabelId` field) is derived from the event's actions (see [Actions](#actions) above) and is read-only to the MCP tools; `calendar_cli`'s `update_properties` can still set it directly (`event_label_id=<label-id>`). Calendar itself tolerates an existing event pointing at a label that's since been removed (it keeps the id, and the event can still be updated), but it rejects *inserting* an event with one. So a created event's label always follows its actions, and one a compaction plan creates that names a removed label quietly drops it rather than failing the whole commit. A `create` decision in compaction naming an unknown label fails its dry run. Updating an event doesn't check its label.
+
+### Circadian rhythm
+
+The user's body clock, from the time they wake naturally ([`rust/src/stores/circadian.rs`](rust/src/stores/circadian.rs), [`rust/src/tools/circadian.rs`](rust/src/tools/circadian.rs)). **`set_natural_wake_time(date, time, note)`** records that they woke without an alarm at `time` on `date`; it applies from that date on, until a later one (one per date: setting a date again replaces it). From a day's wake time come:
+
+- its **temperature minimum**, the low point of the body clock: `minimum_before_waking_minutes` (120) before waking, so it can fall the evening before;
+- the **dim window**, the `dim_before_minutes` (360) before the minimum, when bright light and hard exercise shift the schedule later;
+- the **bright window**, the `bright_after_minutes` (240) after it, when bright light and exercise hold the schedule or shift it earlier.
+
+**`set_circadian_windows`** sets the three lengths. **`get_circadian_rhythm(from, to)`** gives the wake times (each with its own date's minimum as a clock time) and the windows' lengths, and, given a range of days (at most 400), each day's minimum and windows as instants in the calendar's time zone, as events are given. The arithmetic is on instants, so a window across a daylight saving change is an hour longer or shorter on the clock. The user's app shades its timeline with the windows; routines can plan around them -- winding down in the dim window, getting outside in the bright one. No second calendar is kept: the windows are derived each time.
 
 ### Compacting notes
 

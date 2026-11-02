@@ -10,6 +10,7 @@ use crate::health::{HealthRecorder, HealthTab, HealthWriter, SheetWarning};
 use crate::sheet::{ensure_spreadsheet, retitle_spreadsheet};
 use crate::stores::actions::Actions;
 use crate::stores::cancellations::Cancellations;
+use crate::stores::circadian::Circadian;
 use crate::stores::goals::Goals;
 use crate::stores::habits::{action_scopes, Habits};
 use crate::stores::locations::Locations;
@@ -78,6 +79,7 @@ pub struct App {
     notes: OnceLock<NotedTimeSheet>,
     schedule: OnceLock<CompactionSchedule>,
     scoring_defaults: OnceLock<ScoringDefaultsTab>,
+    circadian: OnceLock<Circadian>,
     recurrences: OnceLock<Recurrences>,
     writer: OnceLock<Arc<HealthWriter>>,
     sheets_refresh: OnceLock<Refresh>,
@@ -169,6 +171,7 @@ impl App {
             notes: OnceLock::new(),
             schedule: OnceLock::new(),
             scoring_defaults: OnceLock::new(),
+            circadian: OnceLock::new(),
             recurrences: OnceLock::new(),
             writer: OnceLock::new(),
             sheets_refresh: OnceLock::new(),
@@ -380,6 +383,13 @@ impl App {
         built(&self.scoring_defaults, || {
             let (_, sheets, id) = self.spreadsheet()?;
             ScoringDefaultsTab::ensure(&sheets, &id)
+        })
+    }
+
+    pub fn circadian(&self) -> anyhow::Result<Circadian> {
+        built(&self.circadian, || {
+            let (_, sheets, id) = self.spreadsheet()?;
+            Circadian::ensure(&sheets, &id)
         })
     }
 

@@ -281,6 +281,76 @@ fn schedule_hints_without_a_time_zone_say_so() {
     assert_eq!(server.ok("get_compaction_schedule_hints", json!({}))["time_zone"], Value::Null);
 }
 
+// -- the circadian rhythm ---------------------------------------------------------------------
+
+#[test]
+fn a_natural_wake_time_gives_each_days_windows_in_the_calendars_zone() {
+    let server = Server::new();
+    server.ok("set_time_zone", json!({"time_zone": "America/New_York"}));
+
+    let saved = server.ok("set_natural_wake_time", json!({"date": "2026-11-02", "time": "6:40", "note": "woke without alarm"}));
+    let got = server.ok("get_circadian_rhythm", json!({"from": "2026-11-01", "to": "2026-11-02"}));
+
+    assert_eq!(saved["time_zone"], "America/New_York");
+    assert_eq!(saved["windows"], json!({"minimum_before_waking_minutes": 120, "dim_before_minutes": 360, "bright_after_minutes": 240}));
+    let id = saved["revisions"][0]["id"].clone();
+    assert_eq!(
+        saved["revisions"],
+        json!([{"id": id, "date": "2026-11-02", "time": "06:40", "note": "woke without alarm", "temperature_minimum": "04:40"}])
+    );
+    assert_eq!((got["windows"].clone(), got["revisions"].clone()), (saved["windows"].clone(), saved["revisions"].clone()));
+    assert_eq!(
+        got["days"],
+        json!([{
+            "date": "2026-11-02", "revision_id": id, "wake_time": "06:40",
+            "temperature_minimum": "2026-11-02T04:40:00-05:00",
+            "dim": {"start": "2026-11-01T22:40:00-05:00", "end": "2026-11-02T04:40:00-05:00"},
+            "bright": {"start": "2026-11-02T04:40:00-05:00", "end": "2026-11-02T08:40:00-05:00"},
+        }])
+    );
+    assert_eq!(server.ok("get_circadian_rhythm", json!({}))["days"], Value::Null);
+}
+
+#[test]
+fn the_circadian_windows_are_set_whole_and_move_the_minimum() {
+    let server = Server::new();
+    server.ok("set_natural_wake_time", json!({"date": "2026-11-02", "time": "07:00"}));
+
+    let saved = server.ok("set_circadian_windows", json!({"minimum_before_waking_minutes": 90, "dim_before_minutes": 300, "bright_after_minutes": 180}));
+
+    assert_eq!(saved["windows"], json!({"minimum_before_waking_minutes": 90, "dim_before_minutes": 300, "bright_after_minutes": 180}));
+    assert_eq!(saved["revisions"][0]["temperature_minimum"], "05:30");
+    let day = &server.ok("get_circadian_rhythm", json!({"from": "2026-11-02", "to": "2026-11-02"}))["days"][0];
+    assert_eq!(day["dim"], json!({"start": "2026-11-02T00:30:00+00:00", "end": "2026-11-02T05:30:00+00:00"}));
+    server.refused("set_circadian_windows", json!({"minimum_before_waking_minutes": 90, "dim_before_minutes": 2000, "bright_after_minutes": 180}), "dim_before_minutes is 2000");
+    server.refused("set_circadian_windows", json!({"minimum_before_waking_minutes": 90, "dim_before_minutes": 300}), "bright_after_minutes");
+}
+
+#[test]
+fn the_circadian_tools_refuse_what_they_cant_use_saying_what_to_send() {
+    let server = Server::new();
+    crate::determinism::TEST_NOW.with(|now| now.set(Some(chrono::DateTime::parse_from_rfc3339("2026-11-02T12:00:00+00:00").unwrap())));
+
+    server.refused("set_natural_wake_time", json!({"date": "2026-11-31", "time": "06:40"}), "isn't a date: give it as \"YYYY-MM-DD\"");
+    server.refused("set_natural_wake_time", json!({"date": "2026-11-02", "time": "noon"}), "isn't a time of day");
+    server.refused("set_natural_wake_time", json!({"date": "2028-01-01", "time": "06:40"}), r"more than a year from today \(2026-11-02\)");
+    server.refused("get_circadian_rhythm", json!({"from": "2026-11-02"}), "Give both from and to");
+    server.refused("get_circadian_rhythm", json!({"from": "2026-11-02", "to": "2026-11-01"}), "is before from");
+    server.refused("get_circadian_rhythm", json!({"from": "2026-01-01", "to": "2027-12-31"}), "at most 400");
+    assert_eq!(server.ok("get_circadian_rhythm", json!({}))["revisions"], json!([]));
+}
+
+#[test]
+fn the_circadian_rhythm_without_a_time_zone_says_so() {
+    let server = Server { t: crate::testing::app::test_app_in(None) };
+
+    let saved = server.ok("set_natural_wake_time", json!({"date": "2026-11-02", "time": "01:00"}));
+
+    assert_eq!(saved["time_zone"], Value::Null);
+    assert_eq!(saved["revisions"][0]["temperature_minimum"], "23:00");
+    server.refused("get_circadian_rhythm", json!({"from": "2026-11-02", "to": "2026-11-02"}), "no time zone set");
+}
+
 #[test]
 fn sets_the_calendars_time_zone_or_says_why_not() {
     let server = Server::new();
@@ -404,10 +474,10 @@ fn delete_recurrence_returns_what_is_left_of_the_series() {
 
 // -- the write lock --------------------------------------------------------------------------------
 
-const READ_ONLY_TOOLS: [&str; 33] = [
+const READ_ONLY_TOOLS: [&str; 34] = [
     "list_events", "get_event", "get_recurrence", "get_compaction_status", "get_proposal", "get_notes", "get_traits", "get_actions",
     "get_action", "get_action_groups", "get_action_group", "get_priority_colors", "get_people", "get_person", "get_fact_logs", "get_circles",
-    "get_circle", "get_locations", "get_location", "get_location_groups", "get_location_group", "get_travel_times", "estimate_travel_time", "get_habits", "get_habit", "get_goals", "get_goal", "get_compaction_schedule_hints", "get_scoring_defaults", "prepare_judgments",
+    "get_circle", "get_locations", "get_location", "get_location_groups", "get_location_group", "get_travel_times", "estimate_travel_time", "get_habits", "get_habit", "get_goals", "get_goal", "get_compaction_schedule_hints", "get_circadian_rhythm", "get_scoring_defaults", "prepare_judgments",
     "prepare_habit_judgments", "get_health", "google_setup_link",
 ];
 
