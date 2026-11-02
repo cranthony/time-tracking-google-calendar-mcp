@@ -158,14 +158,19 @@ impl Deadline {
 }
 
 /// One thing a goal waits for before it's activated: another goal closed
-/// (goal_closed, its id: done, missed or obsolete), or a time come (at: a
-/// date, from the start of that day, or a date and time). One of them.
+/// (goal_closed, its id: done, missed or obsolete), a time come (at: a
+/// date, from the start of that day, or a date and time), or a time
+/// before its parent's deadline come (before_parent: days or minutes
+/// before when that falls due, as an Offset; following the parent's
+/// deadline as it moves). One of them.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, Schema)]
 pub struct Trigger {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub goal_closed: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_parent: Option<Offset>,
 }
 
 /// A wait of this many minutes.
@@ -572,6 +577,17 @@ fn start_of(at: &str) -> Option<NaiveDateTime> {
     deadline_end(text)
 }
 
+/// When a before_parent trigger comes, local: `offset` before `deadline`
+/// (its parent's) falls due.
+fn before_due(deadline: &str, offset: &Offset) -> Option<NaiveDateTime> {
+    let due = deadline_end(deadline)?;
+    match (offset.days, offset.minutes) {
+        (Some(days), _) => Some(due - Duration::days(days)),
+        (None, Some(minutes)) => Some(due - Duration::minutes(minutes)),
+        (None, None) => None,
+    }
+}
+
 /// `events`, each with its goal_priority filled in: the highest (the
 /// lowest number) of the priorities that apply to the goals there are
 /// that it's tagged with (see `priority_of`).
@@ -636,16 +652,20 @@ fn ancestor_ids(goal: &Goal, goals: &[Goal]) -> Vec<String> {
     ids
 }
 
-/// When the last of `when`'s triggers came, then its delay, local: when
-/// it's ready, if every trigger has come; none if one hasn't (or names
-/// no goal: deleting one takes it out of what waits for it). With no triggers, from `since`.
-fn ready_at(when: &ActivateWhen, goals: &[Goal], zone: &Tz, since: NaiveDateTime) -> Option<NaiveDateTime> {
+/// When the last of `goal`'s triggers (in `when`) came, then its delay,
+/// local: when it's ready, if every trigger has come; none if one hasn't
+/// (or names no goal: deleting one takes it out of what waits for it, or
+/// is before a parent with no deadline yet). With no triggers, from
+/// `since`.
+fn ready_at(goal: &Goal, when: &ActivateWhen, goals: &[Goal], zone: &Tz, since: NaiveDateTime) -> Option<NaiveDateTime> {
     let mut last: Option<NaiveDateTime> = None;
     for trigger in when.after.as_deref().unwrap_or_default() {
         let came = if let Some(id) = set(trigger.goal_closed.as_deref()) {
             local(&closed_moment(by_id(goals, id)?)?, zone)
         } else if let Some(at) = set(trigger.at.as_deref()) {
             start_of(at)?
+        } else if let Some(offset) = &trigger.before_parent {
+            before_due(set(parent_of(goals, goal)?.deadline.as_deref())?, offset)?
         } else {
             continue;
         };
@@ -747,7 +767,7 @@ fn sweep(goals: &mut [Goal], zone: &Tz, now: &Moment) -> Vec<String> {
                     return None;
                 }
                 let last = g.history.as_deref().unwrap_or_default().last().and_then(|c| moment(&c.at)).map(|m| local(&m, zone));
-                let mut at = ready_at(when, goals, zone, last.unwrap_or(now_local))?;
+                let mut at = ready_at(g, when, goals, zone, last.unwrap_or(now_local))?;
                 if at > now_local || held(g, when, goals) {
                     return None;
                 }
@@ -792,6 +812,9 @@ fn expected_start_at(goal: &Goal, goals: &[Goal], zone: &Tz, now: NaiveDateTime,
             }
         } else if let Some(at) = set(trigger.at.as_deref()) {
             (start_of(at)?, start_of(at)?)
+        } else if let Some(offset) = &trigger.before_parent {
+            let comes = before_due(&expected_deadline(parent_of(goals, goal)?, goals, zone, now, depth + 1)?, offset)?;
+            (comes, comes)
         } else {
             continue;
         };
@@ -1436,8 +1459,8 @@ fn trigger_problems(goal: &Goal, goals: &[Goal], status: GoalStatus) -> Vec<Stri
     }
     let parents = ancestor_ids(goal, goals);
     for trigger in when.after.as_deref().unwrap_or_default() {
-        match (set(trigger.goal_closed.as_deref()), set(trigger.at.as_deref())) {
-            (Some(id), None) => {
+        match (set(trigger.goal_closed.as_deref()), set(trigger.at.as_deref()), &trigger.before_parent) {
+            (Some(id), None, None) => {
                 if Some(id) == goal.id.as_deref() {
                     problems.push("can't wait for the goal itself".into());
                 } else if by_id(goals, id).is_none() {
@@ -1446,12 +1469,18 @@ fn trigger_problems(goal: &Goal, goals: &[Goal], status: GoalStatus) -> Vec<Stri
                     problems.push(format!("waits for goal {} to close, but it's one of its parents, which can't close while it's open", py::repr(id)));
                 }
             }
-            (None, Some(at)) => {
+            (None, Some(at), None) => {
                 if start_of(at).is_none() {
                     problems.push(format!("waits for {}, which isn't a date (\"2026-11-01\") or a date and time (\"2026-11-01T17:00\")", py::repr(at)));
                 }
             }
-            _ => problems.push("has a trigger that isn't one: give goal_closed or at, one of them".into()),
+            (None, None, Some(offset)) => {
+                problems.extend(offset_problems(offset.days, offset.minutes).into_iter().map(|p| format!("before_parent {p}")));
+                if set(goal.parent_id.as_deref()).is_none() {
+                    problems.push("waits for a time before its parent's deadline, but it's a top-level goal: give it a parent, or wait for something else".into());
+                }
+            }
+            _ => problems.push("has a trigger that isn't one: give goal_closed, at or before_parent, one of them".into()),
         }
     }
     if let Some(Delay::Minutes(d)) = &when.delay {

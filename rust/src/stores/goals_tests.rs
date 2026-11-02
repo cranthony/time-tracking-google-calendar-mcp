@@ -635,6 +635,34 @@ fn a_delay_waits_until_the_next_day_or_some_minutes() {
 }
 
 #[test]
+fn a_goal_waiting_for_a_time_before_its_parents_deadline_follows_the_parent() {
+    let f = fixture();
+    let dinner = f.create(json!({"title": "Dinner", "status": "inactive", "deadline": "2026-10-25T19:00"})).unwrap();
+    let shop = f
+        .create(json!({"title": "Shop", "parent_id": dinner, "status": "inactive", "deadline_rule": {"before_parent": {"days": 2}}, "activate_when": {"after": [{"before_parent": {"days": 7}}]}}))
+        .unwrap();
+    let cook = f
+        .create(json!({"title": "Cook", "parent_id": dinner, "status": "inactive", "deadline_rule": {"before_parent": {"minutes": 0}}, "activate_when": {"after": [{"goal_closed": shop}, {"before_parent": {"minutes": 120}}]}}))
+        .unwrap();
+    assert_eq!((f.get(&shop)["expected_start"].clone(), f.get(&cook)["expected_start"].clone()), (json!("2026-10-18T19:00"), json!("2026-10-25T17:00")));
+
+    // Moving the parent moves when they start.
+    f.change(&[], vec![edit(json!({"id": dinner, "deadline": "2026-10-23"}))], vec![]).unwrap();
+    assert_eq!(f.get(&cook)["expected_start"], json!("2026-10-23T22:00"));
+    // Its time come already: started by the change, dated no earlier.
+    let started = f.get(&shop);
+    assert_eq!((started["status"].clone(), started["due"].clone()), (json!("active"), json!("2026-10-21")));
+    assert_eq!(started["history"][1]["at"], json!("2026-10-17T09:00:00-04:00"));
+
+    // Both triggers: the time has come, but not the goal it waits for.
+    set_now("2026-10-23T23:00:00-04:00");
+    assert_eq!(f.get(&cook)["status"], json!("inactive"));
+    f.change(&[], vec![edit(json!({"id": shop, "status": "done"}))], vec![]).unwrap();
+    let cooking = f.get(&cook);
+    assert_eq!((cooking["status"].clone(), cooking["history"][1]["at"].clone()), (json!("active"), json!("2026-10-23T23:00:00-04:00")));
+}
+
+#[test]
 fn a_hold_keeps_a_goal_waiting_while_enough_others_of_its_priority_are_active() {
     let f = fixture();
     let a = f.create(json!({"title": "A", "priority": 1, "deadline": "2026-11-01"})).unwrap();
@@ -714,7 +742,13 @@ fn what_a_goal_waits_for_is_checked() {
     refused(f.create(waits(json!([{"goal_closed": "nosuch"}]))), "waits for goal 'nosuch', which isn't a goal");
     refused(f.create(waits(json!([{"goal_closed": top}]))), "it's one of its parents");
     refused(f.create(waits(json!([{"at": "soon"}]))), "'soon', which isn't a date");
-    refused(f.create(waits(json!([{}]))), "give goal_closed or at, one of them");
+    refused(f.create(waits(json!([{}]))), "give goal_closed, at or before_parent, one of them");
+    refused(f.create(waits(json!([{"at": "2026-10-20", "before_parent": {"days": 1}}]))), "give goal_closed, at or before_parent, one of them");
+    refused(f.create(waits(json!([{"before_parent": {"days": -1}}]))), "before_parent can't be -1");
+    refused(
+        f.create(json!({"title": "T", "status": "inactive", "deadline": "2026-11-01", "activate_when": {"after": [{"before_parent": {"days": 1}}]}})),
+        "before its parent's deadline, but it's a top-level goal",
+    );
     refused(f.change(&[], vec![edit(json!({"id": top, "activate_when": {}}))], vec![]), "is only for an inactive goal: this one is active");
     refused(
         f.create(json!({"title": "H", "status": "inactive", "deadline": "2026-11-01", "activate_when": {"hold_while": [{"active_at_least": 0, "priority": {}}]}})),
