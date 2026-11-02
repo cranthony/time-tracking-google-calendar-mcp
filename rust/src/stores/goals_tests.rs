@@ -828,6 +828,28 @@ fn a_habits_goal_is_made_as_its_period_comes_and_written_with_the_next_change() 
 }
 
 #[test]
+fn moving_a_habits_goal_moves_its_sub_goals_and_when_they_start() {
+    let f = fixture();
+    let templates: TemplatesFn = Arc::new(|| {
+        let shop = json!({"key": "shop", "title": "Shop", "deadline": {"days": 2}, "activate_when": {"after": [{"before_parent": {"days": 7}}]}});
+        let goal = habit_goals::RecurringGoal { period: Some(habit_goals::Period::Quarter), sub_goals: Some(vec![serde_json::from_value(shop).unwrap()]), ..Default::default() };
+        Ok(Some((vec![Template { habit_id: "hab2".into(), name: "Dinner".into(), goal }], ZONE)))
+    });
+    let goals = f.goals.clone().with_renewal(Renewal { habits_tab: f.goals.whole_tab(), templates });
+    let _held = WRITE_LOCK.hold();
+    let shop = |goals: &Goals| json_of(goals.get_goal("hab2_2026-10-01_shop", &ZONE).unwrap());
+    assert_eq!((shop(&goals)["status"].clone(), shop(&goals)["expected_start"].clone()), (json!("inactive"), json!("2026-12-25")));
+
+    // Dinner set for the 25th at 7pm: shopping starts a week before.
+    goals.change_goals(&[], &[edit(json!({"id": "hab2_2026-10-01", "deadline": "2026-10-25T19:00", "version": 0}))], &[], &ZONE).unwrap();
+    let moved = shop(&goals);
+    assert_eq!((moved["due"].clone(), moved["expected_start"].clone()), (json!("2026-10-23T19:00"), json!("2026-10-18T19:00")));
+    crate::determinism::TEST_NOW.with(|n| n.set(Some(at("2026-10-18T20:00:00-04:00"))));
+    let started = shop(&goals);
+    assert_eq!((started["status"].clone(), started["history"][1]["at"].clone()), (json!("active"), json!("2026-10-18T19:00:00-04:00")));
+}
+
+#[test]
 fn only_a_habits_goal_is_named_for_one() {
     let f = fixture();
     refused(f.create(json!({"id": "hab1_2026-10-11", "title": "Mine", "deadline": "2026-11-01"})), "lowercase letters, digits and dashes");

@@ -13585,6 +13585,44 @@
       ],
       "type": "object",
       "$defs": {
+        "ActivateWhen": {
+          "description": "What an inactive goal waits for before the server activates it: every\ntrigger in after (none, it's ready now), then the delay, if any; and\nwhile any of hold_while holds, it waits on. Activated, by the server or\nby hand (which ignores it), it's cleared -- as it is when the goal is\nclosed while it waits.",
+          "properties": {
+            "after": {
+              "items": {
+                "$ref": "#/$defs/Trigger"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "delay": {
+              "anyOf": [
+                {
+                  "const": "next_day",
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/DelayMinutes"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_while": {
+              "items": {
+                "$ref": "#/$defs/Hold"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
         "CancelledEvent": {
           "description": "An event the user cancelled, as it counts against one person's\nfollow-through -- one row of the Cancellations tab.",
           "properties": {
@@ -13672,6 +13710,40 @@
           },
           "required": [
             "circle_id"
+          ],
+          "type": "object"
+        },
+        "DelayMinutes": {
+          "description": "A wait of this many minutes.",
+          "properties": {
+            "minutes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "Hold": {
+          "description": "A goal is held back -- not activated, though its triggers have come\n-- while at least active_at_least other goals are active: those of the\npriority given, or any. Its own parents and sub-goals aren't counted.",
+          "properties": {
+            "active_at_least": {
+              "type": "integer"
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PriorityFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "active_at_least"
           ],
           "type": "object"
         },
@@ -13801,6 +13873,58 @@
           },
           "type": "object"
         },
+        "Offset": {
+          "description": "How far a deadline is from what it's measured from: whole days (a\ndate stays a date; from a start, the end of that many days after the\nday it started) or minutes (giving a date and time). One of them, 0 or\nmore.",
+          "properties": {
+            "days": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "PriorityFilter": {
+          "description": "Which goals a hold counts, by the priority that applies to each (its\nown or its nearest parent's, else 3): at_or_above a priority (that one\nor more important) or exactly one. One of them.",
+          "properties": {
+            "at_or_above": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "exactly": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
         "RecurringGoal": {
           "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
@@ -13925,6 +14049,181 @@
               "type": [
                 "integer",
                 "null"
+              ]
+            },
+            "sub_goals": {
+              "items": {
+                "$ref": "#/$defs/SubGoal"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "SubGoal": {
+          "description": "One of a recurring goal's sub-goals, made under each of its goals as\nthat's made. Its fields are a goal's (see get_goals), and: key, which\nnames it among them (letters, digits and \"-\"; its goal's id is the\ngoal's and \"_<key>\"); deadline, how far before the goal's deadline\nit's due (days or minutes, as an Offset; none, the goal's own), kept\nso while it's open; and activate_when, what it waits for, as a goal's\nbut with goal_closed naming another sub-goal's key, and with no `at`\n(a time before the goal's deadline is before_parent). With\nactivate_when, it's made inactive, to wait; without, active.",
+          "properties": {
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "with_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "for_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "deadline": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "activate_when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActivateWhen"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "Trigger": {
+          "description": "One thing a goal waits for before it's activated: another goal closed\n(goal_closed, its id: done, missed or obsolete), a time come (at: a\ndate, from the start of that day, or a date and time), or a time\nbefore its parent's deadline come (before_parent: days or minutes\nbefore when that falls due, as an Offset; following the parent's\ndeadline as it moves). One of them.",
+          "properties": {
+            "goal_closed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "before_parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -14074,6 +14373,44 @@
       },
       "type": "object",
       "$defs": {
+        "ActivateWhen": {
+          "description": "What an inactive goal waits for before the server activates it: every\ntrigger in after (none, it's ready now), then the delay, if any; and\nwhile any of hold_while holds, it waits on. Activated, by the server or\nby hand (which ignores it), it's cleared -- as it is when the goal is\nclosed while it waits.",
+          "properties": {
+            "after": {
+              "items": {
+                "$ref": "#/$defs/Trigger"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "delay": {
+              "anyOf": [
+                {
+                  "const": "next_day",
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/DelayMinutes"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_while": {
+              "items": {
+                "$ref": "#/$defs/Hold"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
         "CancelledEvent": {
           "description": "An event the user cancelled, as it counts against one person's\nfollow-through -- one row of the Cancellations tab.",
           "properties": {
@@ -14162,6 +14499,92 @@
           "required": [
             "circle_id"
           ],
+          "type": "object"
+        },
+        "DelayMinutes": {
+          "description": "A wait of this many minutes.",
+          "properties": {
+            "minutes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "Hold": {
+          "description": "A goal is held back -- not activated, though its triggers have come\n-- while at least active_at_least other goals are active: those of the\npriority given, or any. Its own parents and sub-goals aren't counted.",
+          "properties": {
+            "active_at_least": {
+              "type": "integer"
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PriorityFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "active_at_least"
+          ],
+          "type": "object"
+        },
+        "Offset": {
+          "description": "How far a deadline is from what it's measured from: whole days (a\ndate stays a date; from a start, the end of that many days after the\nday it started) or minutes (giving a date and time). One of them, 0 or\nmore.",
+          "properties": {
+            "days": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "PriorityFilter": {
+          "description": "Which goals a hold counts, by the priority that applies to each (its\nown or its nearest parent's, else 3): at_or_above a priority (that one\nor more important) or exactly one. One of them.",
+          "properties": {
+            "at_or_above": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "exactly": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
           "type": "object"
         },
         "RecurringGoal": {
@@ -14289,6 +14712,181 @@
                 "integer",
                 "null"
               ]
+            },
+            "sub_goals": {
+              "items": {
+                "$ref": "#/$defs/SubGoal"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "SubGoal": {
+          "description": "One of a recurring goal's sub-goals, made under each of its goals as\nthat's made. Its fields are a goal's (see get_goals), and: key, which\nnames it among them (letters, digits and \"-\"; its goal's id is the\ngoal's and \"_<key>\"); deadline, how far before the goal's deadline\nit's due (days or minutes, as an Offset; none, the goal's own), kept\nso while it's open; and activate_when, what it waits for, as a goal's\nbut with goal_closed naming another sub-goal's key, and with no `at`\n(a time before the goal's deadline is before_parent). With\nactivate_when, it's made inactive, to wait; without, active.",
+          "properties": {
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "with_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "for_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "deadline": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "activate_when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActivateWhen"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "Trigger": {
+          "description": "One thing a goal waits for before it's activated: another goal closed\n(goal_closed, its id: done, missed or obsolete), a time come (at: a\ndate, from the start of that day, or a date and time), or a time\nbefore its parent's deadline come (before_parent: days or minutes\nbefore when that falls due, as an Offset; following the parent's\ndeadline as it moves). One of them.",
+          "properties": {
+            "goal_closed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "before_parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "type": "object"
@@ -14297,7 +14895,7 @@
     }
   },
   {
-    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") it's built on -- sleeping well under exercising, say;\nnone of them deleted, and never making a cycle.\nA person's or circle's habit has a person_id or circle_id in place of\naction_id: it's some of their traits, scored as they are for them (a\ncircle's, its people's combined as the circle's scoring says) -- a\nlayer of the relationship on the habit graph, being reliable for\nSam under being close to them, say. Its traits take only \"select\"\n(the traits it's on; by default all that apply to them) and\n\"except\" (traits left out, though selected: those added later are\non it), and its events aren't judged for it: they're theirs. Its\nname is optional: without one it's named by them and its traits\n(\"Sam · Reliable\", \"Sam · except Reliable\"), and it loses its own\nwhen its traits or whose it is change, unless given another (given\nits default, it has none of its own: default_name lists it).\nA recurring goal's habit has a recurring_goal in place of action_id:\n{period: day | week | month | quarter | year, title?, priority?, expected_minutes?,\ndescription?, definition_of_done?, attribution_hints?, with_ids?,\nfor_ids?, rate_periods?} -- a goal for each period on the calendar\n(weeks run Sunday to Saturday, quarters from January), made by the server as each begins,\nonce the one before is done or obsolete, and tried again through the\nnext period when it's missed; titled by the habit's name unless it\ngives one. Its goals have its id and the period's start as theirs\n(\"<habit id>_2026-11-01\") and are its (habit_id); its events are\nthose tagged with them. It's scored by its goal rate -- the share of\nits last rate_periods periods (by default 7 days, 6 weeks, 4 months,\n4 quarters or 2 years) with a goal done -- and\nby its traits only once given some (it's made with {\"select\": []}).\nArchived or deleted, its open goal is made obsolete.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
+    "description": "Add a habit: a name (unique among habits), the action or action\ngroup whose events it's about (action_id: an action's or a group's\nid; only events with that action, or any action under that group,\ncount toward it), and optionally a note (what it's for, and what\ndoing it well looks like -- context for judging its events) and\ntraits: {\"select\": \"all\" or [trait ids], \"parts\": {trait id:\n[parts]}, \"part_scoring\": {trait id: scoring}, \"scoring\": scoring},\nall optional, as a person's (see create_person) -- the traits that\napply to it (by default every active one), parts replacing a trait's\nfor it alone (a more specific rubric, say), and how they combine. It's\nalways \"with\": judgment parts for those an event was done \"for\"\ndon't apply to it. Also optionally foundations: the habits (each as\n\"habit:<id>\") it's built on -- sleeping well under exercising, say;\nnone of them deleted, and never making a cycle.\nA person's or circle's habit has a person_id or circle_id in place of\naction_id: it's some of their traits, scored as they are for them (a\ncircle's, its people's combined as the circle's scoring says) -- a\nlayer of the relationship on the habit graph, being reliable for\nSam under being close to them, say. Its traits take only \"select\"\n(the traits it's on; by default all that apply to them) and\n\"except\" (traits left out, though selected: those added later are\non it), and its events aren't judged for it: they're theirs. Its\nname is optional: without one it's named by them and its traits\n(\"Sam · Reliable\", \"Sam · except Reliable\"), and it loses its own\nwhen its traits or whose it is change, unless given another (given\nits default, it has none of its own: default_name lists it).\nA recurring goal's habit has a recurring_goal in place of action_id:\n{period: day | week | month | quarter | year, title?, priority?, expected_minutes?,\ndescription?, definition_of_done?, attribution_hints?, with_ids?,\nfor_ids?, rate_periods?, sub_goals?} -- a goal for each period on the calendar\n(weeks run Sunday to Saturday, quarters from January), made by the server as each begins,\nonce the one before is done or obsolete, and tried again through the\nnext period when it's missed; titled by the habit's name unless it\ngives one. Its goals have its id and the period's start as theirs\n(\"<habit id>_2026-11-01\") and are its (habit_id); its events are\nthose tagged with them. sub_goals are made under each goal as it's\nmade: [{key (letters, digits and \"-\"; the sub-goal's id is the goal's\nand \"_<key>\"), title, required?, priority?, expected_minutes?,\ndescription?, definition_of_done?, attribution_hints?, with_ids?,\nfor_ids?, deadline?: {days | minutes} (how far before the goal's\ndeadline it's due, following it as it moves; none, the goal's own),\nactivate_when?: as a goal's, goal_closed naming another sub-goal's\nkey, and before_parent in place of at}] -- one with activate_when made\ninactive to wait, one without active. So setting the goal's deadline\n(the day of a dinner, say) times the whole chain. A missed goal tried\nagain reopens its missed sub-goals with it. It's scored by its goal rate -- the share of\nits last rate_periods periods (by default 7 days, 6 weeks, 4 months,\n4 quarters or 2 years) with a goal done -- and\nby its traits only once given some (it's made with {\"select\": []}).\nArchived or deleted, its open goal is made obsolete.\nActive unless given a status. id is assigned. Returns the habit and\nits id as created_id.",
     "inputSchema": {
       "properties": {
         "habit": {
@@ -14309,6 +14907,44 @@
       ],
       "type": "object",
       "$defs": {
+        "ActivateWhen": {
+          "description": "What an inactive goal waits for before the server activates it: every\ntrigger in after (none, it's ready now), then the delay, if any; and\nwhile any of hold_while holds, it waits on. Activated, by the server or\nby hand (which ignores it), it's cleared -- as it is when the goal is\nclosed while it waits.",
+          "properties": {
+            "after": {
+              "items": {
+                "$ref": "#/$defs/Trigger"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "delay": {
+              "anyOf": [
+                {
+                  "const": "next_day",
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/DelayMinutes"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_while": {
+              "items": {
+                "$ref": "#/$defs/Hold"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
         "CircleExcept": {
           "additionalProperties": false,
           "description": "A plain circle named with those of its members who aren't part of it.",
@@ -14327,6 +14963,18 @@
           },
           "required": [
             "circle_id"
+          ],
+          "type": "object"
+        },
+        "DelayMinutes": {
+          "description": "A wait of this many minutes.",
+          "properties": {
+            "minutes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minutes"
           ],
           "type": "object"
         },
@@ -14439,6 +15087,80 @@
           },
           "type": "object"
         },
+        "Hold": {
+          "description": "A goal is held back -- not activated, though its triggers have come\n-- while at least active_at_least other goals are active: those of the\npriority given, or any. Its own parents and sub-goals aren't counted.",
+          "properties": {
+            "active_at_least": {
+              "type": "integer"
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PriorityFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "active_at_least"
+          ],
+          "type": "object"
+        },
+        "Offset": {
+          "description": "How far a deadline is from what it's measured from: whole days (a\ndate stays a date; from a start, the end of that many days after the\nday it started) or minutes (giving a date and time). One of them, 0 or\nmore.",
+          "properties": {
+            "days": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "PriorityFilter": {
+          "description": "Which goals a hold counts, by the priority that applies to each (its\nown or its nearest parent's, else 3): at_or_above a priority (that one\nor more important) or exactly one. One of them.",
+          "properties": {
+            "at_or_above": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "exactly": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
         "RecurringGoal": {
           "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
@@ -14564,6 +15286,181 @@
                 "integer",
                 "null"
               ]
+            },
+            "sub_goals": {
+              "items": {
+                "$ref": "#/$defs/SubGoal"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "SubGoal": {
+          "description": "One of a recurring goal's sub-goals, made under each of its goals as\nthat's made. Its fields are a goal's (see get_goals), and: key, which\nnames it among them (letters, digits and \"-\"; its goal's id is the\ngoal's and \"_<key>\"); deadline, how far before the goal's deadline\nit's due (days or minutes, as an Offset; none, the goal's own), kept\nso while it's open; and activate_when, what it waits for, as a goal's\nbut with goal_closed naming another sub-goal's key, and with no `at`\n(a time before the goal's deadline is before_parent). With\nactivate_when, it's made inactive, to wait; without, active.",
+          "properties": {
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "with_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "for_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "deadline": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "activate_when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActivateWhen"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "Trigger": {
+          "description": "One thing a goal waits for before it's activated: another goal closed\n(goal_closed, its id: done, missed or obsolete), a time come (at: a\ndate, from the start of that day, or a date and time), or a time\nbefore its parent's deadline come (before_parent: days or minutes\nbefore when that falls due, as an Offset; following the parent's\ndeadline as it moves). One of them.",
+          "properties": {
+            "goal_closed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "before_parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "type": "object"
@@ -14587,6 +15484,44 @@
       ],
       "type": "object",
       "$defs": {
+        "ActivateWhen": {
+          "description": "What an inactive goal waits for before the server activates it: every\ntrigger in after (none, it's ready now), then the delay, if any; and\nwhile any of hold_while holds, it waits on. Activated, by the server or\nby hand (which ignores it), it's cleared -- as it is when the goal is\nclosed while it waits.",
+          "properties": {
+            "after": {
+              "items": {
+                "$ref": "#/$defs/Trigger"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "delay": {
+              "anyOf": [
+                {
+                  "const": "next_day",
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/DelayMinutes"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_while": {
+              "items": {
+                "$ref": "#/$defs/Hold"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
         "CancelledEvent": {
           "description": "An event the user cancelled, as it counts against one person's\nfollow-through -- one row of the Cancellations tab.",
           "properties": {
@@ -14674,6 +15609,40 @@
           },
           "required": [
             "circle_id"
+          ],
+          "type": "object"
+        },
+        "DelayMinutes": {
+          "description": "A wait of this many minutes.",
+          "properties": {
+            "minutes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "Hold": {
+          "description": "A goal is held back -- not activated, though its triggers have come\n-- while at least active_at_least other goals are active: those of the\npriority given, or any. Its own parents and sub-goals aren't counted.",
+          "properties": {
+            "active_at_least": {
+              "type": "integer"
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PriorityFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "active_at_least"
           ],
           "type": "object"
         },
@@ -14803,6 +15772,58 @@
           },
           "type": "object"
         },
+        "Offset": {
+          "description": "How far a deadline is from what it's measured from: whole days (a\ndate stays a date; from a start, the end of that many days after the\nday it started) or minutes (giving a date and time). One of them, 0 or\nmore.",
+          "properties": {
+            "days": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "PriorityFilter": {
+          "description": "Which goals a hold counts, by the priority that applies to each (its\nown or its nearest parent's, else 3): at_or_above a priority (that one\nor more important) or exactly one. One of them.",
+          "properties": {
+            "at_or_above": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "exactly": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
         "RecurringGoal": {
           "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
@@ -14928,6 +15949,181 @@
                 "integer",
                 "null"
               ]
+            },
+            "sub_goals": {
+              "items": {
+                "$ref": "#/$defs/SubGoal"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "SubGoal": {
+          "description": "One of a recurring goal's sub-goals, made under each of its goals as\nthat's made. Its fields are a goal's (see get_goals), and: key, which\nnames it among them (letters, digits and \"-\"; its goal's id is the\ngoal's and \"_<key>\"); deadline, how far before the goal's deadline\nit's due (days or minutes, as an Offset; none, the goal's own), kept\nso while it's open; and activate_when, what it waits for, as a goal's\nbut with goal_closed naming another sub-goal's key, and with no `at`\n(a time before the goal's deadline is before_parent). With\nactivate_when, it's made inactive, to wait; without, active.",
+          "properties": {
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "with_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "for_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "deadline": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "activate_when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActivateWhen"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "Trigger": {
+          "description": "One thing a goal waits for before it's activated: another goal closed\n(goal_closed, its id: done, missed or obsolete), a time come (at: a\ndate, from the start of that day, or a date and time), or a time\nbefore its parent's deadline come (before_parent: days or minutes\nbefore when that falls due, as an Offset; following the parent's\ndeadline as it moves). One of them.",
+          "properties": {
+            "goal_closed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "before_parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "type": "object"
@@ -14964,6 +16160,44 @@
       ],
       "type": "object",
       "$defs": {
+        "ActivateWhen": {
+          "description": "What an inactive goal waits for before the server activates it: every\ntrigger in after (none, it's ready now), then the delay, if any; and\nwhile any of hold_while holds, it waits on. Activated, by the server or\nby hand (which ignores it), it's cleared -- as it is when the goal is\nclosed while it waits.",
+          "properties": {
+            "after": {
+              "items": {
+                "$ref": "#/$defs/Trigger"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "delay": {
+              "anyOf": [
+                {
+                  "const": "next_day",
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/DelayMinutes"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_while": {
+              "items": {
+                "$ref": "#/$defs/Hold"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
         "CircleExcept": {
           "additionalProperties": false,
           "description": "A plain circle named with those of its members who aren't part of it.",
@@ -14982,6 +16216,18 @@
           },
           "required": [
             "circle_id"
+          ],
+          "type": "object"
+        },
+        "DelayMinutes": {
+          "description": "A wait of this many minutes.",
+          "properties": {
+            "minutes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minutes"
           ],
           "type": "object"
         },
@@ -15094,6 +16340,80 @@
           },
           "type": "object"
         },
+        "Hold": {
+          "description": "A goal is held back -- not activated, though its triggers have come\n-- while at least active_at_least other goals are active: those of the\npriority given, or any. Its own parents and sub-goals aren't counted.",
+          "properties": {
+            "active_at_least": {
+              "type": "integer"
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PriorityFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "active_at_least"
+          ],
+          "type": "object"
+        },
+        "Offset": {
+          "description": "How far a deadline is from what it's measured from: whole days (a\ndate stays a date; from a start, the end of that many days after the\nday it started) or minutes (giving a date and time). One of them, 0 or\nmore.",
+          "properties": {
+            "days": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "PriorityFilter": {
+          "description": "Which goals a hold counts, by the priority that applies to each (its\nown or its nearest parent's, else 3): at_or_above a priority (that one\nor more important) or exactly one. One of them.",
+          "properties": {
+            "at_or_above": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "exactly": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
         "RecurringGoal": {
           "description": "A habit's recurring goal: the goal made for each period, in place of\nan action, a person or a circle. Its fields are the goal's (see\nget_goals); `title` defaults to the habit's name. `rate_periods` is\nhow many of the periods before the one under way its goal rate counts\n(by default 7 days, 6 weeks, 4 months, 4 quarters or 2 years): the\nshare of them with a goal done in them.",
           "properties": {
@@ -15218,6 +16538,181 @@
               "type": [
                 "integer",
                 "null"
+              ]
+            },
+            "sub_goals": {
+              "items": {
+                "$ref": "#/$defs/SubGoal"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "SubGoal": {
+          "description": "One of a recurring goal's sub-goals, made under each of its goals as\nthat's made. Its fields are a goal's (see get_goals), and: key, which\nnames it among them (letters, digits and \"-\"; its goal's id is the\ngoal's and \"_<key>\"); deadline, how far before the goal's deadline\nit's due (days or minutes, as an Offset; none, the goal's own), kept\nso while it's open; and activate_when, what it waits for, as a goal's\nbut with goal_closed naming another sub-goal's key, and with no `at`\n(a time before the goal's deadline is before_parent). With\nactivate_when, it's made inactive, to wait; without, active.",
+          "properties": {
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "with_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "for_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "deadline": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "activate_when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActivateWhen"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "Trigger": {
+          "description": "One thing a goal waits for before it's activated: another goal closed\n(goal_closed, its id: done, missed or obsolete), a time come (at: a\ndate, from the start of that day, or a date and time), or a time\nbefore its parent's deadline come (before_parent: days or minutes\nbefore when that falls due, as an Offset; following the parent's\ndeadline as it moves). One of them.",
+          "properties": {
+            "goal_closed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "before_parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -15352,6 +16847,44 @@
       },
       "type": "object",
       "$defs": {
+        "ActivateWhen": {
+          "description": "What an inactive goal waits for before the server activates it: every\ntrigger in after (none, it's ready now), then the delay, if any; and\nwhile any of hold_while holds, it waits on. Activated, by the server or\nby hand (which ignores it), it's cleared -- as it is when the goal is\nclosed while it waits.",
+          "properties": {
+            "after": {
+              "items": {
+                "$ref": "#/$defs/Trigger"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "delay": {
+              "anyOf": [
+                {
+                  "const": "next_day",
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/DelayMinutes"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "hold_while": {
+              "items": {
+                "$ref": "#/$defs/Hold"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
         "CancelledEvent": {
           "description": "An event the user cancelled, as it counts against one person's\nfollow-through -- one row of the Cancellations tab.",
           "properties": {
@@ -15440,6 +16973,92 @@
           "required": [
             "circle_id"
           ],
+          "type": "object"
+        },
+        "DelayMinutes": {
+          "description": "A wait of this many minutes.",
+          "properties": {
+            "minutes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "minutes"
+          ],
+          "type": "object"
+        },
+        "Hold": {
+          "description": "A goal is held back -- not activated, though its triggers have come\n-- while at least active_at_least other goals are active: those of the\npriority given, or any. Its own parents and sub-goals aren't counted.",
+          "properties": {
+            "active_at_least": {
+              "type": "integer"
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/PriorityFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "active_at_least"
+          ],
+          "type": "object"
+        },
+        "Offset": {
+          "description": "How far a deadline is from what it's measured from: whole days (a\ndate stays a date; from a start, the end of that many days after the\nday it started) or minutes (giving a date and time). One of them, 0 or\nmore.",
+          "properties": {
+            "days": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "PriorityFilter": {
+          "description": "Which goals a hold counts, by the priority that applies to each (its\nown or its nearest parent's, else 3): at_or_above a priority (that one\nor more important) or exactly one. One of them.",
+          "properties": {
+            "at_or_above": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "exactly": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "own",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
           "type": "object"
         },
         "RecurringGoal": {
@@ -15566,6 +17185,181 @@
               "type": [
                 "integer",
                 "null"
+              ]
+            },
+            "sub_goals": {
+              "items": {
+                "$ref": "#/$defs/SubGoal"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "SubGoal": {
+          "description": "One of a recurring goal's sub-goals, made under each of its goals as\nthat's made. Its fields are a goal's (see get_goals), and: key, which\nnames it among them (letters, digits and \"-\"; its goal's id is the\ngoal's and \"_<key>\"); deadline, how far before the goal's deadline\nit's due (days or minutes, as an Offset; none, the goal's own), kept\nso while it's open; and activate_when, what it waits for, as a goal's\nbut with goal_closed naming another sub-goal's key, and with no `at`\n(a time before the goal's deadline is before_parent). With\nactivate_when, it's made inactive, to wait; without, active.",
+          "properties": {
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "required": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "expected_minutes": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "definition_of_done": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition_of_done_format": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "plain",
+                    "html",
+                    "markdown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "attribution_hints": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "with_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "for_ids": {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "A person's or circle's id: a plain circle, all its members.",
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/CircleExcept"
+                  }
+                ]
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "deadline": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "activate_when": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ActivateWhen"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "Trigger": {
+          "description": "One thing a goal waits for before it's activated: another goal closed\n(goal_closed, its id: done, missed or obsolete), a time come (at: a\ndate, from the start of that day, or a date and time), or a time\nbefore its parent's deadline come (before_parent: days or minutes\nbefore when that falls due, as an Offset; following the parent's\ndeadline as it moves). One of them.",
+          "properties": {
+            "goal_closed": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "before_parent": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Offset"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },

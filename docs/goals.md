@@ -84,6 +84,28 @@ the date it had.
 these -- closing a goal while moving its sub-goals under a new top-level
 goal made for them, say -- is one change.
 
+## A habit's chain of sub-goals
+
+A recurring goal's habit can give `sub_goals`: templates for goals made
+under each of its goals as that's made, so a chain of steps -- shopping,
+cooking ahead, the day itself -- repeats with it. Each has a `key`
+(letters, digits and `-`; its goal's id is the habit goal's and
+`_<key>`, so it's the habit's too), the fields a goal has, a `deadline`
+-- `{days | minutes}` before the habit goal's, made as a `before_parent`
+deadline, so it follows the goal as it moves (none, the goal's own) --
+and an `activate_when` as a goal's, with `goal_closed` naming another
+sub-goal's key and `before_parent` in place of `at`. One that waits is
+made inactive; one that doesn't, active with its goal. So setting the
+habit goal's deadline once times the whole chain: what it's due by and
+when each starts.
+
+A habit still has one goal at a time: its sub-goals don't count as one.
+A missed goal tried again for the next period reopens its missed
+sub-goals with it, each waiting again as it's made; those done, made
+obsolete or deleted are left so. A habit's template is checked as the
+goals it would make: a sub-goal expected to take longer than its goal,
+or a chain that waits for itself, is refused when the habit is saved.
+
 ## Events' goal shares
 
 An event's `goals` are its goal shares: each a goal and how much of the
