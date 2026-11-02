@@ -40,13 +40,14 @@
       "priority": null,
       "recurring_event_id": null,
       "start": "2026-10-05T07:00:00-04:00",
-      "summary": "Run"
+      "summary": "Run",
+      "time_zone": "America/New_York"
      }
     ],
     "timeline": "07:00 ┌ Run · new\n07:30 └ Run ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Run\",\n      \"start\": \"2026-10-05T07:00:00-04:00\",\n      \"end\": \"2026-10-05T07:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"07:00 ┌ Run · new\\n07:30 └ Run ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"35d98bd5ab3bf549dd770d737d\",\n      \"summary\": \"Run\",\n      \"start\": \"2026-10-05T07:00:00-04:00\",\n      \"end\": \"2026-10-05T07:30:00-04:00\",\n      \"time_zone\": \"America/New_York\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000033\\\"\"\n    }\n  ],\n  \"timeline\": \"07:00 ┌ Run · new\\n07:30 └ Run ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -74,7 +75,8 @@
      "priority": null,
      "recurring_event_id": "35d98bd5ab3bf549dd770d737d",
      "start": "2026-10-05T07:00:00-04:00",
-     "summary": "Run"
+     "summary": "Run",
+     "time_zone": "America/New_York"
     },
     {
      "action_ids": null,
@@ -95,7 +97,8 @@
      "priority": null,
      "recurring_event_id": "35d98bd5ab3bf549dd770d737d",
      "start": "2026-10-08T07:00:00-04:00",
-     "summary": "Run"
+     "summary": "Run",
+     "time_zone": "America/New_York"
     },
     {
      "action_ids": null,
@@ -116,7 +119,8 @@
      "priority": null,
      "recurring_event_id": "35d98bd5ab3bf549dd770d737d",
      "start": "2026-10-12T07:00:00-04:00",
-     "summary": "Run"
+     "summary": "Run",
+     "time_zone": "America/New_York"
     },
     {
      "action_ids": null,
@@ -137,11 +141,12 @@
      "priority": null,
      "recurring_event_id": "35d98bd5ab3bf549dd770d737d",
      "start": "2026-10-15T07:00:00-04:00",
-     "summary": "Run"
+     "summary": "Run",
+     "time_zone": "America/New_York"
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261005T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-05T07:00:00-04:00\",\n  \"end\": \"2026-10-05T07:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}\n{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261008T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-08T07:00:00-04:00\",\n  \"end\": \"2026-10-08T07:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}\n{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261012T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-12T07:00:00-04:00\",\n  \"end\": \"2026-10-12T07:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}\n{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261015T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-15T07:00:00-04:00\",\n  \"end\": \"2026-10-15T07:30:00-04:00\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}",
+   "text": "{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261005T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-05T07:00:00-04:00\",\n  \"end\": \"2026-10-05T07:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}\n{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261008T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-08T07:00:00-04:00\",\n  \"end\": \"2026-10-08T07:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}\n{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261012T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-12T07:00:00-04:00\",\n  \"end\": \"2026-10-12T07:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}\n{\n  \"id\": \"35d98bd5ab3bf549dd770d737d_20261015T110000Z\",\n  \"summary\": \"Run\",\n  \"start\": \"2026-10-15T07:00:00-04:00\",\n  \"end\": \"2026-10-15T07:30:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"35d98bd5ab3bf549dd770d737d\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000033\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -219,13 +224,14 @@
       "priority": null,
       "recurring_event_id": null,
       "start": "2026-10-07T11:00:00-04:00",
-      "summary": "Review"
+      "summary": "Review",
+      "time_zone": null
      }
     ],
     "timeline": "11:00 ┌ Review · new\n11:30 └ Review ends\n07:00 ┌ Run\n07:30 └ Run ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Review\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"11:00 ┌ Review · new\\n11:30 └ Review ends\\n07:00 ┌ Run\\n07:30 └ Run ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Review\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:30:00-04:00\",\n      \"time_zone\": null,\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000035\\\"\"\n    }\n  ],\n  \"timeline\": \"11:00 ┌ Review · new\\n11:30 └ Review ends\\n07:00 ┌ Run\\n07:30 └ Run ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -265,13 +271,14 @@
       "priority": null,
       "recurring_event_id": null,
       "start": "2026-10-07T11:00:00-04:00",
-      "summary": "Review"
+      "summary": "Review",
+      "time_zone": "America/New_York"
      }
     ],
     "timeline": null
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Review\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:30:00-04:00\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"9c3c1046e8cb7fa96f6b8bd88d\",\n      \"summary\": \"Review\",\n      \"start\": \"2026-10-07T11:00:00-04:00\",\n      \"end\": \"2026-10-07T11:30:00-04:00\",\n      \"time_zone\": \"America/New_York\",\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": null,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"d47efd31-3b45-5318-88a5-73959ba725fa\",\n      \"is_cancelled\": false,\n      \"effective_priority\": null,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": null,\n  \"dry_run\": false\n}",
    "tool": "update_event"
   },
   {

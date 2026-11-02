@@ -52,7 +52,7 @@ fn a_public_event_shows_just_its_public_fields() {
     assert_eq!(
         fields,
         vec![
-            "id", "summary", "start", "end", "description", "description_format", "location", "priority", "action_ids", "action_names", "actions_from_label",
+            "id", "summary", "start", "end", "time_zone", "description", "description_format", "location", "priority", "action_ids", "action_names", "actions_from_label",
             "goals", "event_label_id", "is_cancelled", "effective_priority", "recurring_event_id", "facts", "judgments", "etag",
         ]
     );
@@ -218,6 +218,36 @@ fn updates_several_events_at_once() {
     assert_eq!(server.event("abc123").start, Some(at(8, 0)));
     assert_eq!(server.event("def456").summary.as_deref(), Some("Renamed"));
     assert_eq!(result["dry_run"], false);
+}
+
+#[test]
+fn a_new_time_zone_alone_keeps_the_events_moment() {
+    let server = two();
+
+    let result = server.ok("update_event", json!({"updates": [update("abc123", json!({"time_zone": "Europe/London"}))]}));
+
+    assert_eq!(result["events"][0]["time_zone"], "Europe/London");
+    let event = server.event("abc123");
+    assert_eq!((event.start, event.end, event.time_zone.as_deref()), (Some(day_at(9)), Some(day_at(10)), Some("Europe/London")));
+}
+
+#[test]
+fn a_new_time_zone_with_new_times_takes_them() {
+    let server = two();
+
+    server.ok("update_event", json!({"updates": [update("abc123", json!({"time_zone": "Europe/London", "start": when(at(8, 0)), "end": when(at(9, 0))}))]}));
+
+    let event = server.event("abc123");
+    assert_eq!((event.start, event.time_zone.as_deref()), (Some(at(8, 0)), Some("Europe/London")));
+}
+
+#[test]
+fn a_time_zone_there_isnt_is_refused() {
+    let server = two();
+
+    server.refused("update_event", json!({"updates": [update("abc123", json!({"time_zone": "Mars/Olympus"}))]}), "isn't a time zone");
+
+    assert_eq!(server.event_writes(), 0);
 }
 
 #[test]

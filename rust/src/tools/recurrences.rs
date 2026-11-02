@@ -132,8 +132,9 @@ pub struct Repeat {
 /// A recurring series of events, as a whole. id is the series' own
 /// id, which is every one of its
 /// events' recurring_event_id. start/end are when its first event starts
-/// and ends; time_zone keeps its events at the same wall-clock time
-/// across daylight saving changes. repeat says which days its events
+/// and ends, shown in time_zone, the IANA zone that keeps its events at
+/// the same wall-clock time across daylight saving changes (see
+/// update_recurrence to change it). repeat says which days its events
 /// fall on and when it ends (see Repeat), and schedule says that in
 /// words. A series made elsewhere may repeat in ways repeat can't say
 /// (e.g. "the last weekday of the month"): its repeat is then null and
@@ -146,7 +147,7 @@ pub struct Repeat {
 /// and where (location_ids) -- set them to replace them whole.
 ///
 /// schedule, action_names, event_label_id and effective_priority are
-/// read-only: update_recurrence ignores them, as it does time_zone.
+/// read-only: update_recurrence ignores them.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct PublicRecurrence {
     pub id: Option<String>,
@@ -223,6 +224,7 @@ fn to_event(series: &PublicRecurrence, clear_fields: &[EventField]) -> Result<Ev
         summary: series.summary.clone(),
         start: when_given(series.start.as_ref())?,
         end: when_given(series.end.as_ref())?,
+        time_zone: super::events::given_zone(series.time_zone.as_deref())?,
         description: series.description.clone(),
         description_format: series.description_format,
         location: series.location.clone(),
@@ -294,6 +296,15 @@ pub fn get_recurrence(app: &App, id: String) -> Result<PublicRecurrence, ToolErr
 /// and an edit to start/end moves them back onto the series' times too.
 /// Leave start/end out to keep each event's own time. A field left out
 /// is kept on the series itself, priority and action_ids included.
+///
+/// A new time_zone moves the series into that IANA zone, its events
+/// following its daylight saving from then on. With start/end left out,
+/// its first event (from starting_at_event_id, if given) keeps its moment
+/// -- 6pm New York becomes 11pm London. To keep its time of day instead
+/// -- 6pm in London now -- give start/end too: its first event's, at
+/// that time in the new zone (from starting_at_event_id, the later part
+/// moves as far by the clock). The days it skips or adds, and when it
+/// ends, move with its events.
 ///
 /// A series split in Google Calendar itself (an id like
 /// "abc123_R20260915T223000") can't have its repeat or start changed
