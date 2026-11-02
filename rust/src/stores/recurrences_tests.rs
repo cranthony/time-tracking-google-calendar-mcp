@@ -261,6 +261,103 @@ fn refuses_a_bad_repeat_without_writing() {
     assert!(f.writes().is_empty());
 }
 
+// -- changing its time zone -----------------------------------------------------------------
+
+const LONDON: Tz = chrono_tz::Europe::London;
+
+fn london(month: u32, day: u32, hour: u32) -> Moment {
+    LONDON.with_ymd_and_hms(2026, month, day, hour, 0, 0).unwrap().fixed_offset()
+}
+
+fn to_london(start: Option<Moment>) -> Event {
+    Event {
+        id: Some("series1".into()),
+        time_zone: Some("Europe/London".into()),
+        start,
+        end: start.map(|s| s + chrono::Duration::hours(1)),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn a_new_time_zone_alone_keeps_its_first_events_moment() {
+    let f = fixture(&[weekly(MONDAYS)]);
+
+    f.held(|r| r.update(&to_london(None), None, None)).unwrap();
+
+    let series = f.event("series1");
+    assert_eq!(series.time_zone.as_deref(), Some("Europe/London"));
+    // 9am New York is 2pm in London.
+    assert_eq!((series.start, series.end), (Some(at(5, 9)), Some(at(5, 10))));
+    assert_eq!(series.start.map(|s| zoned::in_zone(&s, &LONDON).format("%H:%M").to_string()).as_deref(), Some("14:00"));
+    assert_eq!(series.recurrence, Some(strings(&[MONDAYS])));
+}
+
+#[test]
+fn a_new_time_zone_with_the_same_time_of_day_keeps_it() {
+    let f = fixture(&[weekly(MONDAYS)]);
+
+    f.held(|r| r.update(&to_london(Some(london(10, 5, 9))), None, None)).unwrap();
+
+    let series = f.event("series1");
+    assert_eq!(series.time_zone.as_deref(), Some("Europe/London"));
+    assert_eq!((series.start, series.end), (Some(london(10, 5, 9)), Some(london(10, 5, 10))));
+}
+
+#[test]
+fn the_days_it_skips_and_adds_move_with_its_events() {
+    let rules = [MONDAYS, "EXDATE;TZID=America/New_York:20261012T090000", "RDATE;TZID=America/New_York:20261014T090000"];
+    let f = fixture(&[Event { recurrence: Some(strings(&rules)), ..weekly(MONDAYS) }]);
+
+    f.held(|r| r.update(&to_london(Some(london(10, 5, 9))), None, None)).unwrap();
+
+    // Still on the Monday it skipped and the Wednesday it added, at 9am.
+    assert_eq!(
+        f.event("series1").recurrence,
+        Some(strings(&[MONDAYS, "EXDATE;TZID=Europe/London:20261012T090000", "RDATE;TZID=Europe/London:20261014T090000"]))
+    );
+}
+
+#[test]
+fn the_days_it_skips_keep_their_moment_with_its_events() {
+    let rules = [MONDAYS, "EXDATE;TZID=America/New_York:20261012T090000"];
+    let f = fixture(&[Event { recurrence: Some(strings(&rules)), ..weekly(MONDAYS) }]);
+
+    f.held(|r| r.update(&to_london(None), None, None)).unwrap();
+
+    assert_eq!(f.event("series1").recurrence, Some(strings(&[MONDAYS, "EXDATE;TZID=Europe/London:20261012T140000"])));
+}
+
+#[test]
+fn this_and_following_moves_the_later_part_to_the_same_time_of_day() {
+    let f = fixture(&[weekly(MONDAYS)]);
+
+    let parts = f.held(|r| r.update(&to_london(Some(london(10, 5, 9))), Some(&instance("series1", 19)), None)).unwrap();
+
+    let (later, earlier) = (&parts[0], &parts[1]);
+    assert_eq!(later.time_zone.as_deref(), Some("Europe/London"));
+    assert_eq!((later.start, later.end), (Some(london(10, 19, 9)), Some(london(10, 19, 10))));
+    assert_eq!(earlier.time_zone.as_deref(), Some("America/New_York"));
+}
+
+#[test]
+fn this_and_following_keeps_the_later_parts_moment() {
+    let f = fixture(&[weekly(MONDAYS)]);
+
+    let parts = f.held(|r| r.update(&to_london(None), Some(&instance("series1", 26)), None)).unwrap();
+
+    assert_eq!((parts[0].start, parts[0].time_zone.as_deref()), (Some(at(26, 9)), Some("Europe/London")));
+}
+
+#[test]
+fn refuses_a_time_zone_there_isnt_without_writing() {
+    let f = fixture(&[weekly(MONDAYS)]);
+
+    refused_with(f.held(|r| r.update(&Event { time_zone: Some("Mars/Olympus".into()), ..to_london(None) }, None, None)), "isn't a time zone");
+
+    assert!(f.writes().is_empty());
+}
+
 // -- deleting ------------------------------------------------------------------------------
 
 #[test]

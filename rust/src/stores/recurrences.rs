@@ -559,6 +559,60 @@ fn refused(message: impl Into<String>) -> anyhow::Error {
     Refused(message.into()).into()
 }
 
+/// `at`, a time of a series starting `old_start` in `old`, as the same
+/// time of it starting `new_start` in `new`: as far from its start, by
+/// the clock.
+fn re_zoned(at: &Moment, old_start: &Moment, old: &Tz, new_start: &Moment, new: &Tz) -> Moment {
+    let delta = at.with_timezone(old).naive_local() - old_start.with_timezone(old).naive_local();
+    zoned::resolve(new, new_start.with_timezone(new).naive_local() + delta)
+}
+
+/// Where `target` -- `series`, or its part from an event on -- starts and
+/// ends, moved from time zone `old` to `new` with `changes`: with no
+/// start given, its first event keeps its moment; given the series'
+/// start, it moves as far by the clock as the series' first event did
+/// (so the same time of day, in `new`, keeps every event's time of day).
+/// It lasts as `changes` says (start to end), or as it did.
+fn re_zoned_times(series: &Event, target: &Event, changes: &Event, old: &Tz, new: &Tz) -> (Moment, Moment) {
+    let start = match changes.start {
+        Some(start) => re_zoned(&target.start(), &series.start(), old, &start, new),
+        None => target.start(),
+    };
+    let length = match (changes.start, changes.end) {
+        (Some(s), Some(e)) => e - s,
+        (None, Some(e)) => e - series.start(),
+        _ => target.end() - target.start(),
+    };
+    (start, start + length)
+}
+
+/// `target`'s rules for its time zone changed from `old` to `new`, its
+/// first event now at `start`: the days it skips and adds, and when it
+/// ends, moved with its events (see `re_zoned`), so each still falls on
+/// one; None to keep them as they are, needing no change. Rules a Repeat
+/// can't say are kept if they skip, add and end on nothing, and refused
+/// otherwise.
+fn re_zoned_rules(target: &Event, start: &Moment, old: &Tz, new: &Tz) -> anyhow::Result<Option<Vec<String>>> {
+    let rules = target.recurrence.as_deref().unwrap_or_default();
+    let timed = |r: &String| r.starts_with("EXDATE") || r.starts_with("RDATE") || r.contains("UNTIL=");
+    if !rules.iter().any(timed) {
+        return Ok(None);
+    }
+    let Some(mut repeat) = Repeat::from_rules(Some(rules), old) else {
+        return Err(refused(format!(
+            "Series {} repeats in a way the app can't say, with dates it skips, adds or ends on: give its repeat to change its time zone",
+            target.id.as_deref().unwrap_or("None")
+        )));
+    };
+    let moved = |t: &PyDt| PyDt::Aware(re_zoned(&t.in_zone(old), &target.start(), old, start, new));
+    repeat.skipped = repeat.skipped.as_ref().map(|s| s.iter().map(moved).collect());
+    repeat.added = repeat.added.as_ref().map(|a| a.iter().map(moved).collect());
+    if let Some(Until::DateTime(until)) = &repeat.until {
+        repeat.until = Some(Until::DateTime(moved(until)));
+    }
+    repeat.to_rules(new).map(Some)
+}
+
 #[derive(Clone)]
 pub struct Recurrences {
     calendar: ActionCalendar,
@@ -656,10 +710,21 @@ impl Recurrences {
                     )));
                 }
             }
-            let zone_name = match &target.time_zone {
+            let mut zone_name = match &target.time_zone {
                 Some(zone) if !zone.is_empty() => zone.clone(),
                 _ => self.time_zone()?.name().to_string(),
             };
+            if let Some(new_name) = changes.time_zone.as_deref().filter(|z| !z.is_empty() && **z != zone_name) {
+                let old: Tz = zone_name.parse().map_err(|_| anyhow::anyhow!("No time zone found with key {zone_name}"))?;
+                let new: Tz = new_name.parse().map_err(|_| refused(format!("{} isn't a time zone; use an IANA name like 'America/New_York'", py::repr(new_name))))?;
+                let (start, end) = re_zoned_times(&series, &target, changes, &old, &new);
+                patch.start = Some(start);
+                patch.end = Some(end);
+                if repeat.is_none() {
+                    patch.recurrence = re_zoned_rules(&target, &start, &old, &new)?;
+                }
+                zone_name = new.name().to_string();
+            }
             if patch.start.is_some() || patch.end.is_some() {
                 patch.time_zone = Some(zone_name.clone());
             }

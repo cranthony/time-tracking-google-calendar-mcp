@@ -375,6 +375,12 @@ impl EventChanges {
                 patch.start = patch.start.or(before.start);
                 patch.end = patch.end.or(before.end);
             }
+            if patch.time_zone.is_some() {
+                // Its zone is on its start and end: given alone, it keeps
+                // its moment, now in that zone.
+                patch.start = patch.start.or(before.start);
+                patch.end = patch.end.or(before.end);
+            }
             let after = patched(&before, &patch);
             if patch.goals.is_some() || patch.action_ids.is_some() || patch.facts.is_some() {
                 if let Some(problem) = share_problem(&after, patch.goals.is_some(), patch.action_ids.is_some(), patch.facts.is_some(), &format!("event {event_id} ({})", summary_repr(&before))) {

@@ -16,6 +16,7 @@ use crate::stores::goals::{fill_in_from_goals, settled_shares, Goal, GoalShare};
 use crate::stores::notes::NotedTime as StoredNote;
 use crate::stores::schedule::ScheduleHint;
 use super::recurrences::{stored_repeat, Repeat};
+use chrono_tz::Tz;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -143,11 +144,18 @@ pub struct Facts {
 ///
 /// repeat is write-only: given to create_event, or to update_event for an
 /// event that isn't in a series, it makes the event the first of a
-/// recurring series that repeats as it says (see Repeat), in the
-/// calendar's time zone. The event's id becomes the series' own, and the
+/// recurring series that repeats as it says (see Repeat), in its
+/// time_zone, or else the calendar's. The event's id becomes the series' own, and the
 /// series' events (list_events) each get their own id, with the series'
 /// as their recurring_event_id. It's never returned: get_recurrence says
 /// how a series repeats, and update_recurrence changes it.
+///
+/// time_zone is the IANA zone its start and end are kept in, as Google
+/// Calendar shows them (null: the calendar's); a series' events follow
+/// their series' daylight saving through it. Given to update_event
+/// without start/end, the event keeps its moment, now in that zone; to
+/// keep its time of day instead, give start/end at that time in the new
+/// zone too. A series' own is changed with update_recurrence.
 ///
 /// Everything before the last compaction (get_compaction_status's
 /// last_compaction) is history: see update_event.
@@ -157,6 +165,7 @@ pub struct PublicEvent {
     pub summary: Option<String>,
     pub start: Option<DateTimeText>,
     pub end: Option<DateTimeText>,
+    pub time_zone: Option<String>,
     pub description: Option<String>,
     /// How description is written: plain, html or markdown -- markdown
     /// for what you write. None, it's HTML if it has tags, else plain
@@ -290,6 +299,7 @@ pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Op
     out.insert("summary".into(), json!(event.summary));
     out.insert("start".into(), json!(event.start.map(|s| py::pydantic_datetime(&s))));
     out.insert("end".into(), json!(event.end.map(|s| py::pydantic_datetime(&s))));
+    out.insert("time_zone".into(), json!(event.time_zone));
     out.insert("description".into(), json!(event.description));
     out.insert("description_format".into(), json!(event.description_format));
     out.insert("location".into(), json!(event.location));
@@ -363,6 +373,7 @@ pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Even
         summary: event.summary.clone(),
         start: when_given(event.start.as_ref())?,
         end: when_given(event.end.as_ref())?,
+        time_zone: given_zone(event.time_zone.as_deref())?,
         description: event.description.clone(),
         description_format: event.description_format,
         location: event.location.clone(),
@@ -378,6 +389,16 @@ pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Even
     };
     event.check_cleared().map_err(|e| ToolError::Message(e.to_string()))?;
     Ok(event)
+}
+
+/// The IANA time zone a client gave, by Google's name for it; None if
+/// none was given; refused if it isn't one.
+pub fn given_zone(zone: Option<&str>) -> Result<Option<String>, ToolError> {
+    let Some(zone) = zone.map(str::trim).filter(|z| !z.is_empty()) else { return Ok(None) };
+    match zone.parse::<Tz>() {
+        Ok(tz) => Ok(Some(tz.name().to_string())),
+        Err(_) => Err(ToolError::Message(format!("{} isn't a time zone; use an IANA name like 'America/New_York'", py::repr(zone)))),
+    }
 }
 
 /// `_check_action_ids`: an event's (or series') action_ids must be
@@ -449,13 +470,16 @@ pub fn check_facts(app: &App, facts: Option<&Facts>) -> Result<(), ToolError> {
 }
 
 /// `event`, made the first of a series that repeats as `repeat` says, if
-/// it's given: its rules, and the calendar's time zone, which Google
-/// needs on a series' start and end.
+/// it's given: its rules, and its time zone -- its own, or else the
+/// calendar's -- which Google needs on a series' start and end.
 fn with_repeat(app: &App, mut event: Event, repeat: Option<&Repeat>) -> Result<Event, ToolError> {
     let Some(repeat) = repeat else { return Ok(event) };
     let repeat = stored_repeat(repeat)?;
     repeat.check().map_err(|e| ToolError::Message(e.to_string()))?;
-    let zone = app.calendar_client()?.get_time_zone()?;
+    let zone = match event.time_zone.as_deref().and_then(|z| z.parse::<Tz>().ok()) {
+        Some(zone) => zone,
+        None => app.calendar_client()?.get_time_zone()?,
+    };
     event.recurrence = Some(repeat.to_rules(&zone).map_err(|e| ToolError::Message(e.to_string()))?);
     event.time_zone = Some(zone.name().to_string());
     Ok(event)
