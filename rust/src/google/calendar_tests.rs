@@ -963,3 +963,79 @@ fn listing_by_a_private_property_before_whats_kept_asks_calendar_with_it() {
     let asked = f.requests("GET", "/events").into_iter().find(|r| query(r, "singleEvents") == Some("true")).unwrap();
     assert_eq!(query(&asked, "privateExtendedProperty"), Some("cascading-time-tracker-person-sam=1"));
 }
+
+// -- the server's own writes, brought late --------------------------------------------------------
+
+/// Have what's kept of the calendar act as though its marks were made
+/// long ago: they've lapsed.
+fn lapse_marks(f: &Fixture) {
+    synced::with(&f.client.root(), &f.calendar_id, |store| store.lapse(std::time::Instant::now() + synced::MARK_HOLDS_AT_MOST));
+}
+
+#[test]
+fn a_batchs_write_the_feed_brings_after_its_mark_lapsed_isnt_warned_of() {
+    // The background sync ran mid-batch, before the feed had the last
+    // write, and the next ran only once that write's mark had lapsed.
+    let f = fixture();
+    f.day();
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    f.fake.with(|s| s.hold_feed(&f.calendar_id, true));
+    {
+        let _held = WRITE_LOCK.hold();
+        let writes: Vec<BatchRequest> = ["ev1", "ev2", "ev3"]
+            .iter()
+            .map(|id| {
+                let mut moved = f.client.get_event(id).unwrap();
+                moved.summary = Some("Moved".into());
+                f.client.update_event_request(&moved).unwrap()
+            })
+            .collect();
+        assert!(f.client.send_writes(&writes).unwrap().iter().all(Result::is_ok));
+    }
+    f.client.sync().unwrap();
+    lapse_marks(&f);
+
+    f.fake.with(|s| s.hold_feed(&f.calendar_id, false));
+    f.client.sync().unwrap();
+
+    assert!(f.client.take_outside().is_empty());
+    // A change by hand after it still is.
+    f.fake.with(|s| s.edit_event_by_hand(&f.calendar_id, "ev3", json!({"summary": "Moved by hand"})));
+    f.client.sync().unwrap();
+    assert_eq!(f.client.take_outside().iter().map(|e| e["id"].as_str().unwrap()).collect::<Vec<_>>(), vec!["ev3"]);
+}
+
+#[test]
+fn a_delete_the_feed_brings_after_its_mark_lapsed_isnt_warned_of() {
+    let f = fixture();
+    f.day();
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    f.fake.with(|s| s.hold_feed(&f.calendar_id, true));
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.delete_event("ev1").unwrap();
+    }
+    lapse_marks(&f);
+
+    f.fake.with(|s| s.hold_feed(&f.calendar_id, false));
+    f.client.sync().unwrap();
+
+    assert!(f.client.take_outside().is_empty());
+}
+
+#[test]
+fn a_write_leaves_the_calendar_stale_until_a_sync_after_it() {
+    let f = fixture();
+    f.day();
+    f.client.list_events(&hour(0, 0), &hour(23, 0)).unwrap();
+    assert!(!f.client.is_stale());
+    {
+        let _held = WRITE_LOCK.hold();
+        f.client.delete_event("ev1").unwrap();
+    }
+    assert!(f.client.is_stale());
+
+    f.client.sync().unwrap();
+
+    assert!(!f.client.is_stale());
+}

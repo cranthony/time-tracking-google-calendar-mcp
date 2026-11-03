@@ -35,7 +35,11 @@ impl Writing {
     /// doesn't yet.
     fn answered(&mut self, event: &Value) {
         self.etag = event["etag"].as_str().map(str::to_string);
-        self.client.store(|store| store.keep(event.clone()));
+        let now = std::time::Instant::now();
+        self.client.store(|store| {
+            store.answered(event, now);
+            store.keep(event.clone());
+        });
     }
 }
 
@@ -252,7 +256,10 @@ impl CalendarClient {
     pub fn delete_event_resource(&self, event_id: &str) -> anyhow::Result<()> {
         let _writing = self.writing_event("CalendarClient.delete_event_resource", Some(event_id))?;
         match self.call("DELETE", &self.event_path(event_id), &[], None) {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                self.store(|store| store.deleted(event_id, std::time::Instant::now()));
+                Ok(())
+            }
             Err(error) if matches!(status_of(&error), Some(404) | Some(410)) => Ok(()),
             Err(error) => Err(error),
         }
@@ -344,6 +351,12 @@ impl CalendarClient {
         self.store(|store| store.stale = true);
     }
 
+    /// Whether the next read syncs first: a write began or ended since
+    /// the last sync began.
+    pub fn is_stale(&self) -> bool {
+        self.store(|store| store.stale)
+    }
+
     /// Sync, if nothing's kept yet or a write has made it stale.
     pub fn ensure_synced(&self) -> anyhow::Result<()> {
         if self.store(|store| store.token.is_none() || store.stale) {
@@ -359,7 +372,7 @@ impl CalendarClient {
     pub fn sync(&self) -> anyhow::Result<()> {
         let lock = synced::sync_lock(&self.root(), &self.calendar_id);
         let _syncing = lock.lock().unwrap_or_else(|e| e.into_inner());
-        let (token, generation) = self.store(|store| (store.token.clone(), store.generation));
+        let (token, generation, number) = self.store(|store| (store.token.clone(), store.generation, store.sync_begins()));
         let from = synced::kept_from_now();
         let (changes, full) = match token {
             Some(token) => match self.changes(Some(&token), from) {
@@ -379,18 +392,7 @@ impl CalendarClient {
                 store.listed(&changes.items);
             }
             for item in changes.items {
-                // Google Calendar re-stamps each cancelled recurring
-                // occurrence about 30 days after it was cancelled: a new
-                // `updated` and etag, still cancelled. That's no change
-                // to warn of -- but the new copy is still kept below.
-                // Cancelling a live one, or bringing one back, still is.
-                let restamped = item["status"] == "cancelled"
-                    && item["id"].as_str().and_then(|id| store.events.get(id)).is_some_and(|kept| kept["status"] == "cancelled");
-                if !full && !restamped && store.changed_since_listed(&item) && !store.is_ours(&item, now) {
-                    store.outside.push(item.clone());
-                }
-                store.brought(&item);
-                store.keep(item);
+                store.take_in(item, full, now);
             }
             store.token = Some(changes.token);
             if let Some(listed) = listed {
@@ -400,6 +402,7 @@ impl CalendarClient {
             if store.generation == generation {
                 store.stale = false;
             }
+            store.synced(number);
             store.lapse(now);
         });
         Ok(())
@@ -824,6 +827,7 @@ impl CalendarClient {
     pub fn delete_event(&self, event_id: &str) -> anyhow::Result<()> {
         let _writing = self.writing_event("CalendarClient.delete_event", Some(event_id))?;
         self.call("DELETE", &self.event_path(event_id), &[], None)?;
+        self.store(|store| store.deleted(event_id, std::time::Instant::now()));
         Ok(())
     }
 
