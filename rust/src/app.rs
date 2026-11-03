@@ -103,6 +103,10 @@ pub enum Refresh {
 
 pub const REFRESH_SECONDS: u64 = 300;
 
+/// How soon the calendar is synced again after a sync a write overlapped
+/// (see App::start_calendar_sync).
+pub const RESYNC_SECONDS: u64 = 15;
+
 impl Refresh {
     pub fn from_var(value: Option<&str>) -> Refresh {
         match value.map(str::trim) {
@@ -117,16 +121,20 @@ impl Refresh {
     }
 
     /// Run `work` from a thread of its own named `name`, every period this
-    /// says, while `app` lives -- each run in flight as a call is (see
+    /// says -- or sooner, after a run that answers how long to wait --
+    /// while `app` lives, each run in flight as a call is (see
     /// allocator::CALLS), so what it frees is given back after.
-    fn start(self, app: &Arc<App>, name: &str, work: fn(&App)) {
+    fn start(self, app: &Arc<App>, name: &str, work: fn(&App) -> Option<std::time::Duration>) {
         let Refresh::Every(period) = self else { return };
         let app = Arc::downgrade(app);
-        let spawned = std::thread::Builder::new().name(name.into()).spawn(move || loop {
-            std::thread::sleep(period);
-            let Some(app) = app.upgrade() else { return };
-            let _in_flight = crate::allocator::CALLS.start();
-            work(&app);
+        let spawned = std::thread::Builder::new().name(name.into()).spawn(move || {
+            let mut wait = period;
+            loop {
+                std::thread::sleep(wait);
+                let Some(app) = app.upgrade() else { return };
+                let _in_flight = crate::allocator::CALLS.start();
+                wait = work(&app).map_or(period, |sooner| sooner.min(period));
+            }
         });
         if let Err(error) = spawned {
             tracing::error!("couldn't start {name}: {error}");
@@ -471,15 +479,24 @@ impl App {
     /// and warn of what changed elsewhere. Its failures are logged, not
     /// returned: a read syncs again when it needs to, and fails then.
     pub fn sync_calendar(&self) {
+        self.sync_calendar_again();
+    }
+
+    /// `sync_calendar`, answering whether a write began or ended while it
+    /// ran -- so what it read may not have that write yet, and syncing
+    /// again soon would bring it. Not when it failed.
+    fn sync_calendar_again(&self) -> bool {
         if self.google.get().is_none() {
-            return;
+            return false;
         }
-        let Ok(client) = self.calendar_client() else { return };
-        if let Err(error) = client.sync() {
+        let Ok(client) = self.calendar_client() else { return false };
+        let synced = client.sync();
+        if let Err(error) = &synced {
             tracing::warn!("couldn't sync the calendar: {error:#}");
         }
         self.warn_of_outside_changes();
         self.health.sample_memory();
+        synced.is_ok() && client.is_stale()
     }
 
     /// Warn of the events syncs brought that the server didn't write --
@@ -507,9 +524,13 @@ impl App {
 
     /// Sync the calendar every so often from a thread of its own (unless
     /// TIME_TRACKER_CALENDAR_SYNC says otherwise), as well as before every
-    /// tool that writes. It never holds the write lock.
+    /// tool that writes -- and again `RESYNC_SECONDS` after one a write
+    /// overlapped, so the write is brought back while it's still marked
+    /// the server's own (see google::synced). It never holds the write lock.
     pub fn start_calendar_sync(self: &Arc<Self>) {
-        self.calendar_sync().start(self, "calendar-sync", App::sync_calendar);
+        self.calendar_sync().start(self, "calendar-sync", |app| {
+            app.sync_calendar_again().then_some(std::time::Duration::from_secs(RESYNC_SECONDS))
+        });
     }
 
     /// Check each spreadsheet the server keeps against Sheets, putting back
@@ -539,7 +560,10 @@ impl App {
     /// tools: it reads without the write lock, and puts back what it finds
     /// only when no tool holds the lock.
     pub fn start_sheets_refresher(self: &Arc<Self>) {
-        self.sheets_refresh().start(self, "sheets-refresher", |app| app.refresh_sheets(false));
+        self.sheets_refresh().start(self, "sheets-refresher", |app| {
+            app.refresh_sheets(false);
+            None
+        });
     }
 
     pub fn health_writer(&self) -> Option<&Arc<HealthWriter>> {

@@ -86,6 +86,7 @@ fn each_background_refresh_is_in_flight_as_a_call_is() {
 
     Refresh::Every(std::time::Duration::from_millis(1)).start(&t.app, "test-refresh", |_| {
         IN_FLIGHT.store(crate::allocator::CALLS.in_flight(), std::sync::atomic::Ordering::SeqCst);
+        None
     });
 
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);

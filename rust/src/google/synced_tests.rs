@@ -4,6 +4,14 @@ use super::*;
 use serde_json::json;
 use std::time::{Duration, Instant};
 
+/// `MARK_SYNCS` syncs begun and taken in.
+fn syncs_pass(store: &mut Store) {
+    for _ in 0..MARK_SYNCS {
+        let sync = store.sync_begins();
+        store.synced(sync);
+    }
+}
+
 #[test]
 fn a_write_makes_it_stale_and_its_event_and_series_the_servers_own() {
     let mut store = Store::default();
@@ -69,6 +77,7 @@ fn a_mark_never_matched_lapses_after_its_write_ends() {
     assert!(store.is_ours(&json!({"id": "walk"}), almost));
     assert!(store.is_ours(&json!({"id": "run"}), almost));
 
+    syncs_pass(&mut store);
     store.lapse(now + MARK_LAPSES);
 
     assert!(store.written.is_empty() && store.written_all.is_none());
@@ -90,6 +99,7 @@ fn a_series_write_coming_back_keeps_the_instances_it_changed_the_servers_own() {
     let instance = json!({"id": "run_20261020T220000Z", "recurringEventId": "run", "status": "cancelled", "etag": "\"2\""});
     assert!(store.is_ours(&instance, now));
 
+    syncs_pass(&mut store);
     store.lapse(now + MARK_LAPSES);
 
     assert!(!store.is_ours(&instance, now + MARK_LAPSES));
@@ -106,6 +116,132 @@ fn a_write_under_way_keeps_its_event_marked_though_an_earlier_one_comes_back() {
     store.brought(&json!({"id": "walk", "etag": "\"2\""}));
 
     assert!(store.is_ours(&json!({"id": "walk", "etag": "\"3\""}), now));
+}
+
+#[test]
+fn a_mark_lasts_through_the_syncs_begun_after_its_write_ends() {
+    // A sync every MARK_LAPSES or so, begun just before the write ended,
+    // and the next only after the mark's time is up: the write must still
+    // be the server's own when the feed brings it then.
+    let mut store = Store::default();
+    let now = Instant::now();
+    let walk = json!({"id": "walk"});
+    store.writing(Some("walk"));
+    let under_way = store.sync_begins();
+    store.wrote(Some("walk"), None, now);
+    store.synced(under_way);
+
+    let later = now + MARK_LAPSES * 2;
+    store.lapse(later);
+    assert!(store.is_ours(&walk, later));
+    let first = store.sync_begins();
+    assert!(store.is_ours(&walk, later));
+    store.synced(first);
+    let second = store.sync_begins();
+    assert!(store.is_ours(&walk, later));
+    store.synced(second);
+
+    store.lapse(later);
+    assert!(!store.is_ours(&walk, later));
+}
+
+#[test]
+fn a_mark_lapses_at_most_so_long_after_its_write_ends_however_few_syncs() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.writing(Some("walk"));
+    store.wrote(Some("walk"), None, now);
+
+    let almost = now + MARK_HOLDS_AT_MOST - Duration::from_secs(1);
+    store.lapse(almost);
+    assert!(store.is_ours(&json!({"id": "walk"}), almost));
+    store.lapse(now + MARK_HOLDS_AT_MOST);
+
+    assert!(store.written.is_empty());
+}
+
+#[test]
+fn only_the_last_writes_etag_coming_back_ends_a_mark() {
+    // Written twice; the feed, lagging, brings the first version after both.
+    let mut store = Store::default();
+    let now = Instant::now();
+    for etag in ["\"1\"", "\"2\""] {
+        store.writing(Some("walk"));
+        store.wrote(Some("walk"), Some(etag), now);
+    }
+
+    store.brought(&json!({"id": "walk", "etag": "\"1\""}));
+    assert!(store.is_ours(&json!({"id": "walk", "etag": "\"2\""}), now));
+
+    store.brought(&json!({"id": "walk", "etag": "\"2\""}));
+    assert!(!store.is_ours(&json!({"id": "walk", "etag": "\"3\""}), now));
+}
+
+/// Whether taking in `item` keeps it to warn of.
+fn warned_of(store: &mut Store, item: Value, now: Instant) -> bool {
+    store.take_in(item, false, now);
+    !std::mem::take(&mut store.outside).is_empty()
+}
+
+#[test]
+fn what_a_write_was_answered_with_isnt_warned_of_however_late_it_comes() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    let answer = json!({"id": "walk", "etag": "\"2\"", "updated": "2026-11-03T10:00:00Z"});
+    store.writing(Some("walk"));
+    store.answered(&answer, now);
+    store.wrote(Some("walk"), Some("\"2\""), now);
+    // Its mark gone before the feed brings it.
+    let late = now + MARK_HOLDS_AT_MOST;
+    store.lapse(late);
+    assert!(!store.is_ours(&answer, late));
+
+    assert!(!warned_of(&mut store, answer.clone(), late));
+    // Back, it's done with: a change after it is warned of.
+    assert!(store.answers.is_empty());
+    assert!(warned_of(&mut store, json!({"id": "walk", "etag": "\"3\"", "updated": "2026-11-03T10:05:00Z"}), late));
+}
+
+#[test]
+fn an_answer_passed_by_a_newer_version_is_done_with() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.answered(&json!({"id": "walk", "etag": "\"2\"", "updated": "2026-11-03T10:00:00Z"}), now);
+
+    // An older version, lagging, isn't the answer, nor newer than it.
+    store.brought(&json!({"id": "walk", "etag": "\"1\"", "updated": "2026-11-03T09:00:00Z"}));
+    assert!(store.answers.contains_key("walk"));
+    store.brought(&json!({"id": "walk", "etag": "\"3\"", "updated": "2026-11-03T10:05:00Z"}));
+    assert!(store.answers.is_empty());
+}
+
+#[test]
+fn an_event_the_server_deleted_coming_back_cancelled_isnt_warned_of() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.deleted("walk", now);
+    store.deleted("run", now);
+    let late = now + MARK_HOLDS_AT_MOST;
+
+    assert!(!warned_of(&mut store, json!({"id": "walk", "status": "cancelled", "etag": "\"9\""}), late));
+    // Nor its series' instances, cancelled with it.
+    let instance = json!({"id": "run_20261103T100000Z", "recurringEventId": "run", "status": "cancelled", "etag": "\"9\""});
+    assert!(!warned_of(&mut store, instance, late));
+    // Brought back elsewhere, it is.
+    assert!(warned_of(&mut store, json!({"id": "run", "status": "confirmed", "etag": "\"10\""}), late));
+    assert!(store.answers.is_empty());
+}
+
+#[test]
+fn answers_lapse_a_day_after_the_write() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.deleted("walk", now);
+
+    store.lapse(now + ANSWER_LAPSES - Duration::from_secs(1));
+    assert!(store.answers.contains_key("walk"));
+    store.lapse(now + ANSWER_LAPSES);
+    assert!(store.answers.is_empty());
 }
 
 #[test]
@@ -153,6 +289,7 @@ fn a_full_listing_drops_what_it_doesnt_list_but_what_the_server_just_wrote() {
     store.keep_only(&["walk".to_string()].into(), now);
 
     assert_eq!(store.events.keys().collect::<Vec<_>>(), ["made", "walk"]);
+    syncs_pass(&mut store);
     store.keep_only(&["walk".to_string()].into(), now + MARK_LAPSES);
     assert_eq!(store.events.keys().collect::<Vec<_>>(), ["walk"]);
 }

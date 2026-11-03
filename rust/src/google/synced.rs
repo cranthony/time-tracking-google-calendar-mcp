@@ -13,13 +13,21 @@
 //! What a sync brings that the server didn't write itself -- edited
 //! elsewhere -- is kept for the app to warn of (`take_outside`). A write
 //! marks its event (and series) as the server's own until a sync brings
-//! back the etag Calendar answered it with: Calendar's feed can lag a
-//! write, so a sync just after it may not have it yet. A series' mark
-//! isn't ended so: an edit to a series (ending it, moving it) changes
-//! instances too -- cancelling or keeping its edited ones -- which come
-//! as items of their own, in that sync or a later one. It lapses, like a
-//! mark that's never matched -- a delete, an answer lost --
-//! `MARK_LAPSES` after its write ends, silently.
+//! back the etag Calendar answered its last write with: Calendar's feed
+//! can lag a write, so a sync just after it may not have it yet -- nor
+//! one that began while it was under way. A series' mark isn't ended so:
+//! an edit to a series (ending it, moving it) changes instances too --
+//! cancelling or keeping its edited ones -- which come as items of their
+//! own, in that sync or a later one. It lapses, like a mark that's never
+//! matched (an answer lost), silently, once `MARK_LAPSES` has passed
+//! since its write ended and `MARK_SYNCS` syncs begun after it have been
+//! taken in (or, whatever the syncs, after `MARK_HOLDS_AT_MOST`): a sync
+//! every `MARK_LAPSES` or so can't outrun it.
+//!
+//! Nor is a version the server was answered with (`Answer`) taken for
+//! one made elsewhere when a sync brings it, however late -- nor, for an
+//! event the server deleted, its coming back cancelled -- so long as no
+//! newer version has come first. These last `ANSWER_LAPSES`.
 //!
 //! Nor is what a full listing already had: the sync token it ends with
 //! can be from before some of what it listed, so the syncs after it
@@ -43,9 +51,21 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
-/// How long a write's mark lasts after the write ends, if no sync brings
-/// back its etag first.
+/// How long a write's mark lasts at least after the write ends, if no
+/// sync brings back its etag first.
 pub const MARK_LAPSES: Duration = Duration::from_secs(5 * 60);
+
+/// How many syncs begun after a write ends a mark lasts through at least,
+/// if none brings back its etag: one begun just after may still miss it.
+pub const MARK_SYNCS: u32 = 2;
+
+/// How long a mark lasts at most after its write ends, however few syncs
+/// there have been since (none, with TIME_TRACKER_CALENDAR_SYNC=off).
+pub const MARK_HOLDS_AT_MOST: Duration = Duration::from_secs(60 * 60);
+
+/// How long the version a write was answered with (or a delete) is
+/// remembered, if no sync brings it.
+pub const ANSWER_LAPSES: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// How many days back events are kept: about the 13 months the app reads.
 pub const KEPT_DAYS: i64 = 400;
@@ -86,22 +106,63 @@ pub fn too_old(event: &Value, from: DateTime<Utc>, zone: Tz) -> bool {
 }
 
 /// A mark on an event (or, for `Store::written_all`, every event): its
-/// changes are the server's own while a write to it is under way, or
-/// until `until`.
+/// changes are the server's own while a write to it is under way, and
+/// for a while after the last one ends (see `holds`).
 #[derive(Default)]
 pub struct Mark {
     /// Writes under way.
     writing: usize,
-    /// When it lapses, once no write is under way.
-    until: Option<Instant>,
-    /// The etags Calendar answered writes to this very event with: a sync
-    /// bringing one back ends the mark.
-    etags: HashSet<String>,
+    /// When the last write ended; `None` while the first is under way.
+    ended: Option<Instant>,
+    /// How many syncs had begun (`Store::syncs`) as the last write ended.
+    ended_at: u64,
+    /// How many syncs begun since then have been taken in.
+    syncs_after: u32,
+    /// The etag Calendar answered the last write to this very event with
+    /// (`None` for no answer): a sync bringing it back ends the mark --
+    /// not an earlier write's, which a lagging feed may bring after it.
+    etag: Option<String>,
 }
 
 impl Mark {
     fn holds(&self, now: Instant) -> bool {
-        self.writing > 0 || self.until.is_some_and(|until| now < until)
+        self.writing > 0
+            || self.ended.is_some_and(|ended| {
+                let since = now.saturating_duration_since(ended);
+                since < MARK_LAPSES || (self.syncs_after < MARK_SYNCS && since < MARK_HOLDS_AT_MOST)
+            })
+    }
+}
+
+/// What the server last wrote to an event, as Calendar answered: the
+/// version it made, or (`None`) that it deleted it.
+pub struct Answer {
+    version: Option<Version>,
+    at: Instant,
+}
+
+/// An event's version: its etag, and when it was made (`updated`).
+struct Version {
+    etag: String,
+    updated: Option<DateTime<Utc>>,
+}
+
+impl Answer {
+    /// Whether `item` is this answer coming back: the version made, or for
+    /// a delete, the event cancelled.
+    fn is(&self, item: &Value) -> bool {
+        match &self.version {
+            Some(version) => item["etag"].as_str() == Some(version.etag.as_str()),
+            None => item["status"] == "cancelled",
+        }
+    }
+
+    /// Whether `item` is newer than this answer: the answer won't come.
+    fn passed_by(&self, item: &Value) -> bool {
+        match &self.version {
+            Some(version) => matches!((updated(item), version.updated), (Some(at), Some(made)) if at > made),
+            None => item["status"] != "cancelled",
+        }
     }
 }
 
@@ -120,6 +181,11 @@ pub struct Store {
     pub written: HashMap<String, Mark>,
     /// Something was written that may change any event (a label).
     pub written_all: Option<Mark>,
+    /// What the server's writes were last answered with, by event id,
+    /// until a sync brings it (or something newer).
+    pub answers: HashMap<String, Answer>,
+    /// How many syncs have begun.
+    pub syncs: u64,
     /// Events a sync brought that the server didn't write, newest last.
     pub outside: Vec<Value>,
     /// When the newest change the last full listing had was made: a sync
@@ -151,10 +217,12 @@ impl Store {
     /// (`None` for no answer, or none with one).
     pub fn wrote(&mut self, id: Option<&str>, etag: Option<&str>, now: Instant) {
         self.generation += 1;
-        let until = Some(now + MARK_LAPSES);
+        let syncs = self.syncs;
         let end = |mark: &mut Mark| {
             mark.writing = mark.writing.saturating_sub(1);
-            mark.until = until;
+            mark.ended = Some(now);
+            mark.ended_at = syncs;
+            mark.syncs_after = 0;
         };
         match id {
             Some(id) => {
@@ -162,7 +230,7 @@ impl Store {
                     if let Some(mark) = self.written.get_mut(&key) {
                         end(mark);
                         if key == id {
-                            mark.etags.extend(etag.map(str::to_string));
+                            mark.etag = etag.map(str::to_string);
                         }
                     }
                 }
@@ -173,6 +241,67 @@ impl Store {
                 }
             }
         }
+    }
+
+    /// Note Calendar's answer to a write, `event` as it made it, `now`.
+    pub fn answered(&mut self, event: &Value, now: Instant) {
+        let (Some(id), Some(etag)) = (event["id"].as_str(), event["etag"].as_str()) else { return };
+        let version = Version { etag: etag.to_string(), updated: updated(event) };
+        self.answers.insert(id.to_string(), Answer { version: Some(version), at: now });
+    }
+
+    /// Note that the server deleted event `id`, `now`.
+    pub fn deleted(&mut self, id: &str, now: Instant) {
+        self.answers.insert(id.to_string(), Answer { version: None, at: now });
+    }
+
+    /// Whether `item`, brought by a sync, is what a write of the server's
+    /// was answered with: a version it made, or -- for one cancelled -- it
+    /// or its series deleted.
+    pub fn is_answer(&self, item: &Value) -> bool {
+        let id = item["id"].as_str().unwrap_or_default();
+        if self.answers.get(id).is_some_and(|answer| answer.is(item)) {
+            return true;
+        }
+        item["status"] == "cancelled"
+            && item["recurringEventId"].as_str().and_then(|series| self.answers.get(series)).is_some_and(|answer| answer.version.is_none())
+    }
+
+    /// Note a sync beginning; its number, for `synced`.
+    pub fn sync_begins(&mut self) -> u64 {
+        self.syncs += 1;
+        self.syncs
+    }
+
+    /// Note sync `sync` taken in: each mark whose last write had ended
+    /// before it began has lasted through one more.
+    pub fn synced(&mut self, sync: u64) {
+        let after = |mark: &mut Mark| {
+            if mark.writing == 0 && mark.ended.is_some() && sync > mark.ended_at {
+                mark.syncs_after += 1;
+            }
+        };
+        self.written.values_mut().for_each(after);
+        self.written_all.iter_mut().for_each(after);
+    }
+
+    /// Take in `item`, brought by a sync `now` (`full`, a full listing):
+    /// keep it, and keep it to warn of if it was changed elsewhere --
+    /// not by the server (`is_ours`, `is_answer`), not what the last full
+    /// listing already had, and not a cancelled one re-stamped.
+    pub fn take_in(&mut self, item: Value, full: bool, now: Instant) {
+        // Google Calendar re-stamps each cancelled recurring occurrence
+        // about 30 days after it was cancelled: a new `updated` and etag,
+        // still cancelled. That's no change to warn of -- but the new copy
+        // is still kept below. Cancelling a live one, or bringing one
+        // back, still is.
+        let restamped = item["status"] == "cancelled"
+            && item["id"].as_str().and_then(|id| self.events.get(id)).is_some_and(|kept| kept["status"] == "cancelled");
+        if !full && !restamped && self.changed_since_listed(&item) && !self.is_ours(&item, now) && !self.is_answer(&item) {
+            self.outside.push(item.clone());
+        }
+        self.brought(&item);
+        self.keep(item);
     }
 
     /// Whether `item`, brought by a sync `now`, is the server's own change.
@@ -204,16 +333,22 @@ impl Store {
         }
     }
 
-    /// Note `item`, brought by a sync: if it's the etag a write was answered
-    /// with, that write is back, and its event's mark ends (unless another
-    /// write to it is under way) -- not a series', which also covers the
-    /// instances the write changed, still to come or be looked at.
+    /// Note `item`, brought by a sync: if it's the etag the last write to
+    /// it was answered with, that write is back, and its event's mark ends
+    /// (unless another write to it is under way) -- not a series', which
+    /// also covers the instances the write changed, still to come or be
+    /// looked at. Its answer, if any, is done with once it's back or
+    /// something newer is.
     pub fn brought(&mut self, item: &Value) {
+        let Some(id) = item["id"].as_str() else { return };
+        if self.answers.get(id).is_some_and(|answer| answer.is(item) || answer.passed_by(item)) {
+            self.answers.remove(id);
+        }
         if is_master(item) {
             return;
         }
-        let (Some(id), Some(etag)) = (item["id"].as_str(), item["etag"].as_str()) else { return };
-        if self.written.get(id).is_some_and(|mark| mark.writing == 0 && mark.etags.contains(etag)) {
+        let Some(etag) = item["etag"].as_str() else { return };
+        if self.written.get(id).is_some_and(|mark| mark.writing == 0 && mark.etag.as_deref() == Some(etag)) {
             self.written.remove(id);
         }
     }
@@ -256,12 +391,13 @@ impl Store {
         self.events.retain(|_, event| !too_old(event, from, zone));
     }
 
-    /// Drop the marks that have lapsed by `now`.
+    /// Drop the marks, and the answers, that have lapsed by `now`.
     pub fn lapse(&mut self, now: Instant) {
         self.written.retain(|_, mark| mark.holds(now));
         if self.written_all.as_ref().is_some_and(|mark| !mark.holds(now)) {
             self.written_all = None;
         }
+        self.answers.retain(|_, answer| now.saturating_duration_since(answer.at) < ANSWER_LAPSES);
     }
 }
 
