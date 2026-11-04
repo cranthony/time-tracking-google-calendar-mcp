@@ -34,17 +34,6 @@ fn day_at(hour: u32) -> Moment {
 // -- PublicEvent ------------------------------------------------------------------------
 
 #[test]
-fn actions_inferred_from_a_label_are_marked_and_not_written_back() {
-    let public = public_event(&Event { id: Some("e1".into()), action_ids: Some(crate::testing::shares(&["g1"])), actions_from_label: true, ..Default::default() }, None);
-
-    assert_eq!(public["actions_from_label"], true);
-    assert_eq!(to_event(&public, &[]).ok().unwrap().action_ids, None);
-    let mut confirmed = public.clone();
-    confirmed["actions_from_label"] = json!(false); // Confirmed: stored.
-    assert_eq!(to_event(&confirmed, &[]).ok().unwrap().action_ids, Some(crate::testing::shares(&["g1"])));
-}
-
-#[test]
 fn a_public_event_shows_just_its_public_fields() {
     let public = public_event(&focus("e1", day_at(9), day_at(10)), None);
 
@@ -52,7 +41,7 @@ fn a_public_event_shows_just_its_public_fields() {
     assert_eq!(
         fields,
         vec![
-            "id", "summary", "start", "end", "time_zone", "description", "description_format", "location", "priority", "action_ids", "action_names", "actions_from_label",
+            "id", "summary", "start", "end", "time_zone", "description", "description_format", "location", "priority", "action_ids", "action_names",
             "goals", "event_label_id", "is_cancelled", "effective_priority", "recurring_event_id", "facts", "judgments", "etag",
         ]
     );
@@ -149,19 +138,15 @@ fn listing_omits_cancelled_events() {
 }
 
 #[test]
-fn fills_in_actions_and_effective_priority_from_the_event_label() {
-    // An event never given actions has only a label: it's read as doing the
-    // action that holds it.
+fn an_event_never_given_actions_does_none_whatever_its_label() {
+    // Even the label of an action: it isn't read as doing that action.
     let server = Server::new();
     with_actions(&server, &[json!({"id": "g1", "name": "Focus", "status": "active", "label_id": "label-1", "priority": 0})]);
     server.seed(&[Event { event_label_id: Some("label-1".into()), ..focus("abc123", day_at(9), day_at(10)) }]);
 
     let event = &listed(&server)[0];
 
-    assert_eq!((event["action_ids"].clone(), event["action_names"].clone(), event["effective_priority"].clone()), (json!(["g1"]), json!(["Focus"]), json!(0)));
-    // The event's own priority stays unset, so sending it back to
-    // update_event doesn't copy the action's onto it.
-    assert!(event["priority"].is_null());
+    assert_eq!((event["action_ids"].clone(), event["action_names"].clone(), event["effective_priority"].clone()), (Value::Null, Value::Null, Value::Null));
 }
 
 #[test]

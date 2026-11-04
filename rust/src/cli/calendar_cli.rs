@@ -286,7 +286,6 @@ fn event_details(event: &Event) -> String {
     put("judgments", event.judgments.as_ref().map(|j| python_repr(&Value::Object(j.clone()))));
     put("action_priority", event.action_priority.map(|p| p.to_string()));
     put("goal_priority", event.goal_priority.map(|p| p.to_string()));
-    put("actions_from_label", Some(if event.actions_from_label { "True" } else { "False" }.to_string()));
     let cleared: Vec<&String> = event.cleared.iter().collect();
     put("cleared", Some(if cleared.is_empty() { "frozenset()".into() } else { format!("frozenset({{{}}})", cleared.iter().map(|c| py::repr(c)).collect::<Vec<_>>().join(", ")) }));
     lines.join("\n")
@@ -736,7 +735,7 @@ mod tests {
         };
         assert_eq!(
             event_details(&event),
-            "id: abc123\nsummary: Focus block\nstart: 2026-01-01 09:00:00+00:00\npriority: 2\naction_ids: ['x']\nactions_from_label: False\ncleared: frozenset()"
+            "id: abc123\nsummary: Focus block\nstart: 2026-01-01 09:00:00+00:00\npriority: 2\naction_ids: ['x']\ncleared: frozenset()"
         );
     }
 }

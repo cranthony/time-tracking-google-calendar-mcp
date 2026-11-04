@@ -67,7 +67,6 @@
       "action_names": [
        "play guitar"
       ],
-      "actions_from_label": false,
       "description": "scales",
       "description_format": null,
       "effective_priority": 2,
@@ -89,7 +88,6 @@
      {
       "action_ids": null,
       "action_names": null,
-      "actions_from_label": false,
       "description": null,
       "description_format": null,
       "effective_priority": 3,
@@ -112,7 +110,7 @@
     "timeline": "09:00 ┌ Practice · new\n10:00 └ Practice ends\n12:00 ┌ Lunch · new\n13:00 └ Lunch ends\n\n→ note above set this edge\n↳ note added to that event\n○ note not added   ✓ compacted\n◆ action   ◇ action being added\n+/− late/early   ⇢/⇠ moved"
    },
    "is_error": false,
-   "text": "{\n  \"events\": [\n    {\n      \"id\": \"4ee9165b071c5f8b8037b142c7\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"time_zone\": null,\n      \"description\": \"scales\",\n      \"description_format\": null,\n      \"location\": \"home\",\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 2,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000034\\\"\"\n    },\n    {\n      \"id\": \"171374715eaf2cdda3f3415336\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-07T12:00:00-04:00\",\n      \"end\": \"2026-10-07T13:00:00-04:00\",\n      \"time_zone\": null,\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": 3,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"actions_from_label\": false,\n      \"goals\": null,\n      \"event_label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 3,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n12:00 ┌ Lunch · new\\n13:00 └ Lunch ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
+   "text": "{\n  \"events\": [\n    {\n      \"id\": \"4ee9165b071c5f8b8037b142c7\",\n      \"summary\": \"Practice\",\n      \"start\": \"2026-10-07T09:00:00-04:00\",\n      \"end\": \"2026-10-07T10:00:00-04:00\",\n      \"time_zone\": null,\n      \"description\": \"scales\",\n      \"description_format\": null,\n      \"location\": \"home\",\n      \"priority\": null,\n      \"action_ids\": [\n        \"co2yzn\"\n      ],\n      \"action_names\": [\n        \"play guitar\"\n      ],\n      \"goals\": null,\n      \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 2,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000034\\\"\"\n    },\n    {\n      \"id\": \"171374715eaf2cdda3f3415336\",\n      \"summary\": \"Lunch\",\n      \"start\": \"2026-10-07T12:00:00-04:00\",\n      \"end\": \"2026-10-07T13:00:00-04:00\",\n      \"time_zone\": null,\n      \"description\": null,\n      \"description_format\": null,\n      \"location\": null,\n      \"priority\": 3,\n      \"action_ids\": null,\n      \"action_names\": null,\n      \"goals\": null,\n      \"event_label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\",\n      \"is_cancelled\": false,\n      \"effective_priority\": 3,\n      \"recurring_event_id\": null,\n      \"facts\": null,\n      \"judgments\": null,\n      \"etag\": \"\\\"0000000000000036\\\"\"\n    }\n  ],\n  \"timeline\": \"09:00 ┌ Practice · new\\n10:00 └ Practice ends\\n12:00 ┌ Lunch · new\\n13:00 └ Lunch ends\\n\\n→ note above set this edge\\n↳ note added to that event\\n○ note not added   ✓ compacted\\n◆ action   ◇ action being added\\n+/− late/early   ⇢/⇠ moved\",\n  \"dry_run\": false\n}",
    "tool": "create_event"
   },
   {
@@ -128,7 +126,6 @@
      "action_names": [
       "play guitar"
      ],
-     "actions_from_label": false,
      "description": "scales",
      "description_format": null,
      "effective_priority": 2,
@@ -150,7 +147,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": 3,
@@ -171,7 +167,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"4ee9165b071c5f8b8037b142c7\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": \"scales\",\n  \"description_format\": null,\n  \"location\": \"home\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 2,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000034\\\"\"\n}\n{\n  \"id\": \"171374715eaf2cdda3f3415336\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-07T12:00:00-04:00\",\n  \"end\": \"2026-10-07T13:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": 3,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 3,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
+   "text": "{\n  \"id\": \"4ee9165b071c5f8b8037b142c7\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": \"scales\",\n  \"description_format\": null,\n  \"location\": \"home\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"goals\": null,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 2,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000034\\\"\"\n}\n{\n  \"id\": \"171374715eaf2cdda3f3415336\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-07T12:00:00-04:00\",\n  \"end\": \"2026-10-07T13:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": 3,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 3,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -185,7 +181,6 @@
     "action_names": [
      "play guitar"
     ],
-    "actions_from_label": false,
     "description": "scales",
     "description_format": null,
     "effective_priority": 2,
@@ -205,7 +200,7 @@
     "time_zone": null
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"4ee9165b071c5f8b8037b142c7\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": \"scales\",\n  \"description_format\": null,\n  \"location\": \"home\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 2,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000034\\\"\"\n}",
+   "text": "{\n  \"id\": \"4ee9165b071c5f8b8037b142c7\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": \"scales\",\n  \"description_format\": null,\n  \"location\": \"home\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"goals\": null,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 2,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000034\\\"\"\n}",
    "tool": "get_event"
   },
   {
@@ -231,7 +226,6 @@
      "action_names": [
       "play guitar"
      ],
-     "actions_from_label": false,
      "description": "scales",
      "description_format": null,
      "effective_priority": 2,
@@ -253,7 +247,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": 3,
@@ -274,7 +267,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"4ee9165b071c5f8b8037b142c7\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": \"scales\",\n  \"description_format\": null,\n  \"location\": \"home\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 2,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000034\\\"\"\n}\n{\n  \"id\": \"171374715eaf2cdda3f3415336\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-07T12:00:00-04:00\",\n  \"end\": \"2026-10-07T13:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": 3,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 3,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
+   "text": "{\n  \"id\": \"4ee9165b071c5f8b8037b142c7\",\n  \"summary\": \"Practice\",\n  \"start\": \"2026-10-07T09:00:00-04:00\",\n  \"end\": \"2026-10-07T10:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": \"scales\",\n  \"description_format\": null,\n  \"location\": \"home\",\n  \"priority\": null,\n  \"action_ids\": [\n    \"co2yzn\"\n  ],\n  \"action_names\": [\n    \"play guitar\"\n  ],\n  \"goals\": null,\n  \"event_label_id\": \"bb82ecea-50c0-514b-956e-fe110410c9e6\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 2,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000034\\\"\"\n}\n{\n  \"id\": \"171374715eaf2cdda3f3415336\",\n  \"summary\": \"Lunch\",\n  \"start\": \"2026-10-07T12:00:00-04:00\",\n  \"end\": \"2026-10-07T13:00:00-04:00\",\n  \"time_zone\": null,\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": 3,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": \"927e6090-d147-5e11-b220-0aa54ff3be5f\",\n  \"is_cancelled\": false,\n  \"effective_priority\": 3,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000036\\\"\"\n}",
    "tool": "list_events"
   }
  ],

@@ -101,7 +101,6 @@ pub struct Event {
     /// The highest priority (the lowest number) among the goals it's
     /// tagged with (see `goals::fill_in_from_goals`).
     pub goal_priority: Option<i64>,
-    pub actions_from_label: bool,
     pub cleared: BTreeSet<String>,
     /// As read: the etag Calendar gave it. Given to a patch: the etag it
     /// must still have, or the patch is refused (a 412).
@@ -296,9 +295,6 @@ impl Event {
             for (key, value) in write_chunks("judgments", text.as_deref())? {
                 set(&mut private, key, value);
             }
-        }
-        if self.actions_from_label {
-            private.retain(|(k, _)| *k != format!("{PREFIX}action_ids"));
         }
         // Python iterates a frozenset here; the order doesn't reach Google
         // (a body is compared as JSON).
