@@ -27,7 +27,10 @@
 //! Nor is a version the server was answered with (`Answer`) taken for
 //! one made elsewhere when a sync brings it, however late -- nor, for an
 //! event the server deleted, its coming back cancelled -- so long as no
-//! newer version has come first. These last `ANSWER_LAPSES`.
+//! newer version has come first. Nor, for a series the server's write
+//! ended (`Store::ended`, as a split does), its instances after that end
+//! coming back cancelled: Calendar cancels those it had kept, in its own
+//! time. These last `ANSWER_LAPSES`.
 //!
 //! Nor is what a full listing already had: the sync token it ends with
 //! can be from before some of what it listed, so the syncs after it
@@ -184,6 +187,9 @@ pub struct Store {
     /// What the server's writes were last answered with, by event id,
     /// until a sync brings it (or something newer).
     pub answers: HashMap<String, Answer>,
+    /// The series the server's writes ended, by id: their rules' UNTIL,
+    /// and when the write was answered.
+    pub ended: HashMap<String, (DateTime<Utc>, Instant)>,
     /// How many syncs have begun.
     pub syncs: u64,
     /// Events a sync brought that the server didn't write, newest last.
@@ -248,6 +254,9 @@ impl Store {
         let (Some(id), Some(etag)) = (event["id"].as_str(), event["etag"].as_str()) else { return };
         let version = Version { etag: etag.to_string(), updated: updated(event) };
         self.answers.insert(id.to_string(), Answer { version: Some(version), at: now });
+        if let Some(until) = until(event, self.zone.unwrap_or(chrono_tz::UTC)) {
+            self.ended.insert(id.to_string(), (until, now));
+        }
     }
 
     /// Note that the server deleted event `id`, `now`.
@@ -257,14 +266,22 @@ impl Store {
 
     /// Whether `item`, brought by a sync, is what a write of the server's
     /// was answered with: a version it made, or -- for one cancelled -- it
-    /// or its series deleted.
+    /// or its series deleted, or its series ended before it.
     pub fn is_answer(&self, item: &Value) -> bool {
         let id = item["id"].as_str().unwrap_or_default();
         if self.answers.get(id).is_some_and(|answer| answer.is(item)) {
             return true;
         }
-        item["status"] == "cancelled"
-            && item["recurringEventId"].as_str().and_then(|series| self.answers.get(series)).is_some_and(|answer| answer.version.is_none())
+        if item["status"] != "cancelled" {
+            return false;
+        }
+        let Some(series) = item["recurringEventId"].as_str() else { return false };
+        if self.answers.get(series).is_some_and(|answer| answer.version.is_none()) {
+            return true;
+        }
+        let zone = self.zone.unwrap_or(chrono_tz::UTC);
+        let start = parse_moment(&item["originalStartTime"], zone).map(|when| when.key(zone));
+        matches!((self.ended.get(series), start), (Some((until, _)), Some(start)) if start > *until)
     }
 
     /// Note a sync beginning; its number, for `synced`.
@@ -391,14 +408,27 @@ impl Store {
         self.events.retain(|_, event| !too_old(event, from, zone));
     }
 
-    /// Drop the marks, and the answers, that have lapsed by `now`.
+    /// Drop the marks, the answers and the ends that have lapsed by `now`.
     pub fn lapse(&mut self, now: Instant) {
         self.written.retain(|_, mark| mark.holds(now));
         if self.written_all.as_ref().is_some_and(|mark| !mark.holds(now)) {
             self.written_all = None;
         }
         self.answers.retain(|_, answer| now.saturating_duration_since(answer.at) < ANSWER_LAPSES);
+        self.ended.retain(|_, (_, at)| now.saturating_duration_since(*at) < ANSWER_LAPSES);
     }
+}
+
+/// When series master `event`'s rules end, by their UNTIL (a date: the
+/// end of that day in `zone`); None for one without, or not a series.
+fn until(event: &Value, zone: Tz) -> Option<DateTime<Utc>> {
+    let rule = event["recurrence"].as_array()?.iter().filter_map(Value::as_str).find(|r| r.starts_with("RRULE:"))?;
+    let value = rule["RRULE:".len()..].split(';').find_map(|part| part.strip_prefix("UNTIL="))?;
+    if let Ok(at) = chrono::NaiveDateTime::parse_from_str(value, "%Y%m%dT%H%M%SZ") {
+        return Some(at.and_utc());
+    }
+    let day = chrono::NaiveDate::parse_from_str(value, "%Y%m%d").ok()?;
+    Some(super::expand::When::Day(day.succ_opt()?).key(zone) - chrono::Duration::seconds(1))
 }
 
 /// Whether `a` was changed after `b`, by their `updated`; not if either
