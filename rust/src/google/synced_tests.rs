@@ -233,6 +233,49 @@ fn an_event_the_server_deleted_coming_back_cancelled_isnt_warned_of() {
 }
 
 #[test]
+fn a_series_the_server_ended_cancelling_its_later_instances_isnt_warned_of() {
+    // A split: the series' rules now end before 13 January.
+    let mut store = Store::default();
+    let now = Instant::now();
+    let master = json!({"id": "run", "etag": "\"2\"", "recurrence": ["RRULE:FREQ=DAILY;UNTIL=20270113T131459Z"]});
+    store.answered(&master, now);
+    let late = now + MARK_HOLDS_AT_MOST;
+    store.lapse(late);
+    let instance = |day: &str, status: &str| {
+        json!({"id": format!("run_202701{day}T131500Z"), "recurringEventId": "run", "status": status, "etag": "\"9\"",
+               "originalStartTime": {"dateTime": format!("2027-01-{day}T13:15:00Z")}})
+    };
+
+    // Its edited instances after the end, cancelled by Calendar later on.
+    assert!(!warned_of(&mut store, instance("13", "cancelled"), late));
+    assert!(!warned_of(&mut store, instance("20", "cancelled"), late));
+    // One before the end, cancelled, was cancelled elsewhere.
+    assert!(warned_of(&mut store, instance("12", "cancelled"), late));
+    // As is one after it changed some other way.
+    assert!(warned_of(&mut store, instance("14", "confirmed"), late));
+    // A day after the write, the end is forgotten.
+    store.lapse(now + ANSWER_LAPSES);
+    assert!(store.ended.is_empty());
+    assert!(warned_of(&mut store, instance("21", "cancelled"), now + ANSWER_LAPSES));
+}
+
+#[test]
+fn a_series_ended_on_a_date_ends_with_that_day() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.answered(&json!({"id": "run", "etag": "\"2\"", "recurrence": ["RRULE:FREQ=DAILY;UNTIL=20270113"]}), now);
+    let instance = |day: &str| {
+        json!({"id": format!("run_202701{day}"), "recurringEventId": "run", "status": "cancelled", "etag": "\"9\"",
+               "originalStartTime": {"date": format!("2027-01-{day}")}})
+    };
+    let late = now + MARK_HOLDS_AT_MOST;
+    store.lapse(late);
+
+    assert!(warned_of(&mut store, instance("13"), late));
+    assert!(!warned_of(&mut store, instance("14"), late));
+}
+
+#[test]
 fn answers_lapse_a_day_after_the_write() {
     let mut store = Store::default();
     let now = Instant::now();
