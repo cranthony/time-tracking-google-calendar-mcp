@@ -694,7 +694,7 @@ fn share_problem(event: &Event, goals: bool, actions: bool, facts: bool, name: &
     let (Some(start), Some(end)) = (event.start, event.end) else { return None };
     let minutes = (end - start).num_minutes();
     let mut problems = if goals { share_problems(event.goals.as_deref().unwrap_or_default(), minutes) } else { Vec::new() };
-    if let Some(actions) = event.action_ids.as_deref().filter(|a| actions && !a.is_empty() && !event.actions_from_label) {
+    if let Some(actions) = event.action_ids.as_deref().filter(|a| actions && !a.is_empty()) {
         problems.extend(share_problems(actions, minutes));
     }
     if let Some(given) = event.facts.as_ref().filter(|_| facts) {
@@ -714,9 +714,6 @@ pub fn patched(before: &Event, patch: &Event) -> Event {
     }
     take!(summary, start, end, description, location, status, recurring_event_id, recurrence, time_zone, original_start,
           priority, event_label_id, action_ids, goals, facts, judgments, action_priority, goal_priority);
-    if patch.actions_from_label {
-        after.actions_from_label = true;
-    }
     for name in &patch.cleared {
         match name.as_str() {
             "description" => after.description = None,

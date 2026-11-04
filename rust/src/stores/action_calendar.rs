@@ -90,7 +90,7 @@ impl ActionCalendar {
 
     fn with_label(&self, event: &Event, inserting: bool) -> anyhow::Result<Event> {
         let tree = self.actions.tree()?;
-        let writes_actions = event.action_ids.is_some() && !event.actions_from_label;
+        let writes_actions = event.action_ids.is_some();
         let writes_priority = event.priority.is_some() || event.cleared.contains("priority");
         if !(inserting || writes_actions || writes_priority) {
             return Ok(event.clone());
@@ -105,7 +105,6 @@ impl ActionCalendar {
             Some(current) => Event {
                 action_ids: current.action_ids.clone(),
                 event_label_id: current.event_label_id.clone(),
-                actions_from_label: false,
                 ..event.clone()
             },
             None => event.clone(),
@@ -147,22 +146,14 @@ impl ActionCalendar {
     }
 }
 
-/// `events`, each with its action_ids (from its label, for one never
-/// given actions) and action_priority filled in.
+/// `events`, each with its action_priority filled in.
 pub fn fill_in_from_actions(events: &[Event], tree: &ActionTree) -> Vec<Event> {
     events.iter().map(|e| fill_in(e, tree)).collect()
 }
 
 fn fill_in(event: &Event, tree: &ActionTree) -> Event {
     let mut event = event.clone();
-    let action_ids = match &event.action_ids {
-        Some(ids) => ids.clone(),
-        None => {
-            let Some(owner) = tree.action_for_label(event.event_label_id.as_deref()) else { return event };
-            event.actions_from_label = true;
-            vec![ActionShare::whole(owner.id.clone().unwrap_or_else(|| "None".into()))]
-        }
-    };
+    let Some(action_ids) = event.action_ids.clone() else { return event };
     if action_ids.is_empty() {
         event.action_ids = Some(action_ids);
         return event;
@@ -177,9 +168,6 @@ fn fill_in(event: &Event, tree: &ActionTree) -> Event {
 /// action_ids.
 pub fn with_action_label(event: &Event, tree: &ActionTree, inserting: bool, held: Option<&[String]>) -> Event {
     let Some(ids) = &event.action_ids else { return event.clone() };
-    if event.actions_from_label {
-        return event.clone();
-    }
     let none = if inserting { None } else { Some(String::new()) };
     let primary = ids.first().and_then(|first| tree.by_id(&first.action_id));
     let label_id = primary.and_then(|p| set(p.label_id.as_deref()));

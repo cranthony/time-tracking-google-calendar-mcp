@@ -9,7 +9,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -31,7 +30,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -53,7 +51,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -75,7 +72,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -97,7 +93,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -119,7 +114,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -141,7 +135,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -163,7 +156,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -184,7 +176,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"gymbase0001_20261005T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261006T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261012T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261013T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261019T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-19T18:00:00-04:00\",\n  \"end\": \"2026-10-19T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261020T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-20T18:00:00-04:00\",\n  \"end\": \"2026-10-20T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261026T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-26T18:00:00-04:00\",\n  \"end\": \"2026-10-26T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261027T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-27T18:00:00-04:00\",\n  \"end\": \"2026-10-27T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}",
+   "text": "{\n  \"id\": \"gymbase0001_20261005T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261006T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261012T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261013T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261019T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-19T18:00:00-04:00\",\n  \"end\": \"2026-10-19T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261020T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-20T18:00:00-04:00\",\n  \"end\": \"2026-10-20T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261026T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-26T18:00:00-04:00\",\n  \"end\": \"2026-10-26T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261027T220000Z\",\n  \"summary\": \"Gym\",\n  \"start\": \"2026-10-27T18:00:00-04:00\",\n  \"end\": \"2026-10-27T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000004\\\"\"\n}",
    "tool": "list_events"
   },
   {
@@ -215,7 +207,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -249,7 +240,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"week\",\n    \"interval\": 1,\n    \"weekdays\": [\n      \"mon\",\n      \"tue\"\n    ],\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": null,\n    \"week_starts_on\": \"sun\",\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every week on Mon, Tue\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"week\",\n    \"interval\": 1,\n    \"weekdays\": [\n      \"mon\",\n      \"tue\"\n    ],\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": null,\n    \"week_starts_on\": \"sun\",\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every week on Mon, Tue\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "update_recurrence"
   },
   {
@@ -261,7 +252,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -295,7 +285,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"week\",\n    \"interval\": 1,\n    \"weekdays\": [\n      \"mon\",\n      \"tue\"\n    ],\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": \"2026-10-18T23:59:59-04:00\",\n    \"week_starts_on\": \"sun\",\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every week on Mon, Tue, until Oct 18, 2026\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
+   "text": "{\n  \"id\": \"gymbase0001_R20261005T220000\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"repeat\": {\n    \"every\": \"week\",\n    \"interval\": 1,\n    \"weekdays\": [\n      \"mon\",\n      \"tue\"\n    ],\n    \"nth_weekdays\": null,\n    \"month_days\": null,\n    \"months\": null,\n    \"count\": null,\n    \"until\": \"2026-10-18T23:59:59-04:00\",\n    \"week_starts_on\": \"sun\",\n    \"skipped\": null,\n    \"added\": null\n  },\n  \"schedule\": \"Every week on Mon, Tue, until Oct 18, 2026\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"effective_priority\": null,\n  \"facts\": null\n}",
    "tool": "delete_recurrence"
   },
   {
@@ -307,7 +297,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -329,7 +318,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -351,7 +339,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -373,7 +360,6 @@
     {
      "action_ids": null,
      "action_names": null,
-     "actions_from_label": false,
      "description": null,
      "description_format": null,
      "effective_priority": null,
@@ -394,7 +380,7 @@
     }
    ],
    "is_error": false,
-   "text": "{\n  \"id\": \"gymbase0001_20261005T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261006T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261012T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261013T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}",
+   "text": "{\n  \"id\": \"gymbase0001_20261005T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-05T18:00:00-04:00\",\n  \"end\": \"2026-10-05T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261006T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-06T18:00:00-04:00\",\n  \"end\": \"2026-10-06T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261012T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-12T18:00:00-04:00\",\n  \"end\": \"2026-10-12T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}\n{\n  \"id\": \"gymbase0001_20261013T220000Z\",\n  \"summary\": \"Gym session\",\n  \"start\": \"2026-10-13T18:00:00-04:00\",\n  \"end\": \"2026-10-13T19:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": null,\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": \"gymbase0001_R20261005T220000\",\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000027\\\"\"\n}",
    "tool": "list_events"
   }
  ],

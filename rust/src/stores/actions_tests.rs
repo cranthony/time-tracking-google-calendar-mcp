@@ -606,7 +606,7 @@ fn deleting_a_group_needs_its_id() {
 // -- the tree --------------------------------------------------------------------------------------
 
 #[test]
-fn the_tree_gives_priorities_names_and_labels() {
+fn the_tree_gives_priorities_and_names() {
     let f = fixture();
     let food = f.group(json!({"name": "Food", "priority": 1}));
     let cook = f.create(json!({"name": "Cook", "group_id": food, "status": "active"}));
@@ -615,8 +615,6 @@ fn the_tree_gives_priorities_names_and_labels() {
 
     assert_eq!((tree.priority(&cook), tree.priority("nope")), (Some(1), None));
     assert_eq!((tree.name(&cook), tree.name("nope")), ("Cook".to_string(), "(unknown action nope)".to_string()));
-    let label = f.label_of(&cook);
-    assert_eq!(tree.action_for_label(Some(&label)).and_then(|a| a.id.as_deref()), Some(cook.as_str()));
 }
 
 #[test]

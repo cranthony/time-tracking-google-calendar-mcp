@@ -79,12 +79,6 @@ pub struct Facts {
 /// event_label_id (derived from the first action) are read-only: an
 /// update ignores them.
 ///
-/// actions_from_label is true when an event was never given actions, so
-/// its action_ids are inferred from its label (the action that holds the
-/// label), not stored. Sending it back with actions_from_label still true
-/// leaves them inferred, whatever action_ids says; to store actions, send
-/// action_ids with actions_from_label false (or left out).
-///
 /// effective_priority is read-only: the priority that applies, i.e.
 /// priority falling back,
 /// when the event doesn't set one, to the highest (lowest-numbered)
@@ -176,9 +170,6 @@ pub struct PublicEvent {
     pub priority: Option<i64>,
     pub action_ids: Option<Vec<ActionShare>>,
     pub action_names: Option<Vec<String>>,
-    #[schema(default = "false")]
-    #[serde(default)]
-    pub actions_from_label: bool,
     pub goals: Option<Vec<GoalShare>>,
     pub event_label_id: Option<String>,
     #[schema(default = "false")]
@@ -306,7 +297,6 @@ pub fn public_event_among(event: &Event, tree: Option<&ActionTree>, goal_ids: Op
     out.insert("priority".into(), json!(event.priority));
     out.insert("action_ids".into(), json!(action_ids));
     out.insert("action_names".into(), json!(names));
-    out.insert("actions_from_label".into(), json!(event.actions_from_label));
     out.insert("goals".into(), json!(shown_shares(event, goal_ids)));
     out.insert("event_label_id".into(), json!(event.event_label_id));
     out.insert("is_cancelled".into(), json!(event.is_cancelled()));
@@ -377,7 +367,7 @@ pub fn to_event(event: &PublicEvent, clear_fields: &[EventField]) -> Result<Even
         description: event.description.clone(),
         description_format: event.description_format,
         location: event.location.clone(),
-        action_ids: if event.actions_from_label { None } else { event.action_ids.clone() },
+        action_ids: event.action_ids.clone(),
         goals: event.goals.clone(),
         priority: event.priority,
         status: if event.is_cancelled { Some("cancelled".into()) } else { None },
@@ -403,9 +393,9 @@ pub fn given_zone(zone: Option<&str>) -> Result<Option<String>, ToolError> {
 
 /// `_check_action_ids`: an event's (or series') action_ids must be
 /// actions, not newly deleted ones -- unless they're from its label.
-pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[ActionShare]>, from_label: bool, existing: bool) -> Result<(), ToolError> {
+pub fn check_action_ids(app: &App, id: Option<&str>, action_ids: Option<&[ActionShare]>, existing: bool) -> Result<(), ToolError> {
     let ids = share_ids(action_ids.unwrap_or_default());
-    if ids.is_empty() || from_label {
+    if ids.is_empty() {
         return Ok(());
     }
     let tree = app.actions()?.tree()?;
@@ -756,12 +746,12 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
             ));
         }
         let event = &update.event;
-        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, true)?;
+        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), true)?;
         check_goal_ids(app, event.goals.as_deref())?;
         check_facts(app, event.facts.as_ref())?;
     }
     for event in &creates {
-        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, false)?;
+        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), false)?;
         check_goal_ids(app, event.goals.as_deref())?;
         check_facts(app, event.facts.as_ref())?;
     }
@@ -822,7 +812,7 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
 pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
     prefetch_for_changes(app)?;
     for event in &events {
-        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), event.actions_from_label, false)?;
+        check_action_ids(app, event.id.as_deref(), event.action_ids.as_deref(), false)?;
         check_goal_ids(app, event.goals.as_deref())?;
         check_facts(app, event.facts.as_ref())?;
     }

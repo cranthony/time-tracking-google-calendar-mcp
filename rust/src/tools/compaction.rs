@@ -1099,8 +1099,6 @@ pub struct ProposalCreate {
     pub priority: Option<i64>,
     pub action_ids: Option<Vec<ActionShare>>,
     pub action_names: Option<Vec<String>>,
-    #[schema(default = "false")]
-    pub actions_from_label: bool,
     pub event_label_id: Option<String>,
     #[schema(default = "false")]
     pub is_cancelled: bool,
@@ -1387,7 +1385,7 @@ fn proposal_decision(
         end: when_given(event.end.as_ref())?,
         start_note,
         end_note,
-        action_ids: if event.actions_from_label { None } else { event.action_ids.clone() },
+        action_ids: event.action_ids.clone(),
         goals: if cleared("goals") { Some(Vec::new()) } else { event.goals.clone() },
         facts: if cleared("facts") { Some(Facts::default()) } else { event.facts.as_ref().map(Facts::from) },
         description: if cleared("description") { Some(String::new()) } else { event.description.clone() },
@@ -1409,7 +1407,6 @@ fn proposed_event(c: &ProposalCreate) -> PublicEvent {
         priority: c.priority,
         action_ids: c.action_ids.clone(),
         action_names: c.action_names.clone(),
-        actions_from_label: c.actions_from_label,
         event_label_id: c.event_label_id.clone(),
         is_cancelled: c.is_cancelled,
         effective_priority: c.effective_priority,

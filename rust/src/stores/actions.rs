@@ -268,11 +268,6 @@ impl ActionTree {
         }
     }
 
-    pub fn action_for_label(&self, label_id: Option<&str>) -> Option<&Action> {
-        let label_id = set(label_id)?;
-        self.actions.iter().rev().find(|a| set(a.label_id.as_deref()) == Some(label_id))
-    }
-
     /// Refuse ids that aren't actions (suggesting close ones), or that
     /// give an event a deleted action it doesn't already have.
     pub fn check_action_ids(&self, action_ids: &[String], already: &[String]) -> anyhow::Result<()> {

@@ -7439,7 +7439,6 @@
    "content": {
     "action_ids": null,
     "action_names": null,
-    "actions_from_label": false,
     "description": "Morning block.\n\nNotes:\n- 09:00 call with the team\n- 10:30 focus time",
     "description_format": null,
     "effective_priority": null,
@@ -7459,7 +7458,7 @@
     "time_zone": "America/New_York"
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n  \"summary\": \"Work\",\n  \"start\": \"2026-10-05T08:00:00-04:00\",\n  \"end\": \"2026-10-05T12:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": \"Morning block.\\n\\nNotes:\\n- 09:00 call with the team\\n- 10:30 focus time\",\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"actions_from_label\": false,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000083\\\"\"\n}",
+   "text": "{\n  \"id\": \"3bc8a594c0be6dfabc4993e74e\",\n  \"summary\": \"Work\",\n  \"start\": \"2026-10-05T08:00:00-04:00\",\n  \"end\": \"2026-10-05T12:00:00-04:00\",\n  \"time_zone\": \"America/New_York\",\n  \"description\": \"Morning block.\\n\\nNotes:\\n- 09:00 call with the team\\n- 10:30 focus time\",\n  \"description_format\": null,\n  \"location\": null,\n  \"priority\": null,\n  \"action_ids\": null,\n  \"action_names\": null,\n  \"goals\": null,\n  \"event_label_id\": null,\n  \"is_cancelled\": false,\n  \"effective_priority\": null,\n  \"recurring_event_id\": null,\n  \"facts\": null,\n  \"judgments\": null,\n  \"etag\": \"\\\"0000000000000083\\\"\"\n}",
    "tool": "get_event"
   }
  ],

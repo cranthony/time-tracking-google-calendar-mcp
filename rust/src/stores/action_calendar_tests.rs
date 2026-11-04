@@ -55,17 +55,12 @@ fn takes_the_highest_priority_among_the_actions_and_their_groups() {
 }
 
 #[test]
-fn an_event_without_actions_is_read_as_doing_its_labels() {
-    let filled = fill_in_from_actions(&[labelled("l-cook")], &tree()).remove(0);
-
-    assert_eq!((filled.action_ids, filled.actions_from_label), (Some(crate::testing::shares(&["cook"])), true));
-}
-
-#[test]
-fn leaves_alone_an_event_with_none_or_an_unknown_label() {
+fn leaves_alone_an_event_without_actions_whatever_its_label() {
+    // Even an action's own label: actions are only ever stored.
+    let cooking = labelled("l-cook");
     let bare = labelled("someone-elses");
 
-    assert_eq!(fill_in_from_actions(&[bare.clone()], &tree()), vec![bare]);
+    assert_eq!(fill_in_from_actions(&[cooking.clone(), bare.clone()], &tree()), vec![cooking, bare]);
     assert_eq!(fill_in_from_actions(&[doing(&[])], &tree())[0].action_ids, Some(vec![]));
 }
 
@@ -98,10 +93,8 @@ fn a_proposed_action_labels_it_only_if_the_calendar_holds_the_label() {
 }
 
 #[test]
-fn untouched_when_not_writing_actions_or_inferring_them() {
+fn untouched_when_not_writing_actions() {
     assert_eq!(with_action_label(&labelled("x"), &tree(), false, None).event_label_id.as_deref(), Some("x"));
-    let inferred = Event { actions_from_label: true, ..doing(&["cook"]) };
-    assert_eq!(with_action_label(&inferred, &tree(), false, None), inferred);
 }
 
 // -- the calendar -----------------------------------------------------------------------------------
@@ -252,10 +245,13 @@ fn a_new_priority_keeps_an_actions_label() {
 }
 
 #[test]
-fn one_inferred_from_its_label_keeps_it_too() {
+fn a_new_priority_relabels_one_never_given_actions_whatever_its_label() {
+    // Even an action's: it doesn't do that action.
     let f = fixture(&[], Some(labelled("l-cook")));
 
-    assert!(f.update(Event { id: Some("e1".into()), priority: Some(0), ..Default::default() }).get("eventLabelId").is_none());
+    let sent = f.update(Event { id: Some("e1".into()), priority: Some(0), ..Default::default() });
+
+    assert_eq!(sent["eventLabelId"], json!(priority_label_id(Some(0))));
 }
 
 #[test]

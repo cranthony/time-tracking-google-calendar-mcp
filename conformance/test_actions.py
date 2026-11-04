@@ -94,19 +94,16 @@ async def test_events_follow_their_actions(session):
     await session.call("update_event", updates=[{"event": {"id": event["id"], "summary": "Morning run", "action_ids": [run]}}])
 
 
-async def test_actions_from_label(session, google, calendar_id):
-    """An event never given actions takes them from its label."""
+async def test_label_without_actions(session, google, calendar_id):
+    """An event never given actions does none, even carrying an action's label."""
     guitar = (await session.call("create_action", action={"name": "play guitar", "status": "active"}))["created_id"]
     label = (await session.call("get_action", id_or_name=guitar))["label_id"]
     [event] = (await session.call("create_event", events=[{"summary": "Practice", "start": at(9), "end": at(10)}]))["events"]
     assert event["action_ids"] in (None, [])
     google.calendars[calendar_id].events[event["id"]]["eventLabelId"] = label
-    inferred = await session.call("get_event", id=event["id"])
-    assert inferred["actions_from_label"] is True
-    assert inferred["action_ids"] == [guitar]
-    # Sent straight back, they stay inferred.
-    await session.call("update_event", updates=[{"event": {**{k: inferred[k] for k in ("id", "action_ids", "actions_from_label")}, "summary": "Guitar"}}])
-    assert (await session.call("get_event", id=event["id"]))["actions_from_label"] is True
+    labelled = await session.call("get_event", id=event["id"])
+    assert labelled["action_ids"] is None
+    assert "actions_from_label" not in labelled
 
 
 async def test_label_slots(session):

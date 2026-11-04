@@ -142,7 +142,7 @@ pub struct Repeat {
 /// updating it to keep them. The other fields are as for PublicEvent,
 /// and apply to every event in the series except where one was edited
 /// on its own -- until the series is next edited, which resets them
-/// (see update_recurrence). actions_from_label is as for PublicEvent.
+/// (see update_recurrence).
 /// facts are those of every event in it: usually who it's with or for,
 /// and where (location_ids) -- set them to replace them whole.
 ///
@@ -163,8 +163,6 @@ pub struct PublicRecurrence {
     pub priority: Option<i64>,
     pub action_ids: Option<Vec<ActionShare>>,
     pub action_names: Option<Vec<String>>,
-    #[schema(default = "false")]
-    pub actions_from_label: bool,
     pub goals: Option<Vec<crate::stores::goals::GoalShare>>,
     pub event_label_id: Option<String>,
     pub effective_priority: Option<i64>,
@@ -195,7 +193,6 @@ fn public_recurrence(event: &Event, tree: &ActionTree, goal_ids: Option<&[String
     out.insert("priority".into(), json!(event.priority));
     out.insert("action_ids".into(), json!(action_ids));
     out.insert("action_names".into(), json!(names));
-    out.insert("actions_from_label".into(), json!(event.actions_from_label));
     out.insert("goals".into(), json!(shown_shares(event, goal_ids)));
     out.insert("event_label_id".into(), json!(event.event_label_id));
     out.insert("effective_priority".into(), json!(event.effective_priority()));
@@ -229,7 +226,7 @@ fn to_event(series: &PublicRecurrence, clear_fields: &[EventField]) -> Result<Ev
         description_format: series.description_format,
         location: series.location.clone(),
         priority: series.priority,
-        action_ids: if series.actions_from_label { None } else { series.action_ids.clone() },
+        action_ids: series.action_ids.clone(),
         goals: series.goals.clone(),
         facts: series.facts.as_ref().map(|f| EventFacts::from(f).normalized()),
         cleared: texts(clear_fields).into_iter().collect(),
@@ -312,7 +309,7 @@ pub fn get_recurrence(app: &App, id: String) -> Result<PublicRecurrence, ToolErr
 #[tool(writes)]
 pub fn update_recurrence(app: &App, recurrence: PublicRecurrence, starting_at_event_id: Option<String>, clear_fields: Option<Vec<EventField>>) -> Result<Vec<PublicRecurrence>, ToolError> {
     prefetch_stores(app)?;
-    check_action_ids(app, recurrence.id.as_deref(), recurrence.action_ids.as_deref(), recurrence.actions_from_label, true)?;
+    check_action_ids(app, recurrence.id.as_deref(), recurrence.action_ids.as_deref(), true)?;
     check_goal_ids(app, recurrence.goals.as_deref())?;
     check_facts(app, recurrence.facts.as_ref())?;
     let changes = to_event(&recurrence, &clear_fields.unwrap_or_default())?;

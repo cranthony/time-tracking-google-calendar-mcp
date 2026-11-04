@@ -116,7 +116,7 @@ fn parses_raw_label_attributes() {
 
 #[test]
 fn the_attributes_cover_every_writable_field() {
-    // Not id, recurring_event_id, action_priority, actions_from_label, a
+    // Not id, recurring_event_id, action_priority, a
     // series' recurrence or time zone, original_start, or cleared.
     let mut events = EVENT_ATTRIBUTES.to_vec();
     events.sort();
