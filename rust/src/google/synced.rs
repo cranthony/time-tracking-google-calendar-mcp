@@ -275,13 +275,19 @@ impl Store {
         if item["status"] != "cancelled" {
             return false;
         }
-        let Some(series) = item["recurringEventId"].as_str() else { return false };
-        if self.answers.get(series).is_some_and(|answer| answer.version.is_none()) {
+        // Calendar's feed can bring a cancelled instance bare -- without
+        // its series or original start -- so its id ("<series>_<start>")
+        // says them where the item doesn't.
+        let series = item["recurringEventId"].as_str().or_else(|| series_of(id));
+        let Some(series) = series else { return false };
+        let bare = item["recurringEventId"].as_str().is_none();
+        let of_series = |key: &str| key == series || (bare && instance_base(key) == series);
+        if self.answers.iter().any(|(key, answer)| of_series(key) && answer.version.is_none()) {
             return true;
         }
         let zone = self.zone.unwrap_or(chrono_tz::UTC);
-        let start = parse_moment(&item["originalStartTime"], zone).map(|when| when.key(zone));
-        matches!((self.ended.get(series), start), (Some((until, _)), Some(start)) if start > *until)
+        let Some(start) = original_start(item, zone) else { return false };
+        self.ended.iter().any(|(key, (until, _))| of_series(key) && start > *until)
     }
 
     /// Note a sync beginning; its number, for `synced`.
@@ -327,7 +333,7 @@ impl Store {
             return true;
         }
         let id = item["id"].as_str().unwrap_or_default();
-        let series = item["recurringEventId"].as_str().unwrap_or_default();
+        let series = item["recurringEventId"].as_str().or_else(|| series_of(id)).unwrap_or_default();
         [id, instance_base(id), series, instance_base(series)]
             .iter()
             .any(|i| !i.is_empty() && self.written.get(*i).is_some_and(|mark| mark.holds(now)))
@@ -429,6 +435,21 @@ fn until(event: &Value, zone: Tz) -> Option<DateTime<Utc>> {
     }
     let day = chrono::NaiveDate::parse_from_str(value, "%Y%m%d").ok()?;
     Some(super::expand::When::Day(day.succ_opt()?).key(zone) - chrono::Duration::seconds(1))
+}
+
+/// When instance `item` was to start, as its series has it: its
+/// `originalStartTime`, or else what its id ends with ("<series>_<start>").
+fn original_start(item: &Value, zone: Tz) -> Option<DateTime<Utc>> {
+    if let Some(when) = parse_moment(&item["originalStartTime"], zone) {
+        return Some(when.key(zone));
+    }
+    let id = item["id"].as_str()?;
+    let suffix = &id[series_of(id)?.len() + 1..];
+    if let Ok(at) = chrono::NaiveDateTime::parse_from_str(suffix, "%Y%m%dT%H%M%SZ") {
+        return Some(at.and_utc());
+    }
+    let day = chrono::NaiveDate::parse_from_str(suffix, "%Y%m%d").ok()?;
+    Some(super::expand::When::Day(day).key(zone))
 }
 
 /// Whether `a` was changed after `b`, by their `updated`; not if either

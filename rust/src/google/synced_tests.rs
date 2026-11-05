@@ -260,6 +260,37 @@ fn a_series_the_server_ended_cancelling_its_later_instances_isnt_warned_of() {
 }
 
 #[test]
+fn a_series_the_server_ended_cancelling_its_later_instances_bare_isnt_warned_of() {
+    // Calendar's feed can bring the instances a split cancels without
+    // their series or original start: only the id says them.
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.writing(Some("walk"));
+    store.answered(&json!({"id": "walk", "etag": "\"2\"", "recurrence": ["RRULE:FREQ=DAILY;UNTIL=20261106T125459Z"]}), now);
+    store.wrote(Some("walk"), Some("\"2\""), now);
+    let bare = |id: &str| json!({"id": id, "status": "cancelled", "etag": "\"9\"", "summary": "Walk"});
+
+    // While the write's mark holds, and after.
+    assert!(!warned_of(&mut store, bare("walk_20270113T125500Z"), now));
+    let late = now + MARK_HOLDS_AT_MOST;
+    store.lapse(late);
+    assert!(!warned_of(&mut store, bare("walk_20270114T125500Z"), late));
+    // One before the end was cancelled elsewhere.
+    assert!(warned_of(&mut store, bare("walk_20261105T125500Z"), late));
+}
+
+#[test]
+fn a_series_the_server_deleted_cancelling_its_instances_bare_isnt_warned_of() {
+    let mut store = Store::default();
+    let now = Instant::now();
+    store.deleted("walk", now);
+    let late = now + MARK_HOLDS_AT_MOST;
+    store.lapse(late);
+    assert!(!warned_of(&mut store, json!({"id": "walk_20270113T125500Z", "status": "cancelled", "etag": "\"9\""}), late));
+    assert!(warned_of(&mut store, json!({"id": "run_20270113T125500Z", "status": "cancelled", "etag": "\"9\""}), late));
+}
+
+#[test]
 fn a_series_ended_on_a_date_ends_with_that_day() {
     let mut store = Store::default();
     let now = Instant::now();
