@@ -27,6 +27,10 @@ fn offers_the_days_notes_with_candidates_and_the_days_events() {
     assert!(DECISION_GUIDE.contains("(2) ONGOING: a note in the progressive"));
     assert!(DECISION_GUIDE.contains("(3) START, only when the note says so"));
     assert!(!DECISION_GUIDE.contains("now working on"));
+    // "Compacted calendar" was once ignored as administrative: time spent
+    // on the time tracker is recorded like any other.
+    assert!(DECISION_GUIDE.contains("USING THE TIME TRACKER IS AN ACTIVITY TOO"));
+    assert!(DECISION_GUIDE.contains("never ignored as administrative"));
     assert_eq!(context.to_json()["instructions"], json!(DECISION_GUIDE));
 }
 
