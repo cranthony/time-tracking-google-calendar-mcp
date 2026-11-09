@@ -1226,7 +1226,7 @@ fn label(goal: &Goal) -> String {
     }
 }
 
-fn parent_of<'a>(goals: &'a [Goal], goal: &Goal) -> Option<&'a Goal> {
+pub fn parent_of<'a>(goals: &'a [Goal], goal: &Goal) -> Option<&'a Goal> {
     let parent = set(goal.parent_id.as_deref())?;
     goals.iter().find(|g| g.id.as_deref() == Some(parent))
 }

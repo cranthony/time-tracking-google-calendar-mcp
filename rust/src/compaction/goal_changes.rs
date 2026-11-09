@@ -21,7 +21,8 @@ pub const USES: [&str; 3] = ["apply", "drop", "change"];
 /// With `retry_deadline` (status missed), the goal is missed and tried
 /// again by then: its history gains missed (with the deadline it missed)
 /// then its prior status (with the new one), both at `at`, and it stays
-/// open.
+/// open. With `retry_fit` too, what's in the way of that new deadline is
+/// changed with it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GoalChange {
     pub goal_id: String,
@@ -29,6 +30,36 @@ pub struct GoalChange {
     pub at: Option<Moment>,
     pub note_ids: Vec<String>,
     pub retry_deadline: Option<String>,
+    pub retry_fit: Option<RetryFit>,
+}
+
+/// How a retry's new deadline is made to fit, when it's after a parent's
+/// -- the user's choice in review, nothing the server does by itself.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RetryFit {
+    /// Each open goal above it due before the new deadline is due by it
+    /// too (see `extended`).
+    ExtendParents,
+    /// It goes under `parent_id`, or to the top level with none.
+    Move { parent_id: Option<String> },
+}
+
+impl RetryFit {
+    pub fn to_json(&self) -> Value {
+        match self {
+            RetryFit::ExtendParents => json!({"kind": "extend_parents"}),
+            RetryFit::Move { parent_id } => json!({"kind": "move", "parent_id": parent_id}),
+        }
+    }
+
+    pub fn from_json(value: Option<&Value>) -> Option<RetryFit> {
+        let value = value?;
+        match value.get("kind")?.as_str()? {
+            "extend_parents" => Some(RetryFit::ExtendParents),
+            "move" => Some(RetryFit::Move { parent_id: value.get("parent_id").and_then(Value::as_str).map(str::to_string) }),
+            _ => None,
+        }
+    }
 }
 
 fn when(moment: &Option<Moment>) -> Value {
@@ -59,6 +90,9 @@ impl GoalChange {
         if let Some(deadline) = &self.retry_deadline {
             out.insert("retry_deadline".into(), json!(deadline));
         }
+        if let Some(fit) = &self.retry_fit {
+            out.insert("retry_fit".into(), fit.to_json());
+        }
         Value::Object(out)
     }
 
@@ -69,6 +103,7 @@ impl GoalChange {
             at: moment_of(value.get("at")),
             note_ids: strings(value.get("note_ids")),
             retry_deadline: value.get("retry_deadline").and_then(Value::as_str).map(str::to_string),
+            retry_fit: RetryFit::from_json(value.get("retry_fit")),
         })
     }
 
@@ -97,9 +132,9 @@ impl GoalChange {
 }
 
 /// The user's say on a goal change (amend_proposal's `goal_changes`):
-/// `apply` it now, `drop` it, or `change` it -- their status, time and
-/// retry deadline over Claude's, or a change of their own for a goal the
-/// proposal doesn't change.
+/// `apply` it now, `drop` it, or `change` it -- their status, time, retry
+/// deadline and how it's made to fit over Claude's, or a change of their
+/// own for a goal the proposal doesn't change.
 #[derive(Debug, Clone)]
 pub struct GoalChangeChoice {
     pub goal_id: String,
@@ -107,6 +142,7 @@ pub struct GoalChangeChoice {
     pub status: Option<GoalStatus>,
     pub at: Option<Moment>,
     pub retry_deadline: Option<String>,
+    pub retry_fit: Option<RetryFit>,
 }
 
 impl GoalChangeChoice {
@@ -118,12 +154,14 @@ impl GoalChangeChoice {
             status: status_of(value.get("status")),
             at: moment_of(value.get("at")),
             retry_deadline: text("retry_deadline"),
+            retry_fit: RetryFit::from_json(value.get("retry_fit")),
         }
     }
 }
 
 /// A goal change the user settled, as the ledger keeps it: applied,
-/// dropped, or changed to their `status`, `at` and `retry_deadline`.
+/// dropped, or changed to their `status`, `at`, `retry_deadline` and
+/// `retry_fit`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GoalChangeSettled {
     pub goal_id: String,
@@ -131,6 +169,7 @@ pub struct GoalChangeSettled {
     pub status: Option<GoalStatus>,
     pub at: Option<Moment>,
     pub retry_deadline: Option<String>,
+    pub retry_fit: Option<RetryFit>,
 }
 
 impl GoalChangeSettled {
@@ -143,6 +182,7 @@ impl GoalChangeSettled {
             status: status_of(edit.get("status")),
             at: moment_of(edit.get("at")),
             retry_deadline: edit.get("retry_deadline").and_then(Value::as_str).map(str::to_string),
+            retry_fit: RetryFit::from_json(edit.get("retry_fit")),
         }
     }
 
@@ -160,6 +200,9 @@ impl GoalChangeSettled {
         if let Some(deadline) = &self.retry_deadline {
             out.insert("retry_deadline".into(), json!(deadline));
         }
+        if let Some(fit) = &self.retry_fit {
+            out.insert("retry_fit".into(), fit.to_json());
+        }
         out
     }
 
@@ -170,6 +213,9 @@ impl GoalChangeSettled {
         out.insert("status".into(), json!(self.status));
         out.insert("at".into(), when(&self.at));
         out.insert("retry_deadline".into(), json!(self.retry_deadline));
+        if let Some(fit) = &self.retry_fit {
+            out.insert("retry_fit".into(), fit.to_json());
+        }
         Value::Object(out)
     }
 
@@ -184,6 +230,13 @@ impl GoalChangeSettled {
             note_ids: under.map(|c| c.note_ids.clone()).unwrap_or_default(),
             // A status other than missed takes no retry deadline.
             retry_deadline: if status == GoalStatus::Missed { self.retry_deadline.clone().or(under.and_then(|c| c.retry_deadline.clone())) } else { None },
+            // How it's made to fit goes with the deadline it's for: a new
+            // deadline comes with its own, or none.
+            retry_fit: match status {
+                GoalStatus::Missed if self.retry_deadline.is_some() => self.retry_fit.clone(),
+                GoalStatus::Missed => self.retry_fit.clone().or(under.and_then(|c| c.retry_fit.clone())),
+                _ => None,
+            },
         })
     }
 }
@@ -249,29 +302,101 @@ fn changed(goal: &Goal, change: &GoalChange) -> Goal {
     after
 }
 
-/// `change` as update_goals takes it: the goal's status (a retry's new
-/// deadline) and its whole history, made to the version read.
-pub fn edit_for(goal: &Goal, change: &GoalChange) -> GoalEdit {
-    let after = changed(goal, change);
+/// `goal`, an open goal above a retried one, due by `deadline` too. If
+/// it's active and its own deadline has passed, that's a miss, recorded
+/// as a retry's is -- dated `now`, since it's now it's found out, and no
+/// earlier than its last change, so its history stays in order. Otherwise
+/// just its deadline moves.
+fn extended(goal: &Goal, deadline: &str, overdue: bool, now: Moment) -> Goal {
+    let mut after = goal.clone();
+    after.deadline = Some(deadline.to_string());
+    after.deadline_rule = None;
+    if overdue && goal.status == Some(GoalStatus::Active) {
+        let history = after.history.get_or_insert_with(Vec::new);
+        let last = history.last().and_then(|entry| parse_iso(&entry.at.0, None).ok());
+        let at = crate::contract::DateTimeText(py::pydantic_datetime(&last.filter(|l| *l > now).unwrap_or(now)));
+        history.push(StatusChange { status: GoalStatus::Missed, at: at.clone(), deadline: goal.deadline.clone(), note: None });
+        history.push(StatusChange { status: GoalStatus::Active, at, deadline: Some(deadline.to_string()), note: None });
+    }
+    after
+}
+
+/// The open goals above `goal` due before `deadline`, each due by it too.
+fn parents_extended(goal: &Goal, deadline: &str, all: &[Goal], zone: &Tz) -> Vec<Goal> {
+    let Some(new_due) = goals::deadline_end(deadline) else { return Vec::new() };
+    let now = crate::determinism::now();
+    let today = now.with_timezone(zone).naive_local();
+    let mut out = Vec::new();
+    let mut seen = vec![goal.id.as_deref()];
+    let mut at = goals::parent_of(all, goal);
+    while let Some(parent) = at {
+        if seen.contains(&parent.id.as_deref()) {
+            break;
+        }
+        seen.push(parent.id.as_deref());
+        at = goals::parent_of(all, parent);
+        let due = parent.deadline.as_deref().and_then(goals::deadline_end);
+        if parent.status.is_some_and(|s| s.is_closed()) || !due.is_some_and(|d| d < new_due) {
+            continue;
+        }
+        out.push(extended(parent, deadline, due.is_some_and(|d| d <= today), now));
+    }
+    out
+}
+
+/// Every goal `change` changes, as it leaves it: its own first, then any
+/// its `retry_fit` extends.
+fn goals_after(goal: &Goal, change: &GoalChange, all: &[Goal], zone: &Tz) -> Vec<Goal> {
+    let mut after = changed(goal, change);
+    let others = match (&change.retry_fit, &change.retry_deadline) {
+        (Some(RetryFit::ExtendParents), Some(deadline)) => parents_extended(goal, deadline, all, zone),
+        (Some(RetryFit::Move { parent_id }), Some(_)) => {
+            after.parent_id = parent_id.clone();
+            Vec::new()
+        }
+        _ => Vec::new(),
+    };
+    let mut out = vec![after];
+    out.extend(others);
+    out
+}
+
+/// `before` made `after`, as update_goals takes it: its status, new
+/// deadline and parent and its whole history, made to the version read.
+fn edit_of(before: &Goal, after: Goal) -> GoalEdit {
+    let moved = after.parent_id != before.parent_id;
+    let clear_fields = if moved && after.parent_id.is_none() { vec!["parent_id".to_string()] } else { Vec::new() };
     GoalEdit {
         goal: Goal {
-            id: goal.id.clone(),
+            id: before.id.clone(),
             status: after.status,
             history: after.history,
-            deadline: if after.deadline != goal.deadline { after.deadline } else { None },
-            version: Some(goal.version.unwrap_or(0)),
+            deadline: if after.deadline != before.deadline { after.deadline } else { None },
+            parent_id: if moved { after.parent_id } else { None },
+            version: Some(before.version.unwrap_or(0)),
             ..Default::default()
         },
-        clear_fields: Vec::new(),
+        clear_fields,
         status_note: None,
     }
+}
+
+/// `change` as update_goals takes it: an edit of each goal it changes.
+fn edits_for(goal: &Goal, change: &GoalChange, all: &[Goal], zone: &Tz) -> Vec<GoalEdit> {
+    goals_after(goal, change, all, zone)
+        .into_iter()
+        .filter_map(|after| {
+            let before = all.iter().find(|g| g.id == after.id)?;
+            Some(edit_of(before, after))
+        })
+        .collect()
 }
 
 /// Everything wrong with `changes` as the goals are now: a goal named
 /// twice, a status that isn't done, missed or obsolete, a goal that
 /// isn't there or isn't open, a time outside the window (`window`:
 /// its start to `through`), a retry deadline on a change that isn't
-/// missed, a note that isn't one of `notes`, and anything the goal
+/// missed, a retry_fit without a retry deadline, a note that isn't one of `notes`, and anything the goal
 /// rules refuse once they're all made (open sub-goals, say), naming the
 /// goals in the way.
 pub fn problems(changes: &[GoalChange], all: &[Goal], zone: &Tz, window: (Moment, Moment), notes: &[String]) -> Vec<String> {
@@ -321,6 +446,10 @@ pub fn problems(changes: &[GoalChange], all: &[Goal], zone: &Tz, window: (Moment
             problems.push(format!("goal_changes: {who}: retry_deadline goes with status missed -- the goal is missed and tried again by then"));
             wrong = true;
         }
+        if change.retry_fit.is_some() && change.retry_deadline.is_none() {
+            problems.push(format!("goal_changes: {who}: retry_fit goes with a retry_deadline -- it's how the new deadline is made to fit"));
+            wrong = true;
+        }
         for note in &change.note_ids {
             if !notes.contains(note) {
                 problems.push(format!("goal_changes: {who}: {} isn't one of the proposal's notes", py::repr(note)));
@@ -329,8 +458,12 @@ pub fn problems(changes: &[GoalChange], all: &[Goal], zone: &Tz, window: (Moment
         if wrong {
             continue;
         }
-        after[index] = changed(&goal, change);
-        involved.push(id.to_string());
+        for made in goals_after(&goal, change, &after, zone) {
+            involved.extend(made.id.clone());
+            if let Some(at) = after.iter().position(|g| g.id == made.id) {
+                after[at] = made;
+            }
+        }
     }
     if !involved.is_empty() {
         problems.extend(
@@ -376,7 +509,10 @@ pub fn apply(store: &Goals, change: &GoalChange, zone: &Tz) -> anyhow::Result<Li
     if change.retry_deadline.is_some() && change.status != GoalStatus::Missed {
         anyhow::bail!("{}: retry_deadline goes with status missed", label(&goal));
     }
-    let made = store.change_goals(&[], &[edit_for(&goal, change)], &[], zone)?;
+    if change.retry_fit.is_some() && change.retry_deadline.is_none() {
+        anyhow::bail!("{}: retry_fit goes with a retry_deadline", label(&goal));
+    }
+    let made = store.change_goals(&[], &edits_for(&goal, change, &all, zone), &[], zone)?;
     // Its own goal, not one activated on the way.
     made.goals.into_iter().find(|g| g.id == goal.id).ok_or_else(|| anyhow::anyhow!("{} wasn't changed", label(&goal)))
 }
@@ -388,7 +524,7 @@ pub fn shown(changes: &[(GoalChange, &str)], all: &[Goal]) -> Vec<Value> {
         .iter()
         .map(|(change, by)| {
             let goal = all.iter().find(|g| g.id.as_deref() == Some(change.goal_id.trim()));
-            json!({
+            let mut out = json!({
                 "goal_id": change.goal_id,
                 "title": goal.and_then(|g| g.title.clone()),
                 "path": goal.map(|g| goals::path(g, all)).unwrap_or_default(),
@@ -397,7 +533,11 @@ pub fn shown(changes: &[(GoalChange, &str)], all: &[Goal]) -> Vec<Value> {
                 "note_ids": change.note_ids,
                 "retry_deadline": change.retry_deadline,
                 "decided_by": by,
-            })
+            });
+            if let Some(fit) = &change.retry_fit {
+                out["retry_fit"] = fit.to_json();
+            }
+            out
         })
         .collect()
 }

@@ -72,6 +72,36 @@ impl GoalChangeStatus {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+pub enum RetryFitKind {
+    #[serde(rename = "extend_parents")]
+    ExtendParents,
+    #[serde(rename = "move")]
+    Move,
+}
+
+/// How a retry's new deadline is made to fit, when it's after a parent's
+/// -- the user's choice in review, never Claude's. `extend_parents`: each
+/// open goal above it due before the new deadline is due by it too, in the
+/// same write -- active and past its deadline, it's recorded as missed and
+/// tried again; otherwise just its deadline moves. `move`: it goes under
+/// `parent_id`, or to the top level with none.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+#[schema(deny_unknown)]
+pub struct RetryFit {
+    pub kind: RetryFitKind,
+    pub parent_id: Option<String>,
+}
+
+impl RetryFit {
+    fn kept(&self) -> goal_changes::RetryFit {
+        match self.kind {
+            RetryFitKind::ExtendParents => goal_changes::RetryFit::ExtendParents,
+            RetryFitKind::Move => goal_changes::RetryFit::Move { parent_id: self.parent_id.clone() },
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
 pub enum GoalChangeUse {
     #[serde(rename = "apply")]
     Apply,
@@ -392,8 +422,9 @@ pub struct GoalChange {
 
 /// A goal change as a proposal makes it when applied: the goal's `title`
 /// and `path` now, its new `status`, when (`at`), the notes it came from,
-/// `retry_deadline` if it's missed and tried again, and who decided it
-/// (`claude`, or `user` once they changed it).
+/// `retry_deadline` if it's missed and tried again (`retry_fit`, if the
+/// user chose how that's made to fit), and who decided it (`claude`, or
+/// `user` once they changed it).
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct ProposalGoalChange {
     pub goal_id: String,
@@ -405,6 +436,9 @@ pub struct ProposalGoalChange {
     #[serde(default)]
     pub note_ids: Vec<String>,
     pub retry_deadline: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retry_fit: Option<RetryFit>,
     pub decided_by: ProposalEventDecidedBy,
 }
 
@@ -414,7 +448,9 @@ pub struct ProposalGoalChange {
 /// `change` it -- their `status`, `at` and `retry_deadline` over Claude's,
 /// kept in the proposal; a `change` of a goal the proposal doesn't change
 /// adds one (then with a status). Any of the three may give `status`,
-/// `at` and `retry_deadline` over the proposal's.
+/// `at` and `retry_deadline` over the proposal's. `retry_fit`, with a
+/// `retry_deadline`, says how a new deadline after a parent's is made to
+/// fit; without one, that's refused.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct GoalChangeChoice {
     pub goal_id: String,
@@ -422,10 +458,12 @@ pub struct GoalChangeChoice {
     pub status: Option<GoalChangeStatus>,
     pub at: Option<DateTimeText>,
     pub retry_deadline: Option<String>,
+    pub retry_fit: Option<RetryFit>,
 }
 
 /// A goal change the user settled, as a proposal shows it: applied,
-/// dropped, or changed to their `status`, `at` and `retry_deadline`.
+/// dropped, or changed to their `status`, `at`, `retry_deadline` and
+/// `retry_fit`.
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct GoalChangeSettled {
     pub goal_id: String,
@@ -433,6 +471,9 @@ pub struct GoalChangeSettled {
     pub status: Option<GoalStatus>,
     pub at: Option<DateTimeText>,
     pub retry_deadline: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retry_fit: Option<RetryFit>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -1319,6 +1360,7 @@ fn goal_change(given: &GoalChange) -> Result<goal_changes::GoalChange, ToolError
         at: when_given(given.at.as_ref())?,
         note_ids: given.note_ids.clone().unwrap_or_default(),
         retry_deadline: given.retry_deadline.clone(),
+        retry_fit: None,
     })
 }
 
@@ -1330,6 +1372,7 @@ fn goal_change_choice(given: &GoalChangeChoice) -> anyhow::Result<goal_changes::
         status: given.status.map(GoalChangeStatus::status),
         at: when_given(given.at.as_ref())?,
         retry_deadline: given.retry_deadline.clone(),
+        retry_fit: given.retry_fit.as_ref().map(RetryFit::kept),
     })
 }
 
@@ -1695,9 +1738,9 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// or `drop` it from the events; `goal_changes`, settling a goal change
 /// the proposal makes (by its goal's id) now -- `apply` it (an update of
 /// the goal, refused as update_goals would refuse it), `drop` it, or
-/// `change` it, the user's status, `at` and retry_deadline over Claude's,
-/// kept in the proposal (a `change` of a goal the proposal doesn't change
-/// adds one, with a status); and `as_planned` -- events (or keys)
+/// `change` it, the user's status, `at`, retry_deadline and retry_fit over
+/// Claude's, kept in the proposal (a `change` of a goal the proposal
+/// doesn't change adds one, with a status); and `as_planned` -- events (or keys)
 /// whose decisions to clear, notes to leave as Claude had them, and refs
 /// to leave unsettled. One created or applied stays, whatever becomes of the
 /// proposal. `through`, later than the proposal's, extends it there (no
