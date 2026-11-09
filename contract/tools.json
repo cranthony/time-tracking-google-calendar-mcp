@@ -23653,7 +23653,7 @@
           "type": "object"
         },
         "GoalChangeSettled": {
-          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at`, `retry_deadline` and\n`retry_fit`.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -23694,6 +23694,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -23975,6 +23985,29 @@
           },
           "required": [
             "text"
+          ],
+          "type": "object"
+        },
+        "RetryFit": {
+          "additionalProperties": false,
+          "description": "How a retry's new deadline is made to fit, when it's after a parent's\n-- the user's choice in review, never Claude's. `extend_parents`: each\nopen goal above it due before the new deadline is due by it too, in the\nsame write -- active and past its deadline, it's recorded as missed and\ntried again; otherwise just its deadline moves. `move`: it goes under\n`parent_id`, or to the top level with none.",
+          "properties": {
+            "kind": {
+              "enum": [
+                "extend_parents",
+                "move"
+              ],
+              "type": "string"
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
           ],
           "type": "object"
         },
@@ -26527,7 +26560,7 @@
           "type": "object"
         },
         "GoalChangeSettled": {
-          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at`, `retry_deadline` and\n`retry_fit`.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -26568,6 +26601,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -26819,7 +26862,7 @@
           "type": "object"
         },
         "ProposalGoalChange": {
-          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again (`retry_fit`, if the\nuser chose how that's made to fit), and who decided it (`claude`, or\n`user` once they changed it).",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -26860,6 +26903,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "decided_by": {
@@ -27016,6 +27069,29 @@
           },
           "required": [
             "text"
+          ],
+          "type": "object"
+        },
+        "RetryFit": {
+          "additionalProperties": false,
+          "description": "How a retry's new deadline is made to fit, when it's after a parent's\n-- the user's choice in review, never Claude's. `extend_parents`: each\nopen goal above it due before the new deadline is due by it too, in the\nsame write -- active and past its deadline, it's recorded as missed and\ntried again; otherwise just its deadline moves. `move`: it goes under\n`parent_id`, or to the top level with none.",
+          "properties": {
+            "kind": {
+              "enum": [
+                "extend_parents",
+                "move"
+              ],
+              "type": "string"
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
           ],
           "type": "object"
         },
@@ -27267,7 +27343,7 @@
     }
   },
   {
-    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; `goal_changes`, settling a goal change\nthe proposal makes (by its goal's id) now -- `apply` it (an update of\nthe goal, refused as update_goals would refuse it), `drop` it, or\n`change` it, the user's status, `at` and retry_deadline over Claude's,\nkept in the proposal (a `change` of a goal the proposal doesn't change\nadds one, with a status); and `as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created or applied stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.\nAn update or create that puts an event past the proposal's events\ntakes in the events it lands among -- and, where those are moved, the\nones there -- as the proposal's, so move them aside in the same call;\nwhat nothing reaches stays outside. An event that starts after now\nhasn't happened: it records no facts (one moved there loses those it\nhad, and its judgments), and isn't judged.",
+    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; `goal_changes`, settling a goal change\nthe proposal makes (by its goal's id) now -- `apply` it (an update of\nthe goal, refused as update_goals would refuse it), `drop` it, or\n`change` it, the user's status, `at`, retry_deadline and retry_fit over\nClaude's, kept in the proposal (a `change` of a goal the proposal\ndoesn't change adds one, with a status); and `as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created or applied stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.\nAn update or create that puts an event past the proposal's events\ntakes in the events it lands among -- and, where those are moved, the\nones there -- as the proposal's, so move them aside in the same call;\nwhat nothing reaches stays outside. An event that starts after now\nhasn't happened: it records no facts (one moved there loses those it\nhad, and its judgments), and isn't judged.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -27612,7 +27688,7 @@
           "type": "object"
         },
         "GoalChangeChoice": {
-          "description": "The user's say on a goal change (by its goal's id): `apply` it now\n(as update_goals would, with the change's `at` as the history time;\nrefused as it would refuse it), `drop` it (the goal is left alone), or\n`change` it -- their `status`, `at` and `retry_deadline` over Claude's,\nkept in the proposal; a `change` of a goal the proposal doesn't change\nadds one (then with a status). Any of the three may give `status`,\n`at` and `retry_deadline` over the proposal's.",
+          "description": "The user's say on a goal change (by its goal's id): `apply` it now\n(as update_goals would, with the change's `at` as the history time;\nrefused as it would refuse it), `drop` it (the goal is left alone), or\n`change` it -- their `status`, `at` and `retry_deadline` over Claude's,\nkept in the proposal; a `change` of a goal the proposal doesn't change\nadds one (then with a status). Any of the three may give `status`,\n`at` and `retry_deadline` over the proposal's. `retry_fit`, with a\n`retry_deadline`, says how a new deadline after a parent's is made to\nfit; without one, that's refused.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -27651,6 +27727,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -28287,6 +28373,29 @@
             "every"
           ],
           "type": "object"
+        },
+        "RetryFit": {
+          "additionalProperties": false,
+          "description": "How a retry's new deadline is made to fit, when it's after a parent's\n-- the user's choice in review, never Claude's. `extend_parents`: each\nopen goal above it due before the new deadline is due by it too, in the\nsame write -- active and past its deadline, it's recorded as missed and\ntried again; otherwise just its deadline moves. `move`: it goes under\n`parent_id`, or to the top level with none.",
+          "properties": {
+            "kind": {
+              "enum": [
+                "extend_parents",
+                "move"
+              ],
+              "type": "string"
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
         }
       },
       "title": "amend_proposalArguments"
@@ -28888,7 +28997,7 @@
           "type": "object"
         },
         "GoalChangeSettled": {
-          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at`, `retry_deadline` and\n`retry_fit`.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -28929,6 +29038,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -29180,7 +29299,7 @@
           "type": "object"
         },
         "ProposalGoalChange": {
-          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again (`retry_fit`, if the\nuser chose how that's made to fit), and who decided it (`claude`, or\n`user` once they changed it).",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -29221,6 +29340,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "decided_by": {
@@ -29377,6 +29506,29 @@
           },
           "required": [
             "text"
+          ],
+          "type": "object"
+        },
+        "RetryFit": {
+          "additionalProperties": false,
+          "description": "How a retry's new deadline is made to fit, when it's after a parent's\n-- the user's choice in review, never Claude's. `extend_parents`: each\nopen goal above it due before the new deadline is due by it too, in the\nsame write -- active and past its deadline, it's recorded as missed and\ntried again; otherwise just its deadline moves. `move`: it goes under\n`parent_id`, or to the top level with none.",
+          "properties": {
+            "kind": {
+              "enum": [
+                "extend_parents",
+                "move"
+              ],
+              "type": "string"
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
           ],
           "type": "object"
         },
@@ -30304,7 +30456,7 @@
           "type": "object"
         },
         "GoalChangeSettled": {
-          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at`, `retry_deadline` and\n`retry_fit`.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -30345,6 +30497,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -30784,7 +30946,7 @@
           "type": "object"
         },
         "ProposalGoalChange": {
-          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again (`retry_fit`, if the\nuser chose how that's made to fit), and who decided it (`claude`, or\n`user` once they changed it).",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -30825,6 +30987,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "decided_by": {
@@ -30981,6 +31153,29 @@
           },
           "required": [
             "text"
+          ],
+          "type": "object"
+        },
+        "RetryFit": {
+          "additionalProperties": false,
+          "description": "How a retry's new deadline is made to fit, when it's after a parent's\n-- the user's choice in review, never Claude's. `extend_parents`: each\nopen goal above it due before the new deadline is due by it too, in the\nsame write -- active and past its deadline, it's recorded as missed and\ntried again; otherwise just its deadline moves. `move`: it goes under\n`parent_id`, or to the top level with none.",
+          "properties": {
+            "kind": {
+              "enum": [
+                "extend_parents",
+                "move"
+              ],
+              "type": "string"
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
           ],
           "type": "object"
         },
@@ -31687,7 +31882,7 @@
           "type": "object"
         },
         "GoalChangeSettled": {
-          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at` and `retry_deadline`.",
+          "description": "A goal change the user settled, as a proposal shows it: applied,\ndropped, or changed to their `status`, `at`, `retry_deadline` and\n`retry_fit`.",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -31728,6 +31923,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             }
           },
@@ -32167,7 +32372,7 @@
           "type": "object"
         },
         "ProposalGoalChange": {
-          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again, and who decided it\n(`claude`, or `user` once they changed it).",
+          "description": "A goal change as a proposal makes it when applied: the goal's `title`\nand `path` now, its new `status`, when (`at`), the notes it came from,\n`retry_deadline` if it's missed and tried again (`retry_fit`, if the\nuser chose how that's made to fit), and who decided it (`claude`, or\n`user` once they changed it).",
           "properties": {
             "goal_id": {
               "type": "string"
@@ -32208,6 +32413,16 @@
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "retry_fit": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RetryFit"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "decided_by": {
@@ -32364,6 +32579,29 @@
           },
           "required": [
             "text"
+          ],
+          "type": "object"
+        },
+        "RetryFit": {
+          "additionalProperties": false,
+          "description": "How a retry's new deadline is made to fit, when it's after a parent's\n-- the user's choice in review, never Claude's. `extend_parents`: each\nopen goal above it due before the new deadline is due by it too, in the\nsame write -- active and past its deadline, it's recorded as missed and\ntried again; otherwise just its deadline moves. `move`: it goes under\n`parent_id`, or to the top level with none.",
+          "properties": {
+            "kind": {
+              "enum": [
+                "extend_parents",
+                "move"
+              ],
+              "type": "string"
+            },
+            "parent_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
           ],
           "type": "object"
         },

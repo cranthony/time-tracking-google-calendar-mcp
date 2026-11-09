@@ -4010,10 +4010,10 @@ fn goal_change_entries(
                 problems.push(format!("goal_changes: {id} isn't a goal the proposal changes, so there's nothing to drop"));
                 continue;
             }
-            out.push(GoalChangeSettled { goal_id: id.to_string(), use_: "drop".into(), status: None, at: None, retry_deadline: None });
+            out.push(GoalChangeSettled { goal_id: id.to_string(), use_: "drop".into(), status: None, at: None, retry_deadline: None, retry_fit: None });
             continue;
         }
-        let given = GoalChangeSettled { goal_id: id.to_string(), use_: choice.use_.clone(), status: choice.status, at: choice.at, retry_deadline: choice.retry_deadline.clone() };
+        let given = GoalChangeSettled { goal_id: id.to_string(), use_: choice.use_.clone(), status: choice.status, at: choice.at, retry_deadline: choice.retry_deadline.clone(), retry_fit: choice.retry_fit.clone() };
         let Some(change) = given.change(proposed.as_ref()) else {
             problems.push(if choice.use_ == "apply" {
                 format!("goal_changes: {id} isn't a goal the proposal changes: give its status with use 'change' to add one, or change it with update_goals")
@@ -4023,7 +4023,7 @@ fn goal_change_entries(
             continue;
         };
         let change = change.resolved(through);
-        out.push(GoalChangeSettled { goal_id: id.to_string(), use_: choice.use_.clone(), status: Some(change.status), at: change.at, retry_deadline: change.retry_deadline });
+        out.push(GoalChangeSettled { goal_id: id.to_string(), use_: choice.use_.clone(), status: Some(change.status), at: change.at, retry_deadline: change.retry_deadline, retry_fit: change.retry_fit });
     }
     if !problems.is_empty() {
         return Err(ce_of(&problems, "goal_changes"));

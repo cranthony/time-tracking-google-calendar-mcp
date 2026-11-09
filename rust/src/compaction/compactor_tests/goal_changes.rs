@@ -29,7 +29,7 @@ fn setup() -> Setup {
 }
 
 fn change(goal_id: &str, status: GoalStatus, at: Option<&str>) -> GoalChange {
-    GoalChange { goal_id: goal_id.into(), status, at: at.map(time_at), note_ids: Vec::new(), retry_deadline: None }
+    GoalChange { goal_id: goal_id.into(), status, at: at.map(time_at), note_ids: Vec::new(), retry_deadline: None, retry_fit: None }
 }
 
 fn recap(goal_ids: &[&str]) -> Recap {
@@ -279,6 +279,127 @@ fn a_goal_change_made_already_is_left_as_it_is() {
     assert_eq!(goal(&setup, "g2").history.unwrap().len(), 3);
     // The same goal changed otherwise is refused as update_goals would.
     refused_plainly(apply(&change("g1", GoalStatus::Obsolete, Some("10:20"))), "is done already, not open");
+}
+
+/// g3, under g2 (due 2026-01-01T10:00): a retry due after its parent.
+fn retry_of_g3(deadline: &str) -> Value {
+    json!({"goal_id": "g3", "use": "change", "status": "missed", "retry_deadline": deadline})
+}
+
+/// `choice` with `fit`.
+fn fitted(mut choice: Value, fit: Value) -> Value {
+    choice["retry_fit"] = fit;
+    choice
+}
+
+#[test]
+fn a_retry_due_after_its_parent_is_refused_unless_its_told_how_to_fit() {
+    let setup = setup();
+    let p = proposed(&setup, vec![change("g1", GoalStatus::Done, Some("10:20"))]).unwrap().proposal_id.unwrap();
+
+    refused(settle(&setup, &p, 1, vec![retry_of_g3("2026-02-01")]), r"goal g3 \('Buy the posts'\)'s deadline \(2026-02-01\) is after its parent");
+
+    // Without a retry deadline there's nothing to fit.
+    let none = json!({"goal_id": "g3", "use": "change", "status": "missed", "retry_fit": {"kind": "extend_parents"}});
+    refused(settle(&setup, &p, 1, vec![none]), "retry_fit goes with a retry_deadline");
+}
+
+#[test]
+fn extending_parents_moves_a_deadline_still_to_come_and_records_a_passed_one_as_a_miss() {
+    // Now is 11:30 on 2026-01-01: g2, due at 10:00, is overdue.
+    let setup = setup();
+    let p = proposed(&setup, vec![change("g1", GoalStatus::Done, Some("10:20"))]).unwrap().proposal_id.unwrap();
+
+    // Kept in the proposal: nothing's changed till it's confirmed.
+    let proposal = settle(&setup, &p, 1, vec![fitted(retry_of_g3("2026-02-01"), json!({"kind": "extend_parents"}))]).unwrap();
+    assert_eq!(proposal.goal_changes.iter().find(|c| c["goal_id"] == json!("g3")).unwrap()["retry_fit"]["kind"], json!("extend_parents"));
+    assert_eq!(goal(&setup, "g2").deadline.as_deref(), Some("2026-01-01T10:00"));
+
+    setup.call(|c| c.confirm(&p, 2)).unwrap();
+
+    let posts = goal(&setup, "g3");
+    assert_eq!((posts.status, posts.deadline.as_deref()), (Some(GoalStatus::Active), Some("2026-02-01")));
+    let fence = goal(&setup, "g2");
+    assert_eq!((fence.status, fence.deadline.as_deref()), (Some(GoalStatus::Active), Some("2026-02-01")));
+    let history = fence.history.unwrap();
+    assert_eq!(history.len(), 3, "{history:?}");
+    assert_eq!((history[1].status, history[1].deadline.as_deref()), (GoalStatus::Missed, Some("2026-01-01T10:00")));
+    assert_eq!((history[2].status, history[2].deadline.as_deref()), (GoalStatus::Active, Some("2026-02-01")));
+}
+
+#[test]
+fn a_parent_not_yet_due_or_due_late_enough_is_only_moved_as_far_as_it_has_to_be() {
+    let goals = vec![
+        json!({"id": "top", "title": "Top", "status": "active", "deadline": "2026-03-01", "history": started("09:00")}),
+        json!({"id": "mid", "title": "Mid", "parent_id": "top", "status": "active", "deadline": "2026-01-20", "history": started("09:00")}),
+        json!({"id": "leaf", "title": "Leaf", "parent_id": "mid", "status": "active", "deadline": "2026-01-10", "history": started("09:00")}),
+    ];
+    let setup = Setup::with(&[("09:05", "email"), ("10:20", "sent Sam the recipe")], None, "11:30", Stores { goals, ..Default::default() });
+    let p = proposed(&setup, vec![change("top", GoalStatus::Obsolete, None), change("mid", GoalStatus::Obsolete, None), change("leaf", GoalStatus::Obsolete, None)]).unwrap().proposal_id.unwrap();
+    let choices = vec![
+        json!({"goal_id": "top", "use": "drop"}),
+        json!({"goal_id": "mid", "use": "drop"}),
+        fitted(json!({"goal_id": "leaf", "use": "change", "status": "missed", "retry_deadline": "2026-02-01"}), json!({"kind": "extend_parents"})),
+    ];
+
+    settle(&setup, &p, 1, choices).unwrap();
+    setup.call(|c| c.confirm(&p, 2)).unwrap();
+
+    // Mid isn't overdue, so no miss; top was late enough already.
+    let mid = goal(&setup, "mid");
+    assert_eq!(mid.deadline.as_deref(), Some("2026-02-01"));
+    assert_eq!(mid.history.unwrap().len(), 1);
+    let top = goal(&setup, "top");
+    assert_eq!(top.deadline.as_deref(), Some("2026-03-01"));
+    assert_eq!(top.history.unwrap().len(), 1);
+}
+
+#[test]
+fn a_retry_can_move_out_from_under_its_parent() {
+    let setup = setup();
+    let p = proposed(&setup, vec![change("g1", GoalStatus::Done, Some("10:20"))]).unwrap().proposal_id.unwrap();
+
+    settle(&setup, &p, 1, vec![fitted(retry_of_g3("2026-02-01"), json!({"kind": "move"}))]).unwrap();
+    setup.call(|c| c.confirm(&p, 2)).unwrap();
+
+    let posts = goal(&setup, "g3");
+    assert_eq!((posts.parent_id.as_deref(), posts.deadline.as_deref()), (None, Some("2026-02-01")));
+    // Its old parent is left alone.
+    assert_eq!(goal(&setup, "g2").deadline.as_deref(), Some("2026-01-01T10:00"));
+}
+
+#[test]
+fn a_retry_moved_under_a_goal_due_too_soon_or_not_there_is_refused() {
+    let setup = setup();
+    let p = proposed(&setup, vec![change("g1", GoalStatus::Done, Some("10:20"))]).unwrap().proposal_id.unwrap();
+
+    refused(settle(&setup, &p, 1, vec![fitted(retry_of_g3("2026-02-01"), json!({"kind": "move", "parent_id": "g4"}))]), "is after its parent goal g4");
+    refused(settle(&setup, &p, 1, vec![fitted(retry_of_g3("2026-02-01"), json!({"kind": "move", "parent_id": "nope"}))]), "isn't a goal");
+}
+
+#[test]
+fn a_new_retry_deadline_leaves_the_fit_chosen_for_the_old_one_behind() {
+    let setup = setup();
+    let p = proposed(&setup, vec![change("g1", GoalStatus::Done, Some("10:20"))]).unwrap().proposal_id.unwrap();
+    settle(&setup, &p, 1, vec![fitted(retry_of_g3("2026-02-01"), json!({"kind": "extend_parents"}))]).unwrap();
+
+    let proposal = settle(&setup, &p, 2, vec![retry_of_g3("2026-01-01T09:45")]).unwrap();
+
+    assert!(proposal.goal_changes.iter().find(|c| c["goal_id"] == json!("g3")).unwrap().get("retry_fit").is_none());
+    setup.call(|c| c.confirm(&p, 3)).unwrap();
+    assert_eq!(goal(&setup, "g2").deadline.as_deref(), Some("2026-01-01T10:00"));
+}
+
+#[test]
+fn applying_a_retry_now_extends_its_parents_in_the_same_write() {
+    let setup = setup();
+    let p = proposed(&setup, vec![change("g1", GoalStatus::Done, Some("10:20"))]).unwrap().proposal_id.unwrap();
+    let apply = json!({"goal_id": "g3", "use": "apply", "status": "missed", "retry_deadline": "2026-02-01", "retry_fit": {"kind": "extend_parents"}});
+
+    settle(&setup, &p, 1, vec![apply]).unwrap();
+
+    assert_eq!(goal(&setup, "g3").deadline.as_deref(), Some("2026-02-01"));
+    assert_eq!(goal(&setup, "g2").deadline.as_deref(), Some("2026-02-01"));
 }
 
 /// The error `result` failed with, matching `pattern`.
