@@ -92,6 +92,7 @@
 //! numbers and ids.
 
 use super::additions::{check_additions, create_additions, resolve, Added, Additions, Stores, REF_PREFIX};
+use super::example_changes::{self, ExampleSettled};
 use super::fact_changes::{self, FactKeeping, ProposedSummary};
 use super::goal_changes::{self, GoalChange, GoalChangeChoice, GoalChangeSettled};
 use super::guide::{APPROVAL_RULE, DECISION_GUIDE};
@@ -125,6 +126,7 @@ use crate::stores::journal::{
 use crate::stores::locations::{listed, Locations};
 use crate::stores::notes::{NotedTime, NotedTimeSheet, SheetNote};
 use crate::stores::people::People;
+use crate::stores::trait_examples::{Known, TraitExample};
 use crate::timeline::{build_timeline, join_labelled, render, split_days, with_goals, Timeline, TimelineEvent, TimelineGoal, REVISITED_LABEL};
 use chrono::Duration;
 use serde_json::{json, Map, Value};
@@ -275,6 +277,9 @@ pub struct CompactionContext {
     pub previous_note: Option<NotedTime>,
     pub proposal: Option<ProposalContext>,
     pub trait_facts: Option<Vec<Value>>,
+    /// The active traits, each {id, name, definition}: what a trait
+    /// example (compact_notes' trait_examples) can be of.
+    pub traits: Option<Vec<Value>>,
 }
 
 impl CompactionContext {
@@ -353,6 +358,7 @@ impl CompactionContext {
         out.insert("locations".into(), json!(self.locations));
         out.insert("goals".into(), json!(self.goals));
         out.insert("trait_facts".into(), json!(self.trait_facts));
+        out.insert("traits".into(), json!(self.traits));
         out.insert(
             "previous_note".into(),
             self.previous_note
@@ -628,6 +634,10 @@ impl NoteCompactor {
                 Some(f) => Some(fact_changes::trait_facts(&f.traits.all()?)),
                 None => None,
             },
+            traits: match &self.facts {
+                Some(f) => Some(active_traits(&f.traits.all()?)),
+                None => None,
+            },
             locations: match &self.locations {
                 Some(l) => {
                     let groups = l.groups()?;
@@ -694,6 +704,7 @@ impl NoteCompactor {
             if let Some(f) = &self.facts {
                 tabs.push(f.traits.whole_tab());
                 tabs.extend(f.person_facts.whole_tabs());
+                tabs.push(f.examples.whole_tab());
             }
         }
         self.notes.prefetch(&tabs)
@@ -824,6 +835,7 @@ impl NoteCompactor {
         create_refs: Vec<Option<String>>,
         fact_summaries: Vec<ProposedSummary>,
         goal_changes: Vec<GoalChange>,
+        trait_examples: Vec<TraitExample>,
     ) -> anyhow::Result<CompactionResult> {
         self.prefetch_tabs(true)?;
         self.journal.garbage_collect()?;
@@ -876,7 +888,7 @@ impl NoteCompactor {
         let (answered, replaced) = self.answers(&proposal, &replies, &feedback_rows, &edit_rows, base_meta.as_ref())?;
         let edits: Vec<UserEdit> = edit_rows.iter().filter(|(row, _)| !replaced.contains(row)).map(|(_, e)| e.clone()).collect();
         let early = merge(&proposal, &[], &edits, MergeOptions::default());
-        let (settled_additions, settled_goal_changes) = (early.settled, early.settled_goal_changes);
+        let (settled_additions, settled_goal_changes, settled_examples) = (early.settled, early.settled_goal_changes, early.settled_trait_examples);
         let additions = unsettled(&claude_additions, &settled_additions);
         let problems = check_additions(&additions, self.stores(&additions)?, &settled_ids(&settled_additions))?;
         if !problems.is_empty() {
@@ -922,10 +934,19 @@ impl NoteCompactor {
         let claude_goal_changes: Vec<GoalChange> = goal_changes.iter().map(|c| c.resolved(through)).collect();
         self.check_goal_changes(&goal_changes::unsettled(&claude_goal_changes, &settled_goal_changes), (walked[0].day.compaction_window_start, through), &notes)?;
         let changed_goals: Vec<String> = goal_changes::effective(&claude_goal_changes, &settled_goal_changes).into_iter().map(|(c, _)| c.goal_id).collect();
+        // Claude's trait examples, each with an id (kept, or made) and the
+        // event it happened at by its key; checked, less those the user
+        // settled.
+        let events: Vec<String> = proposal_events(&walked, &merged.decided_by).into_iter().map(|e| e.id).collect();
+        let settled_example_ids: Vec<String> = settled_examples.keys().cloned().collect();
+        let claude_examples: Vec<TraitExample> = example_changes::with_ids(trait_examples, &settled_example_ids)
+            .into_iter()
+            .map(|e| TraitExample { event_id: e.event_id.map(|id| lookup(&refs, &id).unwrap_or(id)), version: None, ..e })
+            .collect();
+        self.check_trait_examples(&example_changes::unsettled(&claude_examples, &settled_examples), &claude_additions, &settled_refs, &events)?;
         let recap = match recap {
             Some(recap) => {
                 let recap = recap.resolved(&refs);
-                let events: Vec<String> = proposal_events(&walked, &merged.decided_by).into_iter().map(|e| e.id).collect();
                 let problems = recap.problems(&events, &notes, &changed_goals);
                 if !problems.is_empty() {
                     return Err(ce_of(&problems, "recap"));
@@ -973,6 +994,7 @@ impl NoteCompactor {
             recap_revision: recap.as_ref().map(|_| revision_number),
             claude_fact_summaries: ProposedSummary::all_to_json(&fact_summaries),
             claude_goal_changes: GoalChange::all_to_json(&claude_goal_changes),
+            claude_trait_examples: example_changes::all_to_json(&claude_examples),
         };
         self.write_revision(&walked, &new_meta, &additions, current, &[])?;
         let newer: Vec<(String, String)> = edit_rows
@@ -1249,6 +1271,8 @@ impl NoteCompactor {
             fact_summaries: ProposedSummary::all_from(meta.claude_fact_summaries.as_ref()).iter().map(ProposedSummary::to_json).collect(),
             goal_changes: GoalChange::all_from(meta.claude_goal_changes.as_ref()).iter().map(GoalChange::to_json).collect(),
             settled_goal_changes: settled.settled_goal_changes.values().cloned().collect(),
+            trait_examples: example_changes::all_from(meta.claude_trait_examples.as_ref()).iter().map(example_changes::to_json).collect(),
+            settled_trait_examples: settled.settled_trait_examples.values().cloned().collect(),
         }))
     }
 
@@ -1312,8 +1336,11 @@ impl NoteCompactor {
             None => self.journal.feedback(&proposal)?.into_iter().map(|(_, f)| f).collect(),
         };
         let state = state_of(current, &feedback);
-        let settled_goal_changes = merge(&proposal, &[], &edits, MergeOptions::default()).settled_goal_changes;
+        let settled_so_far = merge(&proposal, &[], &edits, MergeOptions::default());
+        let settled_goal_changes = settled_so_far.settled_goal_changes;
         let goal_changes = self.shown_goal_changes(&meta, &settled_goal_changes)?;
+        let settled_examples = settled_so_far.settled_trait_examples;
+        let trait_examples = self.shown_trait_examples(&meta, &settled_examples, &current[0].additions)?;
         let mut view = Proposal {
             id: proposal.clone(),
             revision: meta.revision,
@@ -1341,6 +1368,8 @@ impl NoteCompactor {
             fact_summaries: self.proposed_summaries(&meta)?,
             goal_changes,
             settled_goal_changes: settled_goal_changes.values().cloned().collect(),
+            trait_examples,
+            settled_trait_examples: settled_examples.values().cloned().collect(),
         };
         match walked {
             Replanned::Failed(problem) => {
@@ -1395,6 +1424,7 @@ impl NoteCompactor {
         notes: Vec<NoteEdit>,
         additions: Vec<AdditionChoice>,
         goal_changes: Vec<GoalChangeChoice>,
+        trait_examples: Vec<ExampleSettled>,
         through: Option<Moment>,
     ) -> anyhow::Result<Proposal> {
         self.prefetch_tabs(true)?;
@@ -1420,6 +1450,11 @@ impl NoteCompactor {
             &goal_changes,
             through.filter(|t| *t > before).unwrap_or(before),
         )?;
+        let claude_examples = example_changes::all_from(meta.claude_trait_examples.as_ref());
+        let problems = example_changes::choice_problems(&trait_examples, &claude_examples);
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "trait_examples"));
+        }
         let mut seq = edit_rows.iter().map(|(_, e)| e.seq).max().unwrap_or(0);
         let now = self.clock();
         let mut new_edits: Vec<UserEdit> = Vec::new();
@@ -1454,6 +1489,9 @@ impl NoteCompactor {
         }
         for settled in &goal_choices {
             add(&mut new_edits, &mut seq, Some(settled.goal_id.clone()), settled.edit());
+        }
+        for settled in &trait_examples {
+            add(&mut new_edits, &mut seq, Some(settled.id.clone()), settled.edit());
         }
         // Which of them are notes, said in the edit: a note's own id looks
         // like any other.
@@ -1599,6 +1637,18 @@ impl NoteCompactor {
         }
         let (merged, mut walked) = planned(&new_edits)?;
         let additions = unsettled(&claude_additions, &merged.settled);
+        // The examples the user changed here, as they'd now be made.
+        let changing: Vec<&str> = trait_examples.iter().filter(|s| s.use_ == "change").map(|s| s.id.as_str()).collect();
+        if !changing.is_empty() {
+            let events: Vec<String> = proposal_events(&walked, &merged.decided_by).into_iter().map(|e| e.id).collect();
+            let theirs: Vec<TraitExample> = example_changes::effective(&claude_examples, &merged.settled_trait_examples)
+                .into_iter()
+                .map(|(e, _)| e)
+                .filter(|e| e.id.as_deref().is_some_and(|i| changing.contains(&i)))
+                .collect();
+            let settled_refs: Vec<String> = merged.settled.keys().cloned().collect();
+            self.check_trait_examples(&theirs, &claude_additions, &settled_refs, &events)?;
+        }
         let mut kept_out: Vec<(String, String)> = Vec::new();
         for w in &walked {
             for (note, key) in &w.plan.kept_out {
@@ -2276,7 +2326,8 @@ impl NoteCompactor {
             // The goal changes, after the calendar writes: one the goals
             // now refuse is left for the user, as a warning.
             if last {
-                let not_made = self.apply_goal_changes(&days[0])?;
+                let mut not_made = self.apply_goal_changes(&days[0])?;
+                not_made.extend(self.apply_trait_examples(&days, refs.as_ref().unwrap())?);
                 self.journal.add_warnings(&mut days[i], &not_made)?;
             }
             statuses.push((days[i].row, APPLIED));
@@ -2493,6 +2544,102 @@ impl NoteCompactor {
     fn settled_of(&self, proposal: &str) -> anyhow::Result<Dict<AdditionSettled>> {
         let edits: Vec<UserEdit> = self.journal.user_edits(proposal)?.into_iter().map(|(_, e)| e).collect();
         Ok(merge(proposal, &[], &edits, MergeOptions::default()).settled)
+    }
+
+    /// What a trait example can name: every trait's id, and everyone's --
+    /// people's, communities', and those added by ref (`additions`'
+    /// people, and `settled` refs); None if this server keeps none.
+    fn example_names(&self, additions: &Additions, settled: &[String]) -> anyhow::Result<Option<(Vec<String>, Vec<String>)>> {
+        let (Some(keeping), Some(people)) = (&self.facts, &self.people) else { return Ok(None) };
+        let mut everyone: Vec<String> = people.all_subjects()?.into_iter().map(|s| s.id).collect();
+        everyone.extend(additions.people.iter().map(|p| p.ref_.clone()));
+        everyone.extend(settled.iter().cloned());
+        Ok(Some((keeping.traits.ids()?, everyone)))
+    }
+
+    /// `examples` checked (see example_changes::problems): a
+    /// CompactionError ("trait_examples") listing everything wrong.
+    fn check_trait_examples(&self, examples: &[TraitExample], additions: &Additions, settled: &[String], events: &[String]) -> anyhow::Result<()> {
+        if examples.is_empty() {
+            return Ok(());
+        }
+        let Some((trait_ids, person_ids)) = self.example_names(additions, settled)? else {
+            return Err(ce("this server keeps no trait examples: leave out trait_examples", "trait_examples"));
+        };
+        let problems = example_changes::problems(examples, &Known { trait_ids: &trait_ids, person_ids: &person_ids }, events);
+        if !problems.is_empty() {
+            return Err(ce_of(&problems, "trait_examples"));
+        }
+        Ok(())
+    }
+
+    /// The trait examples a revision makes, as a proposal shows them (see
+    /// example_changes::shown); `additions`, the first day's, names the
+    /// people it adds.
+    fn shown_trait_examples(&self, meta: &RevisionMeta, settled: &Dict<ExampleSettled>, additions: &Map<String, Value>) -> anyhow::Result<Vec<Value>> {
+        let effective = example_changes::effective(&example_changes::all_from(meta.claude_trait_examples.as_ref()), settled);
+        if effective.is_empty() {
+            return Ok(Vec::new());
+        }
+        let traits = match &self.facts {
+            Some(f) => f.traits.all()?,
+            None => Vec::new(),
+        };
+        let subjects = match &self.people {
+            Some(p) => p.all_subjects()?,
+            None => Vec::new(),
+        };
+        let added: Vec<(String, String)> = additions
+            .get("people")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|p| Some((p.get("ref")?.as_str()?.to_string(), p.get("name")?.as_str()?.to_string())))
+            .collect();
+        Ok(example_changes::shown(&effective, &traits, &subjects, &added))
+    }
+
+    /// Make the trait examples the proposal of `days` makes, after its
+    /// calendar writes: each event it happened at by the id it was made
+    /// with (a create's key), each person added by ref by their id (one
+    /// dropped leaves just `who`). One that can't be made now -- its
+    /// trait or person gone since -- is left for the user, as a warning.
+    fn apply_trait_examples(&self, days: &[JournalCompaction], refs: &[(String, String)]) -> anyhow::Result<Vec<String>> {
+        let (Some(keeping), Some(meta)) = (&self.facts, &days[0].meta) else { return Ok(Vec::new()) };
+        let claude = example_changes::all_from(meta.claude_trait_examples.as_ref());
+        let edits: Vec<UserEdit> = self.journal.user_edits(&meta.proposal)?.into_iter().map(|(_, e)| e).collect();
+        let merged = merge(&meta.proposal, &[], &edits, MergeOptions::default());
+        let effective = example_changes::effective(&claude, &merged.settled_trait_examples);
+        if effective.is_empty() {
+            return Ok(Vec::new());
+        }
+        let made_events: Vec<(String, String)> = days
+            .iter()
+            .flat_map(|d| d.steps.iter().filter(|s| s.action == "create").filter_map(move |s| Some((s.key.clone()?, new_event_id(&d.id, s.step)))))
+            .collect();
+        let rename = fact_changes::renamer(&merged.settled, refs);
+        let trait_ids = keeping.traits.ids()?;
+        let everyone: Vec<String> = match &self.people {
+            Some(p) => p.all_subjects()?.into_iter().map(|s| s.id).collect(),
+            None => Vec::new(),
+        };
+        let known = Known { trait_ids: &trait_ids, person_ids: &everyone };
+        let mut warnings = Vec::new();
+        for (example, _) in effective {
+            let event_id = example.event_id.clone().map(|e| made_events.iter().find(|(k, _)| *k == e).map(|(_, id)| id.clone()).unwrap_or(e));
+            let person_id = example.person_id.as_deref().and_then(|p| rename(p));
+            let made = TraitExample { event_id, person_id, version: None, ..example.clone() };
+            match keeping.examples.create_trait_example(&made, &known) {
+                Ok(_) => {}
+                Err(e) if google_status(&e).is_some() => return Err(e),
+                Err(e) => warnings.push(format!(
+                    "the trait example {} ({}) wasn't made: {e}. Make it with create_trait_example if it still applies.",
+                    example.id.as_deref().unwrap_or_default(),
+                    example.trait_id.as_deref().unwrap_or_default()
+                )),
+            }
+        }
+        Ok(warnings)
     }
 
     /// `changes` checked as the goals are now (see goal_changes::problems):
@@ -3867,6 +4014,16 @@ fn keep_priorities(plan: &mut CompactionPlan, tree: &ActionTree, day: &Day) {
             });
         }
     }
+}
+
+/// The active traits, as prepare_compaction lists them: each {id, name,
+/// definition}.
+fn active_traits(traits: &[crate::stores::traits::Trait]) -> Vec<Value> {
+    traits
+        .iter()
+        .filter(|t| t.status == Some(crate::stores::traits::TraitStatus::Active) && t.id.as_deref().is_some_and(|i| !i.is_empty()))
+        .map(|t| json!({"id": t.id, "name": t.name, "definition": t.definition}))
+        .collect()
 }
 
 pub fn new_event_id(compaction_id: &str, step: i64) -> String {

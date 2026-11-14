@@ -111,6 +111,9 @@ pub struct RevisionMeta {
     /// The goal changes Claude proposed: [{goal_id, status, at, note_ids,
     /// retry_deadline}] (see compaction::goal_changes).
     pub claude_goal_changes: Option<Value>,
+    /// The trait examples Claude proposed, each as create_trait_example
+    /// takes it, with its id (see compaction::example_changes).
+    pub claude_trait_examples: Option<Value>,
 }
 
 impl RevisionMeta {
@@ -168,6 +171,9 @@ impl RevisionMeta {
         if let Some(changes) = &self.claude_goal_changes {
             out.insert("claude_goal_changes".into(), changes.clone());
         }
+        if let Some(examples) = &self.claude_trait_examples {
+            out.insert("claude_trait_examples".into(), examples.clone());
+        }
         out
     }
 
@@ -200,6 +206,7 @@ impl RevisionMeta {
             recap_revision: detail.get("recap_revision").and_then(Value::as_i64),
             claude_fact_summaries: detail.get("claude_fact_summaries").filter(|v| !v.is_null()).cloned(),
             claude_goal_changes: detail.get("claude_goal_changes").filter(|v| !v.is_null()).cloned(),
+            claude_trait_examples: detail.get("claude_trait_examples").filter(|v| !v.is_null()).cloned(),
         })
     }
 }

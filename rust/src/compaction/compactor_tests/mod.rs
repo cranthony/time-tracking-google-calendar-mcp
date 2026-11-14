@@ -28,6 +28,7 @@ mod proposal_notes;
 mod proposals;
 mod recap;
 mod several_days;
+mod trait_examples;
 mod trait_facts;
 
 pub fn time_at(time: &str) -> Moment {
@@ -77,6 +78,7 @@ pub struct DryRun {
     pub create_refs: Vec<Option<String>>,
     pub fact_summaries: Vec<ProposedSummary>,
     pub goal_changes: Vec<GoalChange>,
+    pub trait_examples: Vec<crate::stores::trait_examples::TraitExample>,
 }
 
 /// What `amend` takes: the user's edits.
@@ -87,6 +89,7 @@ pub struct Amend {
     pub notes: Vec<NoteEdit>,
     pub additions: Vec<AdditionChoice>,
     pub goal_changes: Vec<GoalChangeChoice>,
+    pub trait_examples: Vec<crate::compaction::example_changes::ExampleSettled>,
     pub through: Option<Moment>,
 }
 
@@ -141,7 +144,7 @@ impl Setup {
             people: Some(people),
             locations: Some(locations),
             goals: Some(goals),
-            facts: judging.as_ref().map(|j| FactKeeping { traits: j.traits.clone(), person_facts: app.person_facts().unwrap() }),
+            facts: judging.as_ref().map(|j| FactKeeping { traits: j.traits.clone(), person_facts: app.person_facts().unwrap(), examples: app.trait_examples().unwrap() }),
             judging,
             cancellations,
         };
@@ -230,6 +233,7 @@ impl Setup {
                 options.create_refs,
                 options.fact_summaries,
                 options.goal_changes,
+                options.trait_examples,
             )
         })
     }
@@ -247,7 +251,7 @@ impl Setup {
     }
 
     pub fn try_amend(&self, proposal_id: &str, revision: i64, amend: Amend) -> anyhow::Result<Proposal> {
-        self.call(|c| c.amend(proposal_id, revision, amend.decisions, amend.as_planned, amend.notes, amend.additions, amend.goal_changes, amend.through))
+        self.call(|c| c.amend(proposal_id, revision, amend.decisions, amend.as_planned, amend.notes, amend.additions, amend.goal_changes, amend.trait_examples, amend.through))
     }
 
     pub fn amend(&self, proposal_id: &str, revision: i64, decisions: Vec<EventDecision>) -> Proposal {

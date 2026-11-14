@@ -10,6 +10,7 @@ use crate::facts::{Facts, SELF_ID};
 use crate::py;
 use crate::stores::cancellations::traits_for;
 use crate::stores::people::Subject;
+use crate::stores::trait_examples::TraitExamples;
 use crate::stores::person_facts::{PersonFacts, SummariesByPerson, SummaryChange, MAX_SUMMARY_CHARS};
 use crate::stores::traits::{effective_prompts, Trait, TraitStatus, Traits, PROMPT_THE_TRAITS};
 use serde_json::{json, Map, Value};
@@ -19,6 +20,8 @@ use serde_json::{json, Map, Value};
 pub struct FactKeeping {
     pub traits: Traits,
     pub person_facts: PersonFacts,
+    /// Where the trait examples compaction proposes are kept.
+    pub examples: TraitExamples,
 }
 
 /// A summary Claude proposes: `summary` for `person_id`'s `fact`

@@ -3,6 +3,7 @@
 //! Claude's and the user's (`merge`).
 
 use super::additions::REF_PREFIX;
+use super::example_changes::ExampleSettled;
 use super::goal_changes::GoalChangeSettled;
 use super::plan::{CompactionChange, EventDecision};
 use crate::stores::actions::ActionShare;
@@ -488,6 +489,10 @@ pub struct Proposal {
     /// and those the user settled.
     pub goal_changes: Vec<Value>,
     pub settled_goal_changes: Vec<GoalChangeSettled>,
+    /// The trait examples it makes when applied (see
+    /// example_changes::shown), and those the user settled.
+    pub trait_examples: Vec<Value>,
+    pub settled_trait_examples: Vec<ExampleSettled>,
 }
 
 impl Proposal {
@@ -522,6 +527,8 @@ impl Proposal {
         out.insert("fact_summaries".into(), json!(self.fact_summaries));
         out.insert("goal_changes".into(), json!(self.goal_changes));
         out.insert("settled_goal_changes".into(), Value::Array(self.settled_goal_changes.iter().map(GoalChangeSettled::to_json).collect()));
+        out.insert("trait_examples".into(), json!(self.trait_examples));
+        out.insert("settled_trait_examples".into(), Value::Array(self.settled_trait_examples.iter().map(ExampleSettled::to_json).collect()));
         Value::Object(out)
     }
 }
@@ -587,6 +594,10 @@ pub struct ProposalContext {
     /// settled.
     pub goal_changes: Vec<Value>,
     pub settled_goal_changes: Vec<GoalChangeSettled>,
+    /// Claude's own trait examples, to send again, and those the user
+    /// settled.
+    pub trait_examples: Vec<Value>,
+    pub settled_trait_examples: Vec<ExampleSettled>,
 }
 
 impl ProposalContext {
@@ -612,6 +623,8 @@ impl ProposalContext {
         out.insert("fact_summaries".into(), json!(self.fact_summaries));
         out.insert("goal_changes".into(), json!(self.goal_changes));
         out.insert("settled_goal_changes".into(), Value::Array(self.settled_goal_changes.iter().map(GoalChangeSettled::to_json).collect()));
+        out.insert("trait_examples".into(), json!(self.trait_examples));
+        out.insert("settled_trait_examples".into(), Value::Array(self.settled_trait_examples.iter().map(ExampleSettled::to_json).collect()));
         Value::Object(out)
     }
 }
@@ -677,6 +690,9 @@ pub struct Merged {
     /// The goal changes the user settled, by goal id (the last entry for
     /// a goal wins).
     pub settled_goal_changes: Dict<GoalChangeSettled>,
+    /// The trait examples the user settled, by id (the last entry for one
+    /// wins).
+    pub settled_trait_examples: Dict<ExampleSettled>,
 }
 
 /// `edit` as a decision (its `as_planned` as a bare keep).
@@ -742,6 +758,7 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
     let mut note_edits: Vec<UserEdit> = Vec::new();
     let mut settled_refs: Dict<AdditionSettled> = Dict::new();
     let mut settled_goals: Dict<GoalChangeSettled> = Dict::new();
+    let mut settled_examples: Dict<ExampleSettled> = Dict::new();
     let mut described: Dict<i64> = Dict::new();
     let unknown_target = |keyed: &Dict<EventDecision>, target: Option<&str>| -> bool {
         let creating = target.and_then(|t| keyed.get(t)).is_some_and(|d| d.action == "create");
@@ -771,6 +788,11 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
         if action == "goal_change" {
             let goal_id = edit.event_id.clone().unwrap_or_default();
             settled_goals.set(&goal_id, GoalChangeSettled::from_edit(&goal_id, &edit.edit));
+            continue;
+        }
+        if action == "trait_example" {
+            let id = edit.event_id.clone().unwrap_or_default();
+            settled_examples.set(&id, ExampleSettled::from_edit(&id, &edit.edit));
             continue;
         }
         if action == "as_planned" && is_ref(edit.event_id.as_deref()) {
@@ -888,6 +910,7 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
         notes_decided_by: notes_by,
         settled: settled_refs,
         settled_goal_changes: settled_goals,
+        settled_trait_examples: settled_examples,
     }
 }
 
