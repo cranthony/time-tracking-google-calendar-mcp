@@ -1533,6 +1533,109 @@
      {
       "developerMetadataLookup": {
        "metadataKey": "sheet-role",
+       "metadataValue": "trait-examples"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Trait Examples"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000081,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "trait_id",
+        "when",
+        "person_id",
+        "who",
+        "what",
+        "why",
+        "event_id",
+        "version"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000081
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "trait-examples",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/e0a5d2bd1d3856f600be146f19xxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
        "metadataValue": "outcome-goals"
       }
      }
@@ -1573,7 +1676,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000081,
+        "sheetId": 1000083,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1622,7 +1725,7 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000081
+         "sheetId": 1000083
         },
         "metadataKey": "sheet-role",
         "metadataValue": "outcome-goals",
@@ -2132,6 +2235,14 @@
        "sheetId": 1000081
       },
       "metadataKey": "sheet-role",
+      "metadataValue": "trait-examples",
+      "visibility": "PROJECT"
+     },
+     {
+      "location": {
+       "sheetId": 1000083
+      },
+      "metadataKey": "sheet-role",
       "metadataValue": "outcome-goals",
       "visibility": "PROJECT"
      }
@@ -2447,7 +2558,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000081,
+       "sheetId": 1000083,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2555,6 +2666,37 @@
        "title": "Sheet1"
       },
       "rows": []
+     },
+     "Trait Examples": {
+      "column_widths": {},
+      "properties": {
+       "gridProperties": {
+        "columnCount": 26,
+        "rowCount": 1000
+       },
+       "index": 0,
+       "sheetId": 1000081,
+       "sheetType": "GRID",
+       "tabColor": {
+        "blue": 0.96,
+        "green": 0.52,
+        "red": 0.26
+       },
+       "title": "Trait Examples"
+      },
+      "rows": [
+       [
+        "id",
+        "trait_id",
+        "when",
+        "person_id",
+        "who",
+        "what",
+        "why",
+        "event_id",
+        "version"
+       ]
+      ]
      },
      "Traits": {
       "column_widths": {},

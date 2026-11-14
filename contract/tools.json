@@ -23297,7 +23297,7 @@
     }
   },
   {
-    "description": "Step 1 of compacting notes into the calendar: proposing what\nhappened since the last compaction, for the user to confirm. Returns\nevery day from the last compaction up to now (at most a week), notes\nor not -- each uncompacted note with an id and the planned events\nnearest it (`remaining_note_count` says how many are left for another\nround) -- those days' planned events, a `timeline` showing the two\nside by side, day by day, and instructions. Compare the notes to the\nplan, decide which events the notes show happened differently, and\nthe facts of each past event -- its actions, where it was, who was\nthere, who it was for, and a note on each person there -- then call\ncompact_notes with those decisions. Also every action an event can be\ngiven (`actions`, their groups left out), every person (`people`, the\nuser as \"self\", each with their trait facts' summaries) and every\nlocation (`locations`), to settle the facts from; each trait fact,\ndescribed once (`trait_facts`), to keep people's summaries by; and the\ngoals to tag events with (`goals`: the open ones, and those closed\nsince the earliest event started, with `closed_at` -- each to tag an\nevent with when it clearly matches its hints, or with none its title,\na closed one only on events that started before it closed; one with\n`due_in_window` had its deadline pass inside the window, to propose\nmissed with compact_notes' `goal_changes` unless something shows it\ndone).\n`proposal` is the open proposal, if there is one: revise or\nextend it (see the instructions). judgments_pending names the last\ncompaction if its judgments aren't all made: make them first\n(prepare_judgments, record_judgments). Read-only.",
+    "description": "Step 1 of compacting notes into the calendar: proposing what\nhappened since the last compaction, for the user to confirm. Returns\nevery day from the last compaction up to now (at most a week), notes\nor not -- each uncompacted note with an id and the planned events\nnearest it (`remaining_note_count` says how many are left for another\nround) -- those days' planned events, a `timeline` showing the two\nside by side, day by day, and instructions. Compare the notes to the\nplan, decide which events the notes show happened differently, and\nthe facts of each past event -- its actions, where it was, who was\nthere, who it was for, and a note on each person there -- then call\ncompact_notes with those decisions. Also every action an event can be\ngiven (`actions`, their groups left out), every person (`people`, the\nuser as \"self\", each with their trait facts' summaries) and every\nlocation (`locations`), to settle the facts from; each trait fact,\ndescribed once (`trait_facts`), to keep people's summaries by; the\nactive traits (`traits`: id, name, definition), for the trait\nexamples the notes tell of; and the\ngoals to tag events with (`goals`: the open ones, and those closed\nsince the earliest event started, with `closed_at` -- each to tag an\nevent with when it clearly matches its hints, or with none its title,\na closed one only on events that started before it closed; one with\n`due_in_window` had its deadline pass inside the window, to propose\nmissed with compact_notes' `goal_changes` unless something shows it\ndone).\n`proposal` is the open proposal, if there is one: revise or\nextend it (see the instructions). judgments_pending names the last\ncompaction if its judgments aren't all made: make them first\n(prepare_judgments, record_judgments). Read-only.",
     "inputSchema": {
       "properties": {},
       "type": "object",
@@ -23442,6 +23442,15 @@
         "trait_facts": {
           "items": {
             "$ref": "#/$defs/ContextTraitFact"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "traits": {
+          "items": {
+            "$ref": "#/$defs/ContextTrait"
           },
           "type": [
             "array",
@@ -23986,6 +23995,30 @@
           ],
           "type": "object"
         },
+        "ContextTrait": {
+          "description": "An active trait, as compaction is told of it: what a trait example\n(compact_notes' trait_examples) can be of.",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "definition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
+        },
         "ContextTraitFact": {
           "description": "A trait fact, described once: what its summary of each person keeps\n(`summary_prompt`), and what's worth logging when it changes\n(`log_prompt`).",
           "properties": {
@@ -24485,6 +24518,19 @@
                 "$ref": "#/$defs/GoalChangeSettled"
               },
               "type": "array"
+            },
+            "trait_examples": {
+              "description": "Your trait examples, each with its id: send them again (less\nthose the user settled -- settled_trait_examples).",
+              "items": {
+                "$ref": "#/$defs/TraitExample"
+              },
+              "type": "array"
+            },
+            "settled_trait_examples": {
+              "items": {
+                "$ref": "#/$defs/TraitExampleSettled"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -24772,6 +24818,144 @@
           ],
           "type": "object"
         },
+        "TraitExample": {
+          "additionalProperties": false,
+          "description": "One example of a trait done well (see get_trait_examples).",
+          "properties": {
+            "id": {
+              "description": "Made by the server.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_id": {
+              "description": "The trait it's an example of.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "description": "The day it happened, \"YYYY-MM-DD\".",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "description": "What they did (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "description": "Why it embodies the trait (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "description": "The calendar event it happened at, if there's one.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "TraitExampleSettled": {
+          "description": "A trait example the user settled, as a proposal shows it: dropped, or\nchanged (the fields they gave, and those they cleared).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clear_fields": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "use"
+          ],
+          "type": "object"
+        },
         "UserEdit": {
           "description": "One of the user's edits to a proposal, as `amend_proposal` made it.\nKept for the whole proposal, in the order made (`seq`).",
           "properties": {
@@ -24822,7 +25006,7 @@
     }
   },
   {
-    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` when it clearly matches a goal's hints, or with none its\ntitle -- a closed goal only if the event started before it closed\n(refused otherwise); the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes are added to the\nevent they fall within -- or, one that sets an edge, to the event it\nends, else the one it starts -- except those in `ignore_notes` (which\nstill set their edges) -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. new_goals propose\ngoals -- inactive -- from notes where the user says they want or mean\nto do something longer term that no open goal covers, or told someone\nthey would -- with the people it's with or for (ids, or new_people\nrefs) -- created when it's applied too. goal_changes propose changes\nto goals there are, applied when it's applied: {goal_id, status: done\n| missed | obsolete, at?, note_ids?, retry_deadline?} -- `done` at\nthe note's time when a note says the goal's outcome was reached,\n`obsolete` when one says the user dropped it, and `missed` at its\ndeadline for every goal with `due_in_window` that nothing shows done\n(never with a retry_deadline: the user picks that in review). A\nchange naming a goal that isn't open, timed outside the window, or\nthat the goal rules refuse (open sub-goals, unless the call closes\nthem too) is refused, naming the goal. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block, then the additions, the goal changes and the warnings.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`), the notes\n(`note_ids`) and the goal changes (`goal_ids`) it's about, so the user\ncan go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given; your goal_changes too, less those the user settled\n-- `proposal.settled_goal_changes`), and answer every open feedback item in\n`replies`. The user's own edits -- of events, of what notes are\nfor, and of goal changes -- are laid over your decisions by the server; never send them.\n\nNOTHING IS MOVED TO MAKE ROOM: every event you update or create must\nend after it starts and must not overlap any other event -- past or\nstill to come, the others you change included -- so move, shorten or\ncancel whatever's in the way in the same call. A call that breaks this\nchanges nothing, and the error lists every problem and the day as it\nwould leave it, to fix them all at once.\n\nAn update that moves a future event reschedules it. A night's sleep\nis an event like any other: an earlier bedtime needs whatever runs\npast it shortened or cancelled too, a later one leaves the evening\nfree, and a later wake-up has to move, shorten or cancel the morning\nevents it now runs over, even those after now, in the same call. One\nthat puts an event past what the round offers takes in the events it\nlands among, for the same call to make room among.\n\nfact_summaries rewrite people's trait facts (see prepare_compaction's\n`trait_facts`): each {person_id, fact: \"<trait id>/<fact id>\",\nsummary} -- the whole summary, as it stands after the proposal's\nevents -- only beside a log of what changed in the facts of the event\n(or events) whose notes showed it ({\"logs\": {person id: {fact: log}}}),\nand every log beside its summary. Change a fact only when the notes\nhave something relevant to it: most events say nothing new about most\nfacts.\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
+    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` when it clearly matches a goal's hints, or with none its\ntitle -- a closed goal only if the event started before it closed\n(refused otherwise); the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes are added to the\nevent they fall within -- or, one that sets an edge, to the event it\nends, else the one it starts -- except those in `ignore_notes` (which\nstill set their edges) -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. new_goals propose\ngoals -- inactive -- from notes where the user says they want or mean\nto do something longer term that no open goal covers, or told someone\nthey would -- with the people it's with or for (ids, or new_people\nrefs) -- created when it's applied too. goal_changes propose changes\nto goals there are, applied when it's applied: {goal_id, status: done\n| missed | obsolete, at?, note_ids?, retry_deadline?} -- `done` at\nthe note's time when a note says the goal's outcome was reached,\n`obsolete` when one says the user dropped it, and `missed` at its\ndeadline for every goal with `due_in_window` that nothing shows done\n(never with a retry_deadline: the user picks that in review). A\nchange naming a goal that isn't open, timed outside the window, or\nthat the goal rules refuse (open sub-goals, unless the call closes\nthem too) is refused, naming the goal. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block, then the additions, the goal changes and the warnings.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`), the notes\n(`note_ids`) and the goal changes (`goal_ids`) it's about, so the user\ncan go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given; your goal_changes too, less those the user settled\n-- `proposal.settled_goal_changes`), and answer every open feedback item in\n`replies`. The user's own edits -- of events, of what notes are\nfor, and of goal changes -- are laid over your decisions by the server; never send them.\n\nNOTHING IS MOVED TO MAKE ROOM: every event you update or create must\nend after it starts and must not overlap any other event -- past or\nstill to come, the others you change included -- so move, shorten or\ncancel whatever's in the way in the same call. A call that breaks this\nchanges nothing, and the error lists every problem and the day as it\nwould leave it, to fix them all at once.\n\nAn update that moves a future event reschedules it. A night's sleep\nis an event like any other: an earlier bedtime needs whatever runs\npast it shortened or cancelled too, a later one leaves the evening\nfree, and a later wake-up has to move, shorten or cancel the morning\nevents it now runs over, even those after now, in the same call. One\nthat puts an event past what the round offers takes in the events it\nlands among, for the same call to make room among.\n\nfact_summaries rewrite people's trait facts (see prepare_compaction's\n`trait_facts`): each {person_id, fact: \"<trait id>/<fact id>\",\nsummary} -- the whole summary, as it stands after the proposal's\nevents -- only beside a log of what changed in the facts of the event\n(or events) whose notes showed it ({\"logs\": {person id: {fact: log}}}),\nand every log beside its summary. Change a fact only when the notes\nhave something relevant to it: most events say nothing new about most\nfacts.\n\ntrait_examples propose examples of traits done well (see\nprepare_compaction's `traits`): when a note tells of the user or\nsomeone else embodying a trait well, one each, as create_trait_example\ntakes it -- {trait_id, when (\"YYYY-MM-DD\"), person_id (\"self\", a\nperson's or community's id, or a new_people ref) and/or who (in\nwords), what, why, event_id (the plan's event it happened at: an\nevent's id, a create's key or its ref)} -- created when it's applied.\nEach gets an id (yours, or one made); with a proposal open, send\n`proposal.trait_examples` again with their ids, less those the user\nsettled (`proposal.settled_trait_examples`).\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
     "inputSchema": {
       "properties": {
         "recap": {
@@ -24942,6 +25126,15 @@
         "goal_changes": {
           "items": {
             "$ref": "#/$defs/GoalChange"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "trait_examples": {
+          "items": {
+            "$ref": "#/$defs/TraitExample"
           },
           "type": [
             "array",
@@ -25836,6 +26029,76 @@
             "text"
           ],
           "type": "object"
+        },
+        "TraitExample": {
+          "additionalProperties": false,
+          "description": "One example of a trait done well (see get_trait_examples).",
+          "properties": {
+            "id": {
+              "description": "Made by the server.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_id": {
+              "description": "The trait it's an example of.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "description": "The day it happened, \"YYYY-MM-DD\".",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "description": "What they did (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "description": "Why it embodies the trait (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "description": "The calendar event it happened at, if there's one.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
         }
       },
       "title": "compact_notesArguments"
@@ -26507,7 +26770,7 @@
     }
   },
   {
-    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), `state`, every event of its days as it leaves them\n(`events`, each with its id -- or a new event's key -- its times, what\nit was planned as, and who decided it), the notes, the calendar writes\nit makes, its `timeline`, the goal changes it makes when applied\n(`goal_changes`, each with who decided it) and those the user settled\n(`settled_goal_changes`), the user's edits and the feedback with any\nreplies. With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
+    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), `state`, every event of its days as it leaves them\n(`events`, each with its id -- or a new event's key -- its times, what\nit was planned as, and who decided it), the notes, the calendar writes\nit makes, its `timeline`, the goal changes it makes when applied\n(`goal_changes`, each with who decided it) and those the user settled\n(`settled_goal_changes`), the trait examples it makes when applied\n(`trait_examples`, each with its trait's and person's names and who\ndecided it) and those the user settled (`settled_trait_examples`), the\nuser's edits and the feedback with any\nreplies. With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -26698,6 +26961,19 @@
         "settled_goal_changes": {
           "items": {
             "$ref": "#/$defs/GoalChangeSettled"
+          },
+          "type": "array"
+        },
+        "trait_examples": {
+          "description": "The trait examples it makes when applied, and those the user\nsettled.",
+          "items": {
+            "$ref": "#/$defs/ProposalTraitExample"
+          },
+          "type": "array"
+        },
+        "settled_trait_examples": {
+          "items": {
+            "$ref": "#/$defs/TraitExampleSettled"
           },
           "type": "array"
         }
@@ -27553,6 +27829,80 @@
           ],
           "type": "object"
         },
+        "ProposalTraitExample": {
+          "description": "A trait example as a proposal makes it when applied: its fields as\ncreate_trait_example takes them (`event_id` an event's id, or a new\nevent's key), its trait's name and the person's (`trait_name`,\n`person_name`), and who decided it (`claude`, or `user` once they\nchanged it).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "decided_by"
+          ],
+          "type": "object"
+        },
         "ProposedSummary": {
           "description": "A trait fact's summary a proposal rewrites, and the person's summary\nof it as it is now (`previous`), to compare.",
           "properties": {
@@ -27856,6 +28206,74 @@
           ],
           "type": "object"
         },
+        "TraitExampleSettled": {
+          "description": "A trait example the user settled, as a proposal shows it: dropped, or\nchanged (the fields they gave, and those they cleared).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clear_fields": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "use"
+          ],
+          "type": "object"
+        },
         "UserEdit": {
           "description": "One of the user's edits to a proposal, as `amend_proposal` made it.\nKept for the whole proposal, in the order made (`seq`).",
           "properties": {
@@ -27906,7 +28324,7 @@
     }
   },
   {
-    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; `goal_changes`, settling a goal change\nthe proposal makes (by its goal's id) now -- `apply` it (an update of\nthe goal, refused as update_goals would refuse it), `drop` it, or\n`change` it, the user's status, `at`, retry_deadline and retry_fit over\nClaude's, kept in the proposal (a `change` of a goal the proposal\ndoesn't change adds one, with a status); and `as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created or applied stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.\nAn update or create that puts an event past the proposal's events\ntakes in the events it lands among -- and, where those are moved, the\nones there -- as the proposal's, so move them aside in the same call;\nwhat nothing reaches stays outside. An event that starts after now\nhasn't happened: it records no facts (one moved there loses those it\nhad, and its judgments), and isn't judged.",
+    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; `goal_changes`, settling a goal change\nthe proposal makes (by its goal's id) now -- `apply` it (an update of\nthe goal, refused as update_goals would refuse it), `drop` it, or\n`change` it, the user's status, `at`, retry_deadline and retry_fit over\nClaude's, kept in the proposal (a `change` of a goal the proposal\ndoesn't change adds one, with a status); `trait_examples`, settling\na trait example the proposal makes (by its id) -- `drop` it, or\n`change` it, the user's fields over Claude's (clear_fields blanking\nperson_id, who or event_id), kept in the proposal and checked as\ncreate_trait_example checks it, its event_id one of the proposal's\nevents (a `change` with a new id adds one of the user's own); and\n`as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created or applied stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.\nAn update or create that puts an event past the proposal's events\ntakes in the events it lands among -- and, where those are moved, the\nones there -- as the proposal's, so move them aside in the same call;\nwhat nothing reaches stays outside. An event that starts after now\nhasn't happened: it records no facts (one moved there loses those it\nhad, and its judgments), and isn't judged.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -27983,6 +28401,15 @@
         "goal_changes": {
           "items": {
             "$ref": "#/$defs/GoalChangeChoice"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "trait_examples": {
+          "items": {
+            "$ref": "#/$defs/TraitExampleChoice"
           },
           "type": [
             "array",
@@ -28959,6 +29386,83 @@
             "kind"
           ],
           "type": "object"
+        },
+        "TraitExampleChoice": {
+          "additionalProperties": false,
+          "description": "What the user says of a trait example a proposal makes (by its id):\n`drop` it, or `change` it -- their fields over Claude's, and those in\nclear_fields blanked -- kept in the proposal. A `change` with an id the\nproposal doesn't have adds an example of their own (then with every\nfield create_trait_example needs).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clear_fields": {
+              "items": {
+                "enum": [
+                  "person_id",
+                  "who",
+                  "event_id"
+                ],
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "use"
+          ],
+          "type": "object"
         }
       },
       "title": "amend_proposalArguments"
@@ -29135,6 +29639,19 @@
         "settled_goal_changes": {
           "items": {
             "$ref": "#/$defs/GoalChangeSettled"
+          },
+          "type": "array"
+        },
+        "trait_examples": {
+          "description": "The trait examples it makes when applied, and those the user\nsettled.",
+          "items": {
+            "$ref": "#/$defs/ProposalTraitExample"
+          },
+          "type": "array"
+        },
+        "settled_trait_examples": {
+          "items": {
+            "$ref": "#/$defs/TraitExampleSettled"
           },
           "type": "array"
         }
@@ -29990,6 +30507,80 @@
           ],
           "type": "object"
         },
+        "ProposalTraitExample": {
+          "description": "A trait example as a proposal makes it when applied: its fields as\ncreate_trait_example takes them (`event_id` an event's id, or a new\nevent's key), its trait's name and the person's (`trait_name`,\n`person_name`), and who decided it (`claude`, or `user` once they\nchanged it).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "decided_by"
+          ],
+          "type": "object"
+        },
         "ProposedSummary": {
           "description": "A trait fact's summary a proposal rewrites, and the person's summary\nof it as it is now (`previous`), to compare.",
           "properties": {
@@ -30290,6 +30881,74 @@
           "required": [
             "id",
             "time"
+          ],
+          "type": "object"
+        },
+        "TraitExampleSettled": {
+          "description": "A trait example the user settled, as a proposal shows it: dropped, or\nchanged (the fields they gave, and those they cleared).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clear_fields": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "use"
           ],
           "type": "object"
         },
@@ -31342,6 +32001,19 @@
                 "$ref": "#/$defs/GoalChangeSettled"
               },
               "type": "array"
+            },
+            "trait_examples": {
+              "description": "The trait examples it makes when applied, and those the user\nsettled.",
+              "items": {
+                "$ref": "#/$defs/ProposalTraitExample"
+              },
+              "type": "array"
+            },
+            "settled_trait_examples": {
+              "items": {
+                "$ref": "#/$defs/TraitExampleSettled"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -31634,6 +32306,80 @@
           "required": [
             "id",
             "timestamp"
+          ],
+          "type": "object"
+        },
+        "ProposalTraitExample": {
+          "description": "A trait example as a proposal makes it when applied: its fields as\ncreate_trait_example takes them (`event_id` an event's id, or a new\nevent's key), its trait's name and the person's (`trait_name`,\n`person_name`), and who decided it (`claude`, or `user` once they\nchanged it).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "decided_by"
           ],
           "type": "object"
         },
@@ -31937,6 +32683,74 @@
           "required": [
             "id",
             "time"
+          ],
+          "type": "object"
+        },
+        "TraitExampleSettled": {
+          "description": "A trait example the user settled, as a proposal shows it: dropped, or\nchanged (the fields they gave, and those they cleared).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clear_fields": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "use"
           ],
           "type": "object"
         },
@@ -32768,6 +33582,19 @@
                 "$ref": "#/$defs/GoalChangeSettled"
               },
               "type": "array"
+            },
+            "trait_examples": {
+              "description": "The trait examples it makes when applied, and those the user\nsettled.",
+              "items": {
+                "$ref": "#/$defs/ProposalTraitExample"
+              },
+              "type": "array"
+            },
+            "settled_trait_examples": {
+              "items": {
+                "$ref": "#/$defs/TraitExampleSettled"
+              },
+              "type": "array"
             }
           },
           "required": [
@@ -33060,6 +33887,80 @@
           "required": [
             "id",
             "timestamp"
+          ],
+          "type": "object"
+        },
+        "ProposalTraitExample": {
+          "description": "A trait example as a proposal makes it when applied: its fields as\ncreate_trait_example takes them (`event_id` an event's id, or a new\nevent's key), its trait's name and the person's (`trait_name`,\n`person_name`), and who decided it (`claude`, or `user` once they\nchanged it).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "decided_by": {
+              "enum": [
+                "claude",
+                "user"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "decided_by"
           ],
           "type": "object"
         },
@@ -33363,6 +34264,74 @@
           "required": [
             "id",
             "time"
+          ],
+          "type": "object"
+        },
+        "TraitExampleSettled": {
+          "description": "A trait example the user settled, as a proposal shows it: dropped, or\nchanged (the fields they gave, and those they cleared).",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "use": {
+              "enum": [
+                "drop",
+                "change"
+              ],
+              "type": "string"
+            },
+            "trait_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "clear_fields": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "use"
           ],
           "type": "object"
         },
