@@ -16,6 +16,7 @@ use crate::stores::habits::{self, subject_id, Habit, Habits};
 use crate::stores::locations::Locations;
 use crate::stores::people::People;
 use crate::stores::person_facts::PersonFacts;
+use crate::stores::trait_examples::{TraitExample, TraitExamples};
 use crate::stores::traits::{fact_lookbacks, part_keys, part_problems, trait_fact_id, Trait, TraitStatus, Traits};
 use chrono::Duration;
 use serde_json::{json, Map, Value};
@@ -156,6 +157,13 @@ pub struct JudgmentsDue {
     pub facts: Vec<(String, Vec<(String, String)>)>,
     /// Each habit's note: (its subject id, note).
     pub habit_notes: Vec<(String, String)>,
+    /// The latest examples of each trait being judged: (trait id,
+    /// examples, most recent first).
+    pub examples: Vec<(String, Vec<ShownExample>)>,
+}
+
+fn examples_json(examples: &[(String, Vec<ShownExample>)]) -> Value {
+    Value::Object(examples.iter().map(|(k, e)| (k.clone(), Value::Array(e.iter().map(ShownExample::to_json).collect()))).collect())
 }
 
 fn pairs_json(pairs: &[(String, String)]) -> Value {
@@ -175,6 +183,7 @@ impl JudgmentsDue {
         out.insert("history".into(), Value::Object(self.history.iter().map(|(k, h)| (k.clone(), h.to_json())).collect()));
         out.insert("facts".into(), Value::Object(self.facts.iter().map(|(k, f)| (k.clone(), pairs_json(f))).collect()));
         out.insert("habit_notes".into(), pairs_json(&self.habit_notes));
+        out.insert("examples".into(), examples_json(&self.examples));
         out.insert("instructions".into(), json!(INSTRUCTIONS));
         Value::Object(out)
     }
@@ -201,6 +210,7 @@ impl HabitJudgmentsDue {
         out.insert("parts".into(), Value::Array(self.due.parts.iter().map(JudgmentPart::to_json).collect()));
         out.insert("history".into(), Value::Object(self.due.history.iter().map(|(k, h)| (k.clone(), h.to_json())).collect()));
         out.insert("habit_notes".into(), pairs_json(&self.due.habit_notes));
+        out.insert("examples".into(), examples_json(&self.due.examples));
         out.insert("instructions".into(), json!(BACKFILL_INSTRUCTIONS));
         Value::Object(out)
     }
@@ -289,6 +299,28 @@ pub struct Judging {
     /// Where people's trait fact summaries are kept, for the parts that
     /// name them.
     pub person_facts: Option<PersonFacts>,
+    /// Where the trait examples are kept, to calibrate judging by.
+    pub examples: Option<TraitExamples>,
+}
+
+/// How many of a trait's examples judging is shown: its latest.
+pub const EXAMPLES_SHOWN: usize = 5;
+
+/// A trait example as judging is shown it: when, who did it (the
+/// person's name, or the words for someone not in People), what they did
+/// and why it embodies the trait.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShownExample {
+    pub when: String,
+    pub who: Option<String>,
+    pub what: String,
+    pub why: String,
+}
+
+impl ShownExample {
+    pub fn to_json(&self) -> Value {
+        json!({"when": self.when, "who": self.who, "what": self.what, "why": self.why})
+    }
 }
 
 struct Subjects {
@@ -326,6 +358,9 @@ impl Judging {
         }
         if let Some(facts) = &self.person_facts {
             tabs.extend(facts.whole_tabs());
+        }
+        if let Some(examples) = &self.examples {
+            tabs.push(examples.whole_tab());
         }
         tabs
     }
@@ -596,6 +631,12 @@ impl Judging {
         let parts: Vec<JudgmentPart> =
             parts.into_iter().filter(|p| named.iter().any(|(person, key)| *key == p.key || format!("{key}@{person}") == p.key)).collect();
         let (facts, habit_notes) = self.facts_of(requests, &parts)?;
+        let mut judged: Vec<String> = Vec::new();
+        for request in requests {
+            if !judged.contains(&request.trait_id) {
+                judged.push(request.trait_id.clone());
+            }
+        }
         Ok(JudgmentsDue {
             compaction_id: compaction_id.into(),
             events: due_by_event(requests),
@@ -603,7 +644,40 @@ impl Judging {
             history: history.into_iter().filter(|(person, _)| people.contains(&person)).collect(),
             facts,
             habit_notes,
+            examples: self.examples_of(&judged)?,
         })
+    }
+
+    /// The latest examples (at most EXAMPLES_SHOWN) of each of
+    /// `trait_ids` that has any, each with who did it by name.
+    fn examples_of(&self, trait_ids: &[String]) -> anyhow::Result<Vec<(String, Vec<ShownExample>)>> {
+        let Some(store) = &self.examples else { return Ok(Vec::new()) };
+        let all = store.get_trait_examples(None, None)?;
+        if all.is_empty() {
+            return Ok(Vec::new());
+        }
+        let everyone = self.people.all_subjects()?;
+        let who = |e: &TraitExample| -> Option<String> {
+            let named = e.person_id.as_deref().map(|id| everyone.iter().find(|s| s.id == id).and_then(|s| s.name.clone()).unwrap_or_else(|| id.to_string()));
+            named.or_else(|| e.who.clone())
+        };
+        Ok(trait_ids
+            .iter()
+            .filter_map(|trait_id| {
+                let shown: Vec<ShownExample> = all
+                    .iter()
+                    .filter(|e| e.trait_id.as_deref() == Some(trait_id.as_str()))
+                    .take(EXAMPLES_SHOWN)
+                    .map(|e| ShownExample {
+                        when: e.when.clone().unwrap_or_default(),
+                        who: who(e),
+                        what: e.what.clone().unwrap_or_default(),
+                        why: e.why.clone().unwrap_or_default(),
+                    })
+                    .collect();
+                (!shown.is_empty()).then(|| (trait_id.clone(), shown))
+            })
+            .collect())
     }
 
     /// The summaries of the trait facts `requests`' parts name, by person

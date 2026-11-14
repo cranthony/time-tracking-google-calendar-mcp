@@ -96,6 +96,7 @@ impl Setup {
             traits: app.traits().unwrap(),
             habits: Some(app.habits().unwrap()),
             person_facts: Some(app.person_facts().unwrap()),
+            examples: Some(app.trait_examples().unwrap()),
         };
         t.seed(
             ACTIONS.1,
@@ -191,6 +192,46 @@ fn gives_each_part_once_with_its_rubric_ratings_engagement_and_facts() {
         ]
     );
     assert_eq!(due.count(), 5);
+}
+
+#[test]
+fn judging_is_shown_each_judged_traits_latest_examples() {
+    let s = Setup::standard(&[tonight()]);
+    let store = s.judging.examples.clone().unwrap();
+    let ids: Vec<String> = traits().iter().map(|t| t["id"].as_str().unwrap().to_string()).collect();
+    let everyone = strings(&["self", "sam", "mom"]);
+    let known = crate::stores::trait_examples::Known { trait_ids: &ids, person_ids: &everyone };
+    let story = |trait_id: &str, day: u32, person: Option<&str>, who: Option<&str>| {
+        let example = TraitExample {
+            trait_id: Some(trait_id.into()),
+            when: Some(format!("2026-09-{day:02}")),
+            person_id: person.map(str::to_string),
+            who: who.map(str::to_string),
+            what: Some(format!("Did it on the {day}th.")),
+            why: Some("New to them.".into()),
+            ..Default::default()
+        };
+        let _held = crate::write_lock::WRITE_LOCK.hold();
+        store.create_trait_example(&example, &known).unwrap();
+    };
+    for day in 1..=6 {
+        story("adventurous", day, Some("sam"), None);
+    }
+    story("adventurous", 20, None, Some("a guide on the trail"));
+    story("off", 21, Some("self"), None);
+
+    let due = s.judging.due("c1", &s.requests(&[TONIGHT], false)).unwrap();
+
+    let adventurous = &due.examples.iter().find(|(t, _)| t == "adventurous").unwrap().1;
+    let shown: Vec<(&str, Option<&str>)> = adventurous.iter().map(|e| (e.when.as_str(), e.who.as_deref())).collect();
+    assert_eq!(
+        shown,
+        [("2026-09-20", Some("a guide on the trail")), ("2026-09-06", Some("Sam")), ("2026-09-05", Some("Sam")), ("2026-09-04", Some("Sam")), ("2026-09-03", Some("Sam"))]
+    );
+    // Only the traits being judged: none of Off's, and Thoughtful has none.
+    assert_eq!(due.examples.len(), 1);
+    assert_eq!(due.to_json()["examples"]["adventurous"][0], json!({"when": "2026-09-20", "who": "a guide on the trail", "what": "Did it on the 20th.", "why": "New to them."}));
+    assert!(due.to_json()["instructions"].as_str().unwrap().contains("calibrate what doing the trait well looks like"));
 }
 
 #[test]

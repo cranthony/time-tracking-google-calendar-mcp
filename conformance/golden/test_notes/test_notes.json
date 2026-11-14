@@ -1760,111 +1760,6 @@
      {
       "developerMetadataLookup": {
        "metadataKey": "sheet-role",
-       "metadataValue": "cancellations"
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
-   "query": {}
-  },
-  {
-   "body": {
-    "requests": [
-     {
-      "addSheet": {
-       "properties": {
-        "tabColor": {
-         "blue": 0.96,
-         "green": 0.52,
-         "red": 0.26
-        },
-        "title": "Cancellations"
-       }
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
-   "query": {}
-  },
-  {
-   "body": {
-    "data": [
-     {
-      "dataFilter": {
-       "gridRange": {
-        "endColumnIndex": 26,
-        "endRowIndex": 1,
-        "sheetId": 1000031,
-        "startColumnIndex": 0,
-        "startRowIndex": 0
-       }
-      },
-      "majorDimension": "ROWS",
-      "values": [
-       [
-        "id",
-        "event_id",
-        "person_id",
-        "engagement",
-        "summary",
-        "start",
-        "end",
-        "action_ids",
-        "parts",
-        "cancelled_at",
-        "source"
-       ]
-      ]
-     }
-    ],
-    "valueInputOption": "RAW"
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
-   "query": {}
-  },
-  {
-   "body": {
-    "requests": [
-     {
-      "createDeveloperMetadata": {
-       "developerMetadata": {
-        "location": {
-         "sheetId": 1000031
-        },
-        "metadataKey": "sheet-role",
-        "metadataValue": "cancellations",
-        "visibility": "PROJECT"
-       }
-      }
-     }
-    ]
-   },
-   "if_match": null,
-   "method": "POST",
-   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
-   "query": {}
-  },
-  {
-   "body": null,
-   "if_match": null,
-   "method": "GET",
-   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
-   "query": {}
-  },
-  {
-   "body": {
-    "dataFilters": [
-     {
-      "developerMetadataLookup": {
-       "metadataKey": "sheet-role",
        "metadataValue": "trait-examples"
       }
      }
@@ -1905,7 +1800,7 @@
        "gridRange": {
         "endColumnIndex": 26,
         "endRowIndex": 1,
-        "sheetId": 1000033,
+        "sheetId": 1000031,
         "startColumnIndex": 0,
         "startRowIndex": 0
        }
@@ -1940,10 +1835,115 @@
       "createDeveloperMetadata": {
        "developerMetadata": {
         "location": {
-         "sheetId": 1000033
+         "sheetId": 1000031
         },
         "metadataKey": "sheet-role",
         "metadataValue": "trait-examples",
+        "visibility": "PROJECT"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": null,
+   "if_match": null,
+   "method": "GET",
+   "path": "/calendar/v3/calendars/9c738956aad29c37be54c43467@group.calendar.google.com",
+   "query": {}
+  },
+  {
+   "body": {
+    "dataFilters": [
+     {
+      "developerMetadataLookup": {
+       "metadataKey": "sheet-role",
+       "metadataValue": "cancellations"
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/developerMetadata:search",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "addSheet": {
+       "properties": {
+        "tabColor": {
+         "blue": 0.96,
+         "green": 0.52,
+         "red": 0.26
+        },
+        "title": "Cancellations"
+       }
+      }
+     }
+    ]
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx:batchUpdate",
+   "query": {}
+  },
+  {
+   "body": {
+    "data": [
+     {
+      "dataFilter": {
+       "gridRange": {
+        "endColumnIndex": 26,
+        "endRowIndex": 1,
+        "sheetId": 1000033,
+        "startColumnIndex": 0,
+        "startRowIndex": 0
+       }
+      },
+      "majorDimension": "ROWS",
+      "values": [
+       [
+        "id",
+        "event_id",
+        "person_id",
+        "engagement",
+        "summary",
+        "start",
+        "end",
+        "action_ids",
+        "parts",
+        "cancelled_at",
+        "source"
+       ]
+      ]
+     }
+    ],
+    "valueInputOption": "RAW"
+   },
+   "if_match": null,
+   "method": "POST",
+   "path": "/v4/spreadsheets/d8525884bfdb754acf0b0a744exxxxxxxxxxxxxxxxxx/values:batchUpdateByDataFilter",
+   "query": {}
+  },
+  {
+   "body": {
+    "requests": [
+     {
+      "createDeveloperMetadata": {
+       "developerMetadata": {
+        "location": {
+         "sheetId": 1000033
+        },
+        "metadataKey": "sheet-role",
+        "metadataValue": "cancellations",
         "visibility": "PROJECT"
        }
       }
@@ -2326,7 +2326,7 @@
        "sheetId": 1000031
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "cancellations",
+      "metadataValue": "trait-examples",
       "visibility": "PROJECT"
      },
      {
@@ -2334,7 +2334,7 @@
        "sheetId": 1000033
       },
       "metadataKey": "sheet-role",
-      "metadataValue": "trait-examples",
+      "metadataValue": "cancellations",
       "visibility": "PROJECT"
      },
      {
@@ -2419,7 +2419,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000031,
+       "sheetId": 1000033,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
@@ -2791,7 +2791,7 @@
         "rowCount": 1000
        },
        "index": 0,
-       "sheetId": 1000033,
+       "sheetId": 1000031,
        "sheetType": "GRID",
        "tabColor": {
         "blue": 0.96,
