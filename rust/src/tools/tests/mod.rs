@@ -70,6 +70,7 @@ impl Server {
                 "goal" => read("get_goal", json!({"id_or_title": id})).map(|i| i["version"].clone()),
                 "trait" => in_list("get_traits", json!({"statuses": ["active", "off", "archived"]}), id),
                 "travel_time" => in_list("get_travel_times", json!({}), id),
+                "trait_example" => in_list("get_trait_examples", json!({}), id),
                 "note" => in_list("get_notes", json!({"include_compacted": true}), id),
                 _ => None,
             }
@@ -122,6 +123,7 @@ impl Server {
                     ("update_trait", "trait", "trait", None),
                     ("update_travel_time", "travel_time", "travel_time", Some(("delete_travel_time", "travel_time_id"))),
                     ("update_goal", "goal", "goal", Some(("delete_goal", "goal_id"))),
+                    ("update_trait_example", "trait_example", "trait_example", Some(("delete_trait_example", "trait_example_id"))),
                 ];
                 for (update, argument, kind, delete) in rows {
                     if name == update {

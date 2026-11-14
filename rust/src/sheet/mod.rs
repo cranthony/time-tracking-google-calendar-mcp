@@ -34,6 +34,7 @@ pub const GOALS: (&str, &str) = ("outcome-goals", "Outcome Goals");
 pub const COMPACTION_SCHEDULE: (&str, &str) = ("compaction-schedule", "Compaction Schedule");
 pub const CANCELLATIONS: (&str, &str) = ("cancellations", "Cancellations");
 pub const PERSON_FACTS: (&str, &str) = ("person-facts", "Person Facts");
+pub const TRAIT_EXAMPLES: (&str, &str) = ("trait-examples", "Trait Examples");
 pub const FACT_LOGS: (&str, &str) = ("fact-logs", "Fact Logs");
 pub const HEALTH: (&str, &str) = ("health", "Health");
 pub const SCORING_DEFAULTS: (&str, &str) = ("scoring-defaults", "Scoring Defaults");

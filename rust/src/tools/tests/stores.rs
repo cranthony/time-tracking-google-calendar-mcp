@@ -33,6 +33,28 @@ fn trait_tools_list_create_and_update_and_say_what_went_wrong() {
 }
 
 #[test]
+fn trait_example_tools_name_traits_people_and_communities() {
+    let server = Server::new();
+    let friend = server.ok("create_person", json!({"person": {"name": "Friend"}}))["created_id"].as_str().unwrap().to_string();
+    let club = server.ok("create_circle", json!({"circle": {"name": "Club", "kind": "community"}}))["created_id"].as_str().unwrap().to_string();
+    let story = |trait_id: &str, person: &str| json!({"trait_example": {"trait_id": trait_id, "when": "2026-11-01", "person_id": person, "what": "Helped", "why": "Effort"}});
+
+    let mine = server.ok("create_trait_example", story("generous", "self"));
+    server.ok("create_trait_example", story("creative", &friend));
+    server.ok("create_trait_example", story("generous", &club));
+    server.refused("create_trait_example", story("generous", "stranger"), "its person_id 'stranger' isn't a person or a community");
+    server.refused("create_trait_example", story("kind", "self"), "its trait_id 'kind' isn't a trait");
+
+    assert_eq!(mine["version"], json!(1));
+    assert_eq!(server.ok("get_trait_examples", json!({"trait_id": "generous"})).as_array().unwrap().len(), 2);
+    let id = mine["id"].as_str().unwrap();
+    let updated = server.ok("update_trait_example", json!({"trait_example": {"id": id, "who": "me, on a bad day", "version": 1}, "clear_fields": ["person_id"]}));
+    assert_eq!((updated["person_id"].clone(), updated["version"].clone()), (Value::Null, json!(2)));
+    server.ok("delete_trait_example", json!({"trait_example_id": id, "if_version": 2}));
+    assert_eq!(server.ok("get_trait_examples", json!({})).as_array().unwrap().len(), 2);
+}
+
+#[test]
 fn a_parts_action_or_group_is_accepted() {
     let server = Server::new();
     with_scopes(&server);
@@ -474,9 +496,9 @@ fn delete_recurrence_returns_what_is_left_of_the_series() {
 
 // -- the write lock --------------------------------------------------------------------------------
 
-const READ_ONLY_TOOLS: [&str; 34] = [
+const READ_ONLY_TOOLS: [&str; 35] = [
     "list_events", "get_event", "get_recurrence", "get_compaction_status", "get_proposal", "get_notes", "get_traits", "get_actions",
-    "get_action", "get_action_groups", "get_action_group", "get_priority_colors", "get_people", "get_person", "get_fact_logs", "get_circles",
+    "get_action", "get_action_groups", "get_action_group", "get_priority_colors", "get_trait_examples", "get_people", "get_person", "get_fact_logs", "get_circles",
     "get_circle", "get_locations", "get_location", "get_location_groups", "get_location_group", "get_travel_times", "estimate_travel_time", "get_habits", "get_habit", "get_goals", "get_goal", "get_compaction_schedule_hints", "get_circadian_rhythm", "get_scoring_defaults", "prepare_judgments",
     "prepare_habit_judgments", "get_health", "google_setup_link",
 ];
