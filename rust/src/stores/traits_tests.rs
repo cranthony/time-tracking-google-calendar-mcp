@@ -307,6 +307,61 @@ fn clears_the_definition() {
     assert!(f.by_id("creative")["definition"].is_null());
 }
 
+// -- icons -------------------------------------------------------------------------------
+
+const ICON: &str = r#"<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>"#;
+
+#[test]
+fn keeps_lists_and_clears_an_icon() {
+    let f = fixture();
+
+    let created = f.held(|t| t.create_trait(&given(json!({"name": "Brave", "parts": [judgment()], "icon": ICON})))).unwrap();
+    assert_eq!(created["icon"], json!(ICON));
+    let listed = to_value(f.traits.get_traits(None).unwrap());
+    assert_eq!(listed[5]["icon"], json!(ICON));
+    assert!(listed[0]["icon"].is_null());
+
+    f.held(|t| t.update_trait(&given(json!({"id": "brave"})), &strings(&["icon"]))).unwrap();
+    assert!(f.by_id("brave")["icon"].is_null());
+}
+
+#[test]
+fn an_icon_that_isnt_one_colour_svg_is_refused_saying_why() {
+    let f = fixture();
+    let red = r##"<svg viewBox="0 0 24 24"><circle fill="#c00" r="9"/></svg>"##;
+
+    refused(
+        f.held(|t| t.create_trait(&given(json!({"name": "Brave", "parts": [judgment()], "icon": red})))),
+        r##"The trait 'Brave': its icon must be one colour, so the app can tint it: <circle>'s fill is "#c00""##,
+    );
+    refused(f.held(|t| t.update_trait(&given(json!({"id": "creative", "icon": "<svg viewBox='0 0 1 1'><script/></svg>"})), &[])), "its icon can't have <script>");
+}
+
+#[test]
+fn a_hand_edited_icon_the_app_mustnt_draw_isnt_listed() {
+    let f = fixture();
+    f.update(json!({"id": "thoughtful", "icon": ICON}));
+    let column = TRAIT_ROW.fields.iter().position(|(n, _)| *n == "icon").unwrap();
+    f.fake.set_cell(&f.spreadsheet, TRAITS.1, 1, column, r#"<svg viewBox="0 0 1 1" onload="x()"/>"#);
+
+    let listed = to_value(f.traits.get_traits(None).unwrap());
+
+    assert!(listed[0]["icon"].is_null());
+    assert_eq!(listed[0]["problems"], json!(["its icon can't have the event handler onload (on <svg>)"]));
+}
+
+#[test]
+fn a_tab_from_before_icons_reads_and_gains_the_column() {
+    let f = fixture();
+    let column = TRAIT_ROW.fields.iter().position(|(n, _)| *n == "icon").unwrap();
+    f.fake.set_cell(&f.spreadsheet, TRAITS.1, 0, column, "");
+
+    assert!(f.traits.all().unwrap().iter().all(|t| t.icon.is_none()));
+    f.update(json!({"id": "creative", "icon": ICON}));
+
+    assert_eq!(f.by_id("creative")["icon"], json!(ICON));
+}
+
 #[test]
 fn update_refuses_what_it_cant_do() {
     // A status that isn't one is refused by the tool's schema.

@@ -43,6 +43,7 @@
    "content": {
     "definition": "d",
     "facts": null,
+    "icon": null,
     "id": "daring",
     "name": "Daring",
     "parts": [
@@ -85,7 +86,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"icon\": null,\n  \"version\": 1\n}",
    "tool": "create_trait"
   },
   {
@@ -110,6 +111,7 @@
    "content": {
     "definition": "d",
     "facts": null,
+    "icon": null,
     "id": "daring",
     "name": "Daring",
     "parts": [
@@ -163,7 +165,7 @@
     "version": 2
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"co2yzn\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  },\n  \"facts\": null,\n  \"version\": 2\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"continuity\",\n      \"last_within_days\": 14,\n      \"next_within_days\": 14\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"co2yzn\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  },\n  \"facts\": null,\n  \"icon\": null,\n  \"version\": 2\n}",
    "tool": "update_trait"
   },
   {
@@ -212,6 +214,7 @@
    "content": {
     "definition": "d",
     "facts": null,
+    "icon": null,
     "id": "daring",
     "name": "Daring",
     "parts": [
@@ -267,7 +270,7 @@
     "version": 3
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"co2yzn\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  },\n  \"facts\": null,\n  \"version\": 3\n}",
+   "text": "{\n  \"id\": \"daring\",\n  \"name\": \"Daring\",\n  \"status\": \"active\",\n  \"definition\": \"d\",\n  \"parts\": [\n    {\n      \"id\": \"co2yzn\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"Was this activity or place new?\",\n      \"ratings\": {\n        \"0\": \"routine\",\n        \"1\": \"a twist\",\n        \"2\": \"new\",\n        \"3\": \"adventurous\"\n      },\n      \"facts\": [\n        \"action\",\n        {\n          \"fact\": \"action_history\",\n          \"lookback_days\": 90\n        },\n        \"location\"\n      ],\n      \"window_days\": 30,\n      \"scoring\": {\n        \"weight_by\": \"duration\",\n        \"statistic\": \"percentile\",\n        \"percentile\": 25,\n        \"limit\": 10,\n        \"limit_by\": \"best\"\n      }\n    },\n    {\n      \"id\": \"a0g0jc\",\n      \"kind\": \"count\",\n      \"target\": 1,\n      \"interval_days\": 21,\n      \"zero_at_days\": 42,\n      \"noun\": \"visits\"\n    }\n  ],\n  \"scoring\": {\n    \"weights\": {\n      \"co2yzn\": 2\n    },\n    \"limit\": 1,\n    \"limit_by\": \"worst\",\n    \"cap_below\": {\n      \"threshold\": 40,\n      \"cap\": 50\n    },\n    \"missing\": \"skip\"\n  },\n  \"facts\": null,\n  \"icon\": null,\n  \"version\": 3\n}",
    "tool": "update_trait"
   },
   {
@@ -677,6 +680,7 @@
         "parts",
         "scoring",
         "facts",
+        "icon",
         "version"
        ]
       ]
@@ -712,6 +716,7 @@
         "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
+        "",
         ""
        ],
        [
@@ -720,6 +725,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         ""
@@ -732,6 +738,7 @@
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -742,6 +749,7 @@
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -750,6 +758,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         "",
         "",
         ""
@@ -809,6 +818,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
+        "",
         "1"
        ],
        [
@@ -817,6 +827,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "1"
@@ -829,6 +840,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -837,6 +849,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         "",
         "",
         "1"
@@ -849,6 +862,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -857,6 +871,7 @@
         "active",
         "d",
         "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"3dnjav\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14}]",
+        "",
         "",
         "",
         "1"
@@ -893,6 +908,7 @@
         "d",
         "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"3dnjav\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14}]",
         "{\"weights\":{\"co2yzn\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}",
+        "",
         "",
         "2"
        ]
@@ -928,6 +944,7 @@
         "d",
         "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
         "{\"weights\":{\"co2yzn\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}",
+        "",
         "",
         "3"
        ]
@@ -2807,6 +2824,7 @@
         "parts",
         "scoring",
         "facts",
+        "icon",
         "version"
        ],
        [
@@ -2817,6 +2835,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
+        "",
         "1"
        ],
        [
@@ -2825,6 +2844,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "1"
@@ -2837,6 +2857,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -2845,6 +2866,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         "",
         "",
         "1"
@@ -2857,6 +2879,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -2866,6 +2889,7 @@
         "d",
         "[{\"id\":\"co2yzn\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"routine\",\"1\":\"a twist\",\"2\":\"new\",\"3\":\"adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\"],\"window_days\":30,\"scoring\":{\"weight_by\":\"duration\",\"statistic\":\"percentile\",\"percentile\":25,\"limit\":10,\"limit_by\":\"best\"}},{\"id\":\"a0g0jc\",\"kind\":\"count\",\"target\":1,\"interval_days\":21,\"zero_at_days\":42,\"noun\":\"visits\"}]",
         "{\"weights\":{\"co2yzn\":2},\"limit\":1,\"limit_by\":\"worst\",\"cap_below\":{\"threshold\":40,\"cap\":50},\"missing\":\"skip\"}",
+        "",
         "",
         "3"
        ]

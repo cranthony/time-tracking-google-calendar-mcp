@@ -138,6 +138,8 @@ fn parts_of(traits: &Option<Map<String, Value>>) -> Option<&Value> {
 pub enum TraitField {
     #[serde(rename = "definition")]
     Definition,
+    #[serde(rename = "icon")]
+    Icon,
     #[serde(rename = "scoring")]
     Scoring,
     #[serde(rename = "facts")]
@@ -195,7 +197,13 @@ pub enum HabitField {
 /// themselves), in order -- by default the active ones (rated) and those
 /// turned off (kept, but not rated for now), not archived ones
 /// (retired). Each has an id (fixed when it's created, and what a
-/// person's traits name), name, definition, parts and scoring. Each part
+/// person's traits name), name, definition, icon, parts and scoring. Its
+/// icon, if it has one, is SVG markup the app draws for it: at most 8192
+/// characters, an <svg> with a viewBox, one colour -- every fill and
+/// stroke currentColor or none (set fill="currentColor" on the <svg> so
+/// shapes without one take it too), the app tinting it -- with no
+/// scripts, foreignObject, images, styles, links (<a>) or animations, no
+/// on* attributes, and href and url() only to a #fragment within it. Each part
 /// is {"id": ..., "kind": ..., "engagement_type": "with", ...}: id is the
 /// part's own, made when it's added and never changed -- its judgments and
 /// weight are kept under it, so keep it on a part you send back, and leave
@@ -278,7 +286,7 @@ pub fn get_traits(app: &App, statuses: Option<Vec<TraitStatus>>) -> Result<Vec<L
 /// (what it means, in a sentence or two), parts (at least one; see
 /// get_traits for each kind and its fields) and optionally facts (see
 /// get_traits; leave out each new fact's id, and one is made from its
-/// name). Its status is active unless
+/// name) and an icon (see get_traits). Its status is active unless
 /// given ("off" to keep it unrated for now). Its id is made from its name
 /// and never changes, so renaming it later doesn't touch the measures
 /// naming it. A trait with a part that isn't well formed is refused,
@@ -291,7 +299,7 @@ pub fn create_trait(app: &App, r#trait: Trait) -> Result<Trait, ToolError> {
 }
 
 /// Change a trait, by id: rename it, reword its definition, change its
-/// status or scoring, or give it new parts. Fields left out keep their
+/// icon, status or scoring, or give it new parts. Fields left out keep their
 /// value; parts, if given, replace them whole, so send every part to keep,
 /// each with its id (a part sent without one is new, and starts with no
 /// judgments); a part left out takes its weight with it. facts, if given,

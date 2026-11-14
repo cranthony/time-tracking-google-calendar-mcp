@@ -61,6 +61,7 @@
    "content": {
     "definition": null,
     "facts": null,
+    "icon": null,
     "id": "close",
     "name": "Close",
     "parts": [
@@ -87,7 +88,7 @@
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"close\",\n  \"name\": \"Close\",\n  \"status\": \"active\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 14\n        }\n      ],\n      \"engagement_type\": \"with\"\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"close\",\n  \"name\": \"Close\",\n  \"status\": \"active\",\n  \"definition\": null,\n  \"parts\": [\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"judgment\",\n      \"rubric\": \"How connected?\",\n      \"ratings\": {\n        \"0\": \"apart\",\n        \"1\": \"close\"\n      },\n      \"facts\": [\n        \"general_notes\",\n        {\n          \"fact\": \"location_history\",\n          \"lookback_days\": 14\n        }\n      ],\n      \"engagement_type\": \"with\"\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"icon\": null,\n  \"version\": 1\n}",
    "tool": "create_trait"
   },
   {
@@ -2613,6 +2614,7 @@
         "parts",
         "scoring",
         "facts",
+        "icon",
         "version"
        ]
       ]
@@ -2648,6 +2650,7 @@
         "[{\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
+        "",
         ""
        ],
        [
@@ -2656,6 +2659,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         ""
@@ -2668,6 +2672,7 @@
         "[{\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -2678,6 +2683,7 @@
         "[{\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -2686,6 +2692,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         "",
         "",
         ""
@@ -3222,6 +3229,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
+        "",
         "1"
        ],
        [
@@ -3230,6 +3238,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "1"
@@ -3242,6 +3251,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -3250,6 +3260,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         "",
         "",
         "1"
@@ -3262,6 +3273,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -3270,6 +3282,7 @@
         "active",
         "",
         "[{\"id\":\"3dnjav\",\"kind\":\"judgment\",\"rubric\":\"How connected?\",\"ratings\":{\"0\":\"apart\",\"1\":\"close\"},\"facts\":[\"general_notes\",{\"fact\":\"location_history\",\"lookback_days\":14}],\"engagement_type\":\"with\"}]",
+        "",
         "",
         "",
         "1"
@@ -5151,6 +5164,7 @@
         "parts",
         "scoring",
         "facts",
+        "icon",
         "version"
        ],
        [
@@ -5161,6 +5175,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did this event show that I remembered what matters to them?\",\"ratings\":{\"0\":\"Nothing in it touched on what matters to them\",\"1\":\"A small sign that I remembered\",\"2\":\"It clearly reflected what matters to them\",\"3\":\"It was shaped around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"Was this preparation for them, built on what matters to them?\",\"ratings\":{\"0\":\"It wasn't really for them\",\"1\":\"It was for them, but generic\",\"2\":\"It was for them, and fit what matters to them\",\"3\":\"It was carefully made around what matters to them\"},\"facts\":[\"action\",\"general_notes\",\"fact:what_matters\"]}]",
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
+        "",
         "1"
        ],
        [
@@ -5169,6 +5184,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "1"
@@ -5181,6 +5197,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Did we make something together?\",\"ratings\":{\"0\":\"Nothing was made\",\"1\":\"We shared ideas, but made nothing\",\"2\":\"We made something small together\",\"3\":\"We made something substantial together\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":30},\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -5189,6 +5206,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         "",
         "",
         "1"
@@ -5201,6 +5219,7 @@
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"id\":\"judgment#2\",\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -5209,6 +5228,7 @@
         "active",
         "",
         "[{\"id\":\"3dnjav\",\"kind\":\"judgment\",\"rubric\":\"How connected?\",\"ratings\":{\"0\":\"apart\",\"1\":\"close\"},\"facts\":[\"general_notes\",{\"fact\":\"location_history\",\"lookback_days\":14}],\"engagement_type\":\"with\"}]",
+        "",
         "",
         "",
         "1"
