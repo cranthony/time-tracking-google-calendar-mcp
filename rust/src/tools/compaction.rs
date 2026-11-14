@@ -1059,11 +1059,27 @@ pub struct JudgmentsDue {
     #[schema(optional)]
     #[serde(default)]
     pub habit_notes: IndexMap<String, String>,
-    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part key>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part key>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part key>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, `facts` (each person's summaries of the trait facts its parts name -- \\\"fact:<id>\\\" -- as they are now, after the event) and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in `habit_notes`. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part key>\\\"; the compaction isn't complete until every one is. Don't show the user the judgments unless they ask.\"")]
+    /// The latest examples (at most 5) of each trait being judged, by
+    /// trait id, most recent first.
+    #[schema(optional)]
+    #[serde(default)]
+    pub examples: IndexMap<String, Vec<JudgedExample>>,
+    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: they've already confirmed the facts, and the judgments are yours to make. `events` lists each event the compaction settled with facts, each person it was about, and the parts to judge for each of them (\\\"<trait id>/<part key>\\\"). Judge each event as the applied compaction's final timeline shows it -- its times, notes, actions and facts -- for that person alone, as it was for them. A part is in `parts` under \\\"<trait id>/<part key>@<person id>\\\" if there's one (that person's own), or else \\\"<trait id>/<part key>\\\": answer its rubric -- a \\\"with\\\" part for someone who was there, a \\\"for\\\" part for someone it was done for while they weren't -- from what the timeline, `facts` (each person's summaries of the trait facts its parts name -- \\\"fact:<id>\\\" -- as they are now, after the event) and `history` (what each person did and where over the days before) show, choosing one of its ratings (the number), with one succinct line of reasoning that names the fact it rests on. A habit of the user's (\\\"habit:<id>\\\") is judged like a person there, for how the event went as practice of that habit, its note in `habit_notes`. Where they don't say, rate what they do show rather than guess -- a judgment can be redone later. Record them all with record_judgments(compaction_id, judgments), each with request_id \\\"<event id>/<person id>/<trait id>/<part key>\\\"; the compaction isn't complete until every one is. `examples` gives the latest stories of each trait being judged done well -- {when, who, what, why}, most recent first: use them to calibrate what doing the trait well looks like (the top ratings are for events like them), never as facts about the event. Don't show the user the judgments unless they ask.\"")]
     pub instructions: String,
 }
 
 /// What one person did and where, over the days before a compaction.
+/// A trait example as judging is shown it: when, who did it (the
+/// person's name, or the words for someone not in People), what they did
+/// and why it embodies the trait.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct JudgedExample {
+    pub when: String,
+    pub who: Option<String>,
+    pub what: String,
+    pub why: String,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
 pub struct PersonHistory {
     pub days: i64,
@@ -1278,7 +1294,12 @@ pub struct HabitJudgmentsDue {
     #[schema(optional)]
     #[serde(default)]
     pub habit_notes: IndexMap<String, String>,
-    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\\\"<trait id>/<part key>\\\"); `parts` gives each part's rubric and ratings once (\\\"...@habit:<id>\\\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in `habit_notes`, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \\\"<event id>/habit:<id>/<trait id>/<part key>\\\". With `current`, they're being redone: rate them afresh. Don't show the user the judgments unless they ask.\"")]
+    /// The latest examples (at most 5) of each trait being judged, by
+    /// trait id, most recent first.
+    #[schema(optional)]
+    #[serde(default)]
+    pub examples: IndexMap<String, Vec<JudgedExample>>,
+    #[schema(default = "\"JUDGE EACH ONE YOURSELF, without asking the user: this is a backfill of one of their habits, the judgments of its settled events -- already compacted -- since `since`. `events` lists each, with the parts to judge for the habit (\\\"<trait id>/<part key>\\\"); `parts` gives each part's rubric and ratings once (\\\"...@habit:<id>\\\" for the habit's own), and `history` what the user did and where in its scope over the days before. Judge each event as it is on the calendar -- its times, notes, actions and facts -- for how it went as practice of the habit, its note in `habit_notes`, choosing one of the part's ratings (the number), with one succinct line of reasoning that names the fact it rests on. Record them all with record_judgments(backfill_id, judgments) -- the backfill_id where a compaction's id would go -- each with request_id \\\"<event id>/habit:<id>/<trait id>/<part key>\\\". With `current`, they're being redone: rate them afresh. `examples` gives the latest stories of each trait being judged done well -- {when, who, what, why}, most recent first: use them to calibrate what doing the trait well looks like (the top ratings are for events like them), never as facts about the event. Don't show the user the judgments unless they ask.\"")]
     pub instructions: String,
 }
 
@@ -1341,6 +1362,7 @@ fn compactor(app: &App) -> anyhow::Result<NoteCompactor> {
         traits: app.traits()?,
         habits: Some(app.habits()?),
         person_facts: Some(app.person_facts()?),
+        examples: Some(app.trait_examples()?),
     };
     let cancellations = app.cancellations()?;
     let facts = FactKeeping { traits: app.traits()?, person_facts: app.person_facts()?, examples: app.trait_examples()? };

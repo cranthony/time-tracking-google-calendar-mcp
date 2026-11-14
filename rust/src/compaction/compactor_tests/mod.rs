@@ -130,6 +130,7 @@ impl Setup {
                     traits: trait_store,
                     habits: Some(app.habits().unwrap()),
                     person_facts: Some(app.person_facts().unwrap()),
+                    examples: Some(app.trait_examples().unwrap()),
                 };
                 (Some(judging), Some(app.cancellations().unwrap()))
             }
