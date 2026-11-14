@@ -12,6 +12,7 @@ use crate::stores::person_facts::SummaryChange;
 use indexmap::IndexMap;
 pub use crate::stores::scoring::ScoringDefaults;
 pub use crate::stores::traits::{ListedTrait, Trait, TraitStatus};
+use crate::stores::trait_examples::{self, Known, TraitExample};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
@@ -315,6 +316,73 @@ pub fn create_trait(app: &App, r#trait: Trait) -> Result<Trait, ToolError> {
 pub fn update_trait(app: &App, r#trait: Trait, clear_fields: Option<Vec<TraitField>>) -> Result<Trait, ToolError> {
     check_part_actions(app, Some(&Value::Array(r#trait.part_values())))?;
     app.traits()?.update_trait(&r#trait, &texts(&clear_fields.unwrap_or_default())).map_err(refused)
+}
+
+/// The tabs a trait example is checked against -- the traits', the
+/// people's and circles' -- and the examples', read together.
+fn prefetch_examples(app: &App) -> anyhow::Result<()> {
+    let mut ranges = vec![app.traits()?.whole_tab(), app.trait_examples()?.whole_tab()];
+    ranges.extend(app.people()?.whole_tabs());
+    app.trait_examples()?.prefetch(&ranges)
+}
+
+/// What a trait example can name: every trait, and everyone (each person,
+/// "self" among them, and each community).
+fn example_names(app: &App) -> anyhow::Result<(Vec<String>, Vec<String>)> {
+    prefetch_examples(app)?;
+    let people = app.people()?.all_subjects()?.into_iter().map(|s| s.id).collect();
+    Ok((app.traits()?.ids()?, people))
+}
+
+/// The examples of traits done well: stories of the user or someone else
+/// embodying a trait, each with when it happened ("YYYY-MM-DD"), who did
+/// it (person_id: a person, "self" for the user, or a community; and/or
+/// who, in words, for someone not in People), what they did, why it
+/// embodies the trait, and the calendar event it happened at (event_id),
+/// if there's one -- newest first. With trait_id, only its; with
+/// event_ids, only those at one of those events. Read-only.
+#[tool]
+pub fn get_trait_examples(app: &App, trait_id: Option<String>, event_ids: Option<Vec<String>>) -> Result<Vec<TraitExample>, ToolError> {
+    prefetch_examples(app).map_err(refused)?;
+    app.trait_examples()?.get_trait_examples(trait_id.as_deref(), event_ids.as_deref()).map_err(refused)
+}
+
+/// Add an example of a trait done well (see get_trait_examples):
+/// trait_id, when, who did it (person_id, who, or both), what they did
+/// and why it embodies the trait (each at most 2000 characters), and the
+/// event it happened at, if there's one. Capture one when the user tells
+/// a story of themself or someone else being, say, generous -- in their
+/// own words as much as possible, the why saying what made it the trait.
+/// Its id is made (or give one of your own, so it can be sent again
+/// safely). One that isn't well formed is refused, saying why. Returns it
+/// as created.
+#[tool(writes)]
+pub fn create_trait_example(app: &App, trait_example: TraitExample) -> Result<TraitExample, ToolError> {
+    let (trait_ids, person_ids) = example_names(app).map_err(refused)?;
+    let known = Known { trait_ids: &trait_ids, person_ids: &person_ids };
+    app.trait_examples()?.create_trait_example(&trait_example, &known).map_err(refused)
+}
+
+/// Change a trait example, by id: fields left out keep their value; list
+/// person_id, who or event_id in clear_fields to blank it (it still needs
+/// a person_id or who). Checked as for create_trait_example. Returns it
+/// as updated.
+#[tool(writes)]
+pub fn update_trait_example(
+    app: &App,
+    trait_example: TraitExample,
+    clear_fields: Option<Vec<trait_examples::ClearableField>>,
+) -> Result<TraitExample, ToolError> {
+    let (trait_ids, person_ids) = example_names(app).map_err(refused)?;
+    let known = Known { trait_ids: &trait_ids, person_ids: &person_ids };
+    let clear = texts(&clear_fields.unwrap_or_default());
+    app.trait_examples()?.update_trait_example(&trait_example, &clear, &known).map_err(refused)
+}
+
+/// Delete a trait example, by id. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns it as it was.
+#[tool(writes)]
+pub fn delete_trait_example(app: &App, trait_example_id: String, if_version: Option<i64>) -> Result<TraitExample, ToolError> {
+    app.trait_examples()?.delete_trait_example(&trait_example_id, if_version).map_err(refused)
 }
 
 /// The people the user spends time with: by default the active ones,

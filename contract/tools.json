@@ -7859,6 +7859,534 @@
     }
   },
   {
+    "description": "The examples of traits done well: stories of the user or someone else\nembodying a trait, each with when it happened (\"YYYY-MM-DD\"), who did\nit (person_id: a person, \"self\" for the user, or a community; and/or\nwho, in words, for someone not in People), what they did, why it\nembodies the trait, and the calendar event it happened at (event_id),\nif there's one -- newest first. With trait_id, only its; with\nevent_ids, only those at one of those events. Read-only.",
+    "inputSchema": {
+      "properties": {
+        "trait_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "title": "get_trait_examplesArguments"
+    },
+    "name": "get_trait_examples",
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "items": {
+            "$ref": "#/$defs/TraitExample"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object",
+      "$defs": {
+        "TraitExample": {
+          "additionalProperties": false,
+          "description": "One example of a trait done well (see get_trait_examples).",
+          "properties": {
+            "id": {
+              "description": "Made by the server.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_id": {
+              "description": "The trait it's an example of.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "description": "The day it happened, \"YYYY-MM-DD\".",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "description": "What they did (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "description": "Why it embodies the trait (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "description": "The calendar event it happened at, if there's one.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "get_trait_examplesOutput"
+    }
+  },
+  {
+    "description": "Add an example of a trait done well (see get_trait_examples):\ntrait_id, when, who did it (person_id, who, or both), what they did\nand why it embodies the trait (each at most 2000 characters), and the\nevent it happened at, if there's one. Capture one when the user tells\na story of themself or someone else being, say, generous -- in their\nown words as much as possible, the why saying what made it the trait.\nIts id is made (or give one of your own, so it can be sent again\nsafely). One that isn't well formed is refused, saying why. Returns it\nas created.",
+    "inputSchema": {
+      "properties": {
+        "trait_example": {
+          "$ref": "#/$defs/TraitExample"
+        }
+      },
+      "required": [
+        "trait_example"
+      ],
+      "type": "object",
+      "$defs": {
+        "TraitExample": {
+          "additionalProperties": false,
+          "description": "One example of a trait done well (see get_trait_examples).",
+          "properties": {
+            "id": {
+              "description": "Made by the server.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_id": {
+              "description": "The trait it's an example of.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "description": "The day it happened, \"YYYY-MM-DD\".",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "description": "What they did (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "description": "Why it embodies the trait (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "description": "The calendar event it happened at, if there's one.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "create_trait_exampleArguments"
+    },
+    "name": "create_trait_example",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "description": "Made by the server.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trait_id": {
+          "description": "The trait it's an example of.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "when": {
+          "description": "The day it happened, \"YYYY-MM-DD\".",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "person_id": {
+          "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "who": {
+          "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "what": {
+          "description": "What they did (at most 2000 characters).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "description": "Why it embodies the trait (at most 2000 characters).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "event_id": {
+          "description": "The calendar event it happened at, if there's one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "description": "Change a trait example, by id: fields left out keep their value; list\nperson_id, who or event_id in clear_fields to blank it (it still needs\na person_id or who). Checked as for create_trait_example. Returns it\nas updated.",
+    "inputSchema": {
+      "properties": {
+        "trait_example": {
+          "$ref": "#/$defs/TraitExample"
+        },
+        "clear_fields": {
+          "items": {
+            "enum": [
+              "person_id",
+              "who",
+              "event_id"
+            ],
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "trait_example"
+      ],
+      "type": "object",
+      "$defs": {
+        "TraitExample": {
+          "additionalProperties": false,
+          "description": "One example of a trait done well (see get_trait_examples).",
+          "properties": {
+            "id": {
+              "description": "Made by the server.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "trait_id": {
+              "description": "The trait it's an example of.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "when": {
+              "description": "The day it happened, \"YYYY-MM-DD\".",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "person_id": {
+              "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "who": {
+              "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "what": {
+              "description": "What they did (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "description": "Why it embodies the trait (at most 2000 characters).",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_id": {
+              "description": "The calendar event it happened at, if there's one.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "version": {
+              "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "type": "object"
+        }
+      },
+      "title": "update_trait_exampleArguments"
+    },
+    "name": "update_trait_example",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "description": "Made by the server.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trait_id": {
+          "description": "The trait it's an example of.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "when": {
+          "description": "The day it happened, \"YYYY-MM-DD\".",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "person_id": {
+          "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "who": {
+          "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "what": {
+          "description": "What they did (at most 2000 characters).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "description": "Why it embodies the trait (at most 2000 characters).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "event_id": {
+          "description": "The calendar event it happened at, if there's one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "description": "Delete a trait example, by id. Give if_version -- the version you last read: without it, it's refused; changed since, it's refused, with it as it is now -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK; gone already, it's done. Returns it as it was.",
+    "inputSchema": {
+      "properties": {
+        "trait_example_id": {
+          "type": "string"
+        },
+        "if_version": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "trait_example_id"
+      ],
+      "type": "object",
+      "title": "delete_trait_exampleArguments"
+    },
+    "name": "delete_trait_example",
+    "outputSchema": {
+      "properties": {
+        "id": {
+          "description": "Made by the server.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trait_id": {
+          "description": "The trait it's an example of.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "when": {
+          "description": "The day it happened, \"YYYY-MM-DD\".",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "person_id": {
+          "description": "Who did it, if they're in People: a person (the user is \"self\") or\na community.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "who": {
+          "description": "Who did it, in words, for someone not in People (\"a stranger on\nthe train\"). It or person_id is needed; both can be given.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "what": {
+          "description": "What they did (at most 2000 characters).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "description": "Why it embodies the trait (at most 2000 characters).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "event_id": {
+          "description": "The calendar event it happened at, if there's one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
     "description": "Every action: what the user does with their time, each a verb\nphrase for what they're doing in a moment (\"play guitar\", \"eat a\nmeal\"). By default the proposed and active ones, not archived or\ndeleted ones. Each has its id, group_id (the action group it's in, if\nany), name, status, label_id, background_color, priority, note and\ncommute (true for a way of getting from one place to another, such as\n\"drive\" or \"walk\", which a travel time can be by), plus its path through its groups (\"Creative › Guitar › Play guitar\"),\nits effective_color and effective_priority (its own, or else its\nnearest group's), its chosen_color (its own background_color, or else\nits nearest group's; null when its color is its priority's) and whether it holds_label: active actions always hold one of the calendar's event\nlabels, and proposed ones do while there's room. Also how many of the\ncalendar's label slots are in use. Read-only.",
     "inputSchema": {
       "properties": {

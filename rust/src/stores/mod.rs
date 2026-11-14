@@ -19,4 +19,5 @@ pub mod recurrences;
 pub mod schedule;
 pub mod scoring;
 pub mod shares;
+pub mod trait_examples;
 pub mod traits;

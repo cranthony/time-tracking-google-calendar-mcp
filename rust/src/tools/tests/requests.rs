@@ -49,6 +49,7 @@ fn filled() -> Filled {
     ]);
     s.ok("note", json!({"noted_time": {"timestamp": "2026-01-01T09:30:00+00:00", "description": "walked"}}));
     s.ok("set_natural_wake_time", json!({"date": "2026-01-01", "time": "06:40"}));
+    s.ok("get_trait_examples", json!({}));
     // Finding a tab is a one-time read, whichever tool's first.
     s.ok("get_compaction_status", json!({}));
     Filled { s, walk, outdoors, sam, family, home, brooklyn, outside }
@@ -96,6 +97,11 @@ fn the_requests_each_tool_makes() {
         ("get_habit", "get_habit", json!({"id_or_name": "outside"}), [0, 0, 0, 0]),
         ("create_habit", "create_habit", json!({"habit": {"name": "Walks", "action_id": f.walk}}), [0, 1, 0, 0]),
         ("update_habit", "update_habit", json!({"habit": {"id": f.outside, "traits": {"select": "all"}}}), [0, 1, 0, 0]),
+        // Trait examples, with the traits', people's and circles' tabs they're checked against.
+        ("create_trait_example", "create_trait_example", json!({"trait_example": {"id": "story", "trait_id": "generous", "when": "2026-01-01", "person_id": f.sam, "what": "Cooked", "why": "Effort"}}), [0, 1, 0, 0]),
+        ("update_trait_example", "update_trait_example", json!({"trait_example": {"id": "story", "who": "a neighbour"}}), [0, 1, 0, 0]),
+        ("get_trait_examples", "get_trait_examples", json!({"trait_id": "generous"}), [0, 0, 0, 0]),
+        ("delete_trait_example", "delete_trait_example", json!({"trait_example_id": "story"}), [0, 1, 0, 0]),
         // Events: the actions', people's and locations' tabs together.
         ("list_events", "list_events", json!({"min_time": "2026-01-01T00:00:00+00:00", "max_time": "2026-01-02T00:00:00+00:00"}), [0, 0, 1, 0]),
         ("get_event", "get_event", json!({"id": "walked"}), [0, 0, 0, 0]),
