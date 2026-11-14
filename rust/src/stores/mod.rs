@@ -8,6 +8,7 @@ pub mod goals;
 pub mod groups;
 pub mod habit_goals;
 pub mod habits;
+pub mod icons;
 pub mod journal;
 pub mod locations;
 pub mod travel_times;

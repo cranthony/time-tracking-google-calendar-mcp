@@ -7,6 +7,7 @@ use crate::google::sheets::{SheetsClient, TabRange};
 use crate::py;
 use crate::sheet::rows::{self, Row, RowSheet, RowType};
 use crate::sheet::TRAITS;
+use crate::stores::icons::icon_problems;
 use crate::stores::groups::{python_repr, python_str, repr_or_none, str_or_none};
 use crate::stores::scoring::{aggregation_problems, judgment_scoring_problems};
 use anyhow::bail;
@@ -41,7 +42,7 @@ pub const DEFAULT_LOOKBACK_DAYS: i64 = 30;
 pub const DEFAULT_TARGET: i64 = 1;
 pub const DEFAULT_WITHIN_DAYS: i64 = 14;
 pub const DEFAULT_WINDOW_DAYS: i64 = 30;
-pub const CLEARABLE_TRAIT_FIELDS: [&str; 3] = ["definition", "scoring", "facts"];
+pub const CLEARABLE_TRAIT_FIELDS: [&str; 4] = ["definition", "icon", "scoring", "facts"];
 const MAX_PART_ID_LENGTH: usize = 30;
 static PART_ID: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Za-z0-9_#-]+$").unwrap());
 
@@ -99,6 +100,8 @@ pub struct Trait {
     /// (see get_traits): each {"id", "name", "summary_prompt",
     /// "log_prompt"?}.
     pub facts: Option<Vec<Map<String, Value>>>,
+    /// Its icon: SVG markup, one colour (see get_traits).
+    pub icon: Option<String>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -145,6 +148,7 @@ pub struct ListedTrait {
     pub parts: Option<Vec<Map<String, Value>>>,
     pub scoring: Option<Map<String, Value>>,
     pub facts: Option<Vec<Map<String, Value>>>,
+    pub icon: Option<String>,
     pub problems: Option<Vec<String>>,
     pub version: Option<i64>,
 }
@@ -170,6 +174,7 @@ pub fn seed_traits() -> Vec<Trait> {
         parts: Some(parts.as_array().unwrap().iter().map(|p| p.as_object().unwrap().clone()).collect()),
         scoring: None,
         facts: None,
+        icon: None,
         version: None,
     };
     let mut thoughtful = t(
@@ -307,6 +312,9 @@ pub fn trait_problems(t: &Trait) -> Vec<String> {
     }
     if t.status.is_none() {
         problems.push(format!("its status must be one of {}", TRAIT_STATUSES.join(", ")));
+    }
+    if let Some(icon) = &t.icon {
+        problems.extend(icon_problems(icon).into_iter().map(|p| format!("its icon {p}")));
     }
     problems.extend(fact_definition_problems(t.facts.as_deref().unwrap_or_default()));
     let parts = t.part_values();
@@ -1240,6 +1248,8 @@ impl Traits {
             .filter(|t| statuses.iter().any(|s| t.status.as_ref().map(wire_text).as_ref() == Some(s)))
             .map(|t| {
                 let problems = trait_problems(&t);
+                // One edited by hand into what the app mustn't draw isn't given it.
+                let icon = t.icon.filter(|i| icon_problems(i).is_empty());
                 ListedTrait {
                     id: t.id,
                     name: t.name,
@@ -1248,6 +1258,7 @@ impl Traits {
                     parts: t.parts,
                     scoring: t.scoring,
                     facts: t.facts,
+                    icon,
                     problems: if problems.is_empty() { None } else { Some(problems) },
                     version: t.version,
                 }
