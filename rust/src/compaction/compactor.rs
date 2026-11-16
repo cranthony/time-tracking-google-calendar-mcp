@@ -102,8 +102,9 @@ use super::plan::{
     EventDecision, EventState, Issue, PlanNote, PlanOptions,
 };
 use super::proposals::{
-    change_json, claude_key, claude_key_number, decision_shape, edit_id, feedback_id, merge, new_proposal_id, revision_id, settle_refs,
-    split_feedback_id, AdditionChoice, AdditionSettled, Dict, Feedback, FeedbackReply, MergeOptions, Merged, NoteEdit, Proposal, ProposalContext,
+    change_json, claude_key, claude_key_number, decision_shape, edit_id, feedback_id, follow_through_answers, follow_through_decision, merge,
+    new_proposal_id, revision_id, settle_refs, FOLLOW_THROUGH,
+    split_feedback_id, AdditionChoice, CalendarEdit, EditedEvent, AdditionSettled, Dict, Feedback, FeedbackReply, MergeOptions, Merged, NoteEdit, Proposal, ProposalContext,
     ProposalEvent, ProposalNote, ProposalResult, ProposalSummary, Recap, UserEdit,
 };
 use crate::determinism;
@@ -120,7 +121,7 @@ use crate::stores::goals::{self, deadline_end, share_problems, Goals};
 use crate::stores::groups::{python_repr, python_str, truthy};
 use crate::stores::habits::{subject_id, SUBJECT_PREFIX};
 use crate::stores::journal::{
-    CompactionJournal, JournalCompaction, JournalStep, PlannedDay, RevisionMeta, ABANDONED, APPLIED, APPLYING, FAILED, OPEN_STATUSES,
+    CalendarEditRecord, CompactionJournal, JournalCompaction, JournalStep, PlannedDay, RevisionMeta, ABANDONED, APPLIED, APPLYING, FAILED, OPEN_STATUSES,
     PLANNED, PROPOSED, STAMPED, SUPERSEDED,
 };
 use crate::stores::locations::{listed, Locations};
@@ -1394,6 +1395,7 @@ impl NoteCompactor {
             settled_goal_changes: settled_goal_changes.values().cloned().collect(),
             trait_examples,
             settled_trait_examples: settled_examples.values().cloned().collect(),
+            calendar_edits: self.calendar_edits(&proposal)?,
         };
         match walked {
             Replanned::Failed(problem) => {
@@ -1437,6 +1439,45 @@ impl NoteCompactor {
             view.changed_since = Some(changed);
         }
         Ok(view)
+    }
+
+    /// The calendar writes kept with `proposal` (see compaction::layer),
+    /// the last for each event, each as the calendar has it now -- as it
+    /// was written, if it's gone -- with the event it overlaps, which
+    /// stays once the layer is gone.
+    fn calendar_edits(&self, proposal: &str) -> anyhow::Result<Vec<CalendarEdit>> {
+        let mut latest: Vec<CalendarEditRecord> = Vec::new();
+        for record in self.journal.calendar_edits(proposal)? {
+            latest.retain(|r| r.event_id != record.event_id);
+            latest.push(record);
+        }
+        let mut edits = Vec::new();
+        for record in latest {
+            let now = self.calendar.get_event(&record.event_id).ok().filter(|e| !e.is_cancelled() && e.start.is_some() && e.end.is_some());
+            let event = match &now {
+                Some(e) => EditedEvent { event_id: record.event_id.clone(), summary: e.summary.clone(), start: e.start(), end: e.end() },
+                None => EditedEvent { event_id: record.event_id.clone(), summary: record.summary.clone(), start: record.start, end: record.end },
+            };
+            let mut overlaps = None;
+            if now.is_some() && event.end > event.start {
+                let mut under: Vec<Event> = self
+                    .calendar
+                    .list_events(&event.start, &event.end)?
+                    .into_iter()
+                    .filter(|e| !e.is_cancelled() && e.id.as_deref() != Some(record.event_id.as_str()) && e.end() > e.start())
+                    .filter(|e| e.start() < event.end && event.start < e.end())
+                    .collect();
+                under.sort_by_key(|e| (e.start(), e.end()));
+                overlaps = under.into_iter().next().map(|e| EditedEvent {
+                    event_id: e.id.clone().unwrap_or_default(),
+                    summary: e.summary.clone(),
+                    start: e.start(),
+                    end: e.end(),
+                });
+            }
+            edits.push(CalendarEdit { event, kind: record.kind, overlaps });
+        }
+        Ok(edits)
     }
 
     /// amend_proposal: the user's edits laid over the open proposal as a
@@ -2190,7 +2231,7 @@ impl NoteCompactor {
         let mut history: Vec<String> = Vec::new();
         for day in &days {
             if day.status == STAMPED {
-                for d in &day.decisions {
+                for d in day.decisions.iter().filter(|d| d.action != FOLLOW_THROUGH) {
                     for name in [&d.event_id, &d.key].into_iter().flatten() {
                         if !name.is_empty() && !history.contains(name) {
                             history.push(name.clone());
@@ -3156,9 +3197,12 @@ impl NoteCompactor {
         let names = self.names(Some(additions))?;
         let notes = plan_notes(day);
         let previous = latest_compacted(day);
+        // Follow-through answers decide nothing: they're read only for
+        // what the layer covers (see `show_follow_through`).
+        let planned: Vec<EventDecision> = decisions.iter().filter(|d| d.action != FOLLOW_THROUGH).cloned().collect();
         let mut plan = plan_compaction(
             &notes,
-            decisions,
+            &planned,
             &day.events,
             day.now,
             PlanOptions {
@@ -3255,13 +3299,20 @@ impl NoteCompactor {
     fn show_follow_through(&self, day: &Day, decisions: &[EventDecision], plan: &mut CompactionPlan) -> anyhow::Result<()> {
         let (Some(cancellations), Some(timeline)) = (&self.cancellations, plan.timeline.as_mut()) else { return Ok(()) };
         // A cancel that counts, and an event the layer covers: as a cancel
-        // by default, it counts.
+        // by default, it counts, unless the user answered it doesn't.
         let mut cancelled: Vec<String> = decisions
             .iter()
             .filter(|d| d.action == "cancel" && d.counts_against_follow_through != Some(false))
             .filter_map(|d| d.event_id.clone())
             .collect();
-        cancelled.extend(plan.changes.iter().filter(|c| c.action == "cancel" && c.implied_by.is_some()).filter_map(|c| c.event_id.clone()));
+        let answers = follow_through_answers(decisions);
+        cancelled.extend(
+            plan.changes
+                .iter()
+                .filter(|c| c.action == "cancel" && c.implied_by.is_some())
+                .filter_map(|c| c.event_id.clone())
+                .filter(|id| covered_counts(&answers, id)),
+        );
         let mut marked = false;
         for shown in timeline.events.iter_mut() {
             let Some(event_id) = &shown.event_id else { continue };
@@ -3287,11 +3338,17 @@ impl NoteCompactor {
             .filter(|d| d.action == "cancel" && d.counts_against_follow_through != Some(false))
             .filter_map(|d| d.event_id.clone())
             .collect();
+        let answers = follow_through_answers(&journal.decisions);
         for step in &journal.steps {
             if only_done && step.status != "done" {
                 continue;
             }
-            if step.action == "cancel" && (step.implied_by.is_some() || step.event_id.as_ref().is_some_and(|e| cancelled.contains(e))) {
+            let counts = match (&step.implied_by, &step.event_id) {
+                (Some(_), Some(id)) => covered_counts(&answers, id),
+                (Some(_), None) => true,
+                (None, id) => id.as_ref().is_some_and(|e| cancelled.contains(e)),
+            };
+            if step.action == "cancel" && counts {
                 if let Some(before) = &step.before {
                     cancellations.record(&before.to_event(step.event_id.as_deref()), &format!("compaction {}", journal.batch_id()), Some(self.clock()))?;
                 }
@@ -3777,8 +3834,12 @@ where
     additions.filtered(|r| !settled.contains(&r.to_string()))
 }
 
+/// The decisions a revision is planned with: the merged ones, then the
+/// user's follow-through answers (see `follow_through_decision`).
 fn settled_decisions(merged: &Merged) -> Vec<EventDecision> {
-    merged.decisions.iter().map(|d| settle_refs(d, &merged.settled)).collect()
+    let mut decisions: Vec<EventDecision> = merged.decisions.iter().map(|d| settle_refs(d, &merged.settled)).collect();
+    decisions.extend(merged.follow_through.items.iter().map(|(id, counts)| follow_through_decision(id, *counts)));
+    decisions
 }
 
 fn claude_ignore(days: &[JournalCompaction]) -> Vec<String> {
@@ -3814,6 +3875,12 @@ fn proposal_notes(walked: &[Walked], merged: &Merged) -> Vec<ProposalNote> {
         }
     }
     notes
+}
+
+/// Whether an event the layer covers counts against follow-through: as a
+/// cancel by default, it does, unless the user answered it doesn't.
+fn covered_counts(answers: &[(String, bool)], event_id: &str) -> bool {
+    answers.iter().find(|(k, _)| k == event_id).is_none_or(|(_, counts)| *counts)
 }
 
 /// Where a revision's layer ends, as it was planned: its `now`, or later
@@ -3890,6 +3957,7 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
         let change_of = |id: &str| w.plan.changes.iter().rev().find(|c| c.event_id.as_deref() == Some(id));
         let merged: Vec<&String> = w.decisions.iter().filter(|d| d.action == "merge").filter_map(|d| d.event_id.as_ref()).collect();
         let cancel_of = |id: &str| w.decisions.iter().rev().find(|d| d.action == "cancel" && d.event_id.as_deref() == Some(id));
+        let answers = follow_through_answers(&w.decisions);
         // The summary of the layer event an implied change names: as the plan
         // leaves it, or as it is.
         let layer_summary = |name: &str| -> Option<String> {
@@ -3928,13 +3996,15 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
             } else {
                 "planned"
             };
-            let counts = if status == "cancelled" {
+            let implied_by = change.and_then(|c| c.implied_by.clone());
+            let covered = change.is_some_and(|c| c.action == "cancel");
+            let counts = if status == "cancelled" && implied_by.is_some() {
+                Some(covered_counts(&answers, &id))
+            } else if status == "cancelled" {
                 Some(cancel_of(&id).is_none_or(|d| d.counts_against_follow_through != Some(false)))
             } else {
                 None
             };
-            let implied_by = change.and_then(|c| c.implied_by.clone());
-            let covered = change.is_some_and(|c| c.action == "cancel");
             let shown = ProposalEvent {
                 cut_by: implied_by.clone().filter(|_| !covered),
                 covered_by: implied_by.clone().filter(|_| covered),

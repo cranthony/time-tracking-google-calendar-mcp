@@ -586,6 +586,89 @@ fn an_event_what_was_decided_covers_counts_as_a_cancel_does() {
     );
 }
 
+// -- the user's follow-through answers, for what the layer covers -------------------
+
+/// The user's Call, over the email: it covers it.
+fn call_over_the_email() -> EventDecision {
+    EventDecision { summary: Some("Call".into()), start: Some(time_at("09:00")), end: Some(time_at("10:00")), ..EventDecision::new("create") }
+}
+
+fn answer(event_id: &str, counts: bool) -> EventDecision {
+    crate::compaction::proposals::follow_through_decision(event_id, counts)
+}
+
+fn shown<'a>(proposal: &'a Proposal, event_id: &str) -> &'a ProposalEvent {
+    proposal.events.as_ref().unwrap().iter().find(|e| e.id == event_id).unwrap()
+}
+
+#[test]
+fn the_users_answer_says_a_covered_event_doesnt_count() {
+    let setup = follow_through();
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
+
+    let proposal = setup.amend(&p, 1, vec![call_over_the_email(), answer("e1", false)]);
+
+    let email = shown(&proposal, "e1");
+    assert_eq!((email.status.as_str(), email.covered_by.is_some()), ("cancelled", true));
+    assert_eq!((email.counts_against_follow_through, email.follow_through.clone()), (Some(false), vec![]));
+    assert!(!proposal.timeline.as_ref().unwrap().text.contains("Follow-through:"));
+    let kept = proposal.user_edits.iter().find(|e| e.action() == Some("follow_through")).unwrap();
+    assert_eq!(
+        (kept.event_id.as_deref(), kept.edit.get("counts_against_follow_through")),
+        (Some("e1"), Some(&json!(false)))
+    );
+
+    assert_eq!(setup.call(|c| c.confirm(&p, proposal.revision)).unwrap().status, "applied");
+
+    assert!(setup.event("e1").is_cancelled());
+    assert!(cancellations(&setup).is_empty());
+}
+
+#[test]
+fn an_answer_for_an_event_the_layer_doesnt_cover_does_nothing_until_it_does() {
+    let setup = follow_through();
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
+
+    let proposal = setup.amend(&p, 1, vec![answer("e1", false)]);
+
+    let email = shown(&proposal, "e1");
+    assert_eq!((email.status.as_str(), email.counts_against_follow_through), ("on_schedule", None));
+    assert!(proposal.changes.iter().all(|c| !(c.action == "cancel" && c.event_id.as_deref() == Some("e1"))));
+    assert_eq!(proposal.user_edits.iter().filter(|e| e.status == "active" && e.action() == Some("follow_through")).count(), 1);
+
+    // Kept, it applies once the layer covers the email.
+    let proposal = setup.amend(&p, proposal.revision, vec![call_over_the_email()]);
+
+    assert_eq!(shown(&proposal, "e1").counts_against_follow_through, Some(false));
+}
+
+#[test]
+fn the_user_flips_an_answer_in_review() {
+    let setup = follow_through();
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
+    let proposal = setup.amend(&p, 1, vec![call_over_the_email(), answer("e1", false)]);
+
+    let flipped = setup.amend(&p, proposal.revision, vec![answer("e1", true)]);
+
+    let email = shown(&flipped, "e1");
+    assert_eq!((email.counts_against_follow_through, email.follow_through.clone()), (Some(true), strings(&["Me (Reliable)", "Sam (Reliable)"])));
+    let applied = setup.call(|c| c.confirm(&p, flipped.revision)).unwrap();
+    assert_eq!(applied.status, "applied");
+    let ids: Vec<String> = cancellations(&setup).into_iter().map(|(id, _, _)| id).collect();
+    assert_eq!(ids, strings(&["e1/sam/with", "e1/self/with"]));
+}
+
+#[test]
+fn as_planned_drops_an_answer() {
+    let setup = follow_through();
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
+    let proposal = setup.amend(&p, 1, vec![call_over_the_email(), answer("e1", false)]);
+
+    let proposal = setup.try_amend(&p, proposal.revision, Amend { as_planned: strings(&["e1"]), ..Default::default() }).unwrap();
+
+    assert_eq!(shown(&proposal, "e1").counts_against_follow_through, Some(true));
+}
+
 #[test]
 fn a_merge_isnt_a_cancellation() {
     let setup = follow_through();

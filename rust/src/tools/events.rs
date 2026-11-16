@@ -500,8 +500,12 @@ fn change_events(
     dry_run: bool,
 ) -> Result<Value, ToolError> {
     let changes = EventChanges::new(ActionCalendar::new(app.calendar_client()?, app.actions()?), Some(app.cancellations()?));
-    let history_until = app.journal()?.last_stamped_now()?;
-    let checked = match changes.check(updates, creates, cancels, history_until, allow_compacted).map_err(|e| stale(app, e))? {
+    let journal = app.journal()?;
+    let history_until = journal.last_stamped_now()?;
+    // While a proposal is open, the calendar as its layer leaves it.
+    let layer = crate::compaction::layer::open_layer(&journal)?;
+    let overlay = layer.as_ref().map(|l| &l.overlay);
+    let checked = match changes.check_with(updates, creates, cancels, history_until, allow_compacted, overlay).map_err(|e| stale(app, e))? {
         Ok(batch) => batch,
         Err(error) => {
             tracing::warn!(
@@ -526,7 +530,11 @@ fn change_events(
             )
             .collect()
     } else {
-        changes.apply(&checked, tool_name).map_err(|e| stale(app, e))?
+        let written = changes.apply(&checked, tool_name).map_err(|e| stale(app, e))?;
+        if let Some(layer) = &layer {
+            journal.add_calendar_edits(&layer.proposal, &layer.edits_of(&checked, &written, crate::determinism::now()))?;
+        }
+        written
     };
     Ok(json!({
         "events": public_events(app, &events)?,
@@ -708,6 +716,16 @@ pub fn get_event(app: &App, id: String) -> Result<PublicEvent, ToolError> {
 /// every problem and the events around them, to send a valid call at
 /// once.
 ///
+/// WHILE A COMPACTION PROPOSAL IS OPEN, the calendar is checked with its
+/// layer on top (see get_proposal): an event landing under one of the
+/// events it decided -- the end of the one going on at its `through`,
+/// which the user ran later, say -- is refused, and the proposal's event
+/// has to end earlier there first; time the layer frees -- where it ends
+/// an event earlier than planned -- is free. A change to an event the
+/// layer cuts or covers, or into time it frees, is kept with the
+/// proposal (its `calendar_edits`): abandoning it leaves the change as
+/// it is.
+///
 /// VERSIONS: each update and cancel gives the event's etag as you last
 /// read it (list_events and get_event give it). One without is refused;
 /// one changed since is refused, with every such event as it is now
@@ -802,6 +820,16 @@ pub fn update_event(app: &App, updates: Option<Vec<EventUpdate>>, creates: Optio
 /// every problem and the events around them, to send a valid call at
 /// once.
 ///
+/// WHILE A COMPACTION PROPOSAL IS OPEN, the calendar is checked with its
+/// layer on top (see get_proposal): an event landing under one of the
+/// events it decided -- the end of the one going on at its `through`,
+/// which the user ran later, say -- is refused, and the proposal's event
+/// has to end earlier there first; time the layer frees -- where it ends
+/// an event earlier than planned -- is free. A change to an event the
+/// layer cuts or covers, or into time it frees, is kept with the
+/// proposal (its `calendar_edits`): abandoning it leaves the change as
+/// it is.
+///
 /// An event can't be created to start before the last compaction
 /// (get_compaction_status's last_compaction): that's history, unless
 /// allow_compacted_changes is set -- ONLY set it when the user has
@@ -836,6 +864,9 @@ pub fn create_event(app: &App, events: Vec<PublicEvent>, #[schema(default = "fal
 /// explicitly approved changing history. dry_run returns
 /// what it would do without changing anything. Returns the events
 /// cancelled.
+///
+/// A cancel, while a compaction proposal is open, of an event its layer
+/// cuts or covers is kept with the proposal (its `calendar_edits`).
 #[tool(writes)]
 pub fn delete_event(app: &App, cancels: Vec<EventCancel>, #[schema(default = "false")] allow_compacted_changes: bool, #[schema(default = "false")] dry_run: bool) -> Result<EventChangesResult, ToolError> {
     prefetch_for_changes(app)?;

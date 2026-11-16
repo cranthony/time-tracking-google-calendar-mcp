@@ -1,0 +1,173 @@
+//! Calendar writes while a proposal is open: checked against the calendar
+//! with its layer on top, and those the layer bears on kept with it for
+//! the abandon dialog (see compaction::layer).
+
+use super::*;
+use crate::compaction::proposals::CalendarEdit;
+
+/// The event tool `name`'s result, or its error's text, called as a
+/// client calls it.
+fn tool(name: &str, setup: &Setup, arguments: Value) -> Result<Value, String> {
+    let mut timings = Vec::new();
+    let result = crate::mcp::call_tool(&setup.t.app, &json!({"name": name, "arguments": arguments}), &mut timings);
+    if result["isError"] == true {
+        return Err(result["content"][0]["text"].as_str().unwrap_or_default().to_string());
+    }
+    Ok(result["structuredContent"].clone())
+}
+
+fn when(time: &str) -> String {
+    py::isoformat(&time_at(time))
+}
+
+fn create(setup: &Setup, summary: &str, span: (&str, &str)) -> Result<Value, String> {
+    tool("create_event", setup, json!({"events": [{"summary": summary, "start": when(span.0), "end": when(span.1)}]}))
+}
+
+fn calendar_edits(setup: &Setup) -> Vec<CalendarEdit> {
+    setup.get_proposal().calendar_edits
+}
+
+/// A morning of work that runs on past now (11:30): Claude ends it at
+/// 11:00 from the note, freeing the rest of it -- the calendar still has
+/// it to 12:30 until it's confirmed.
+fn work_ended_early() -> (Setup, String) {
+    let events = vec![
+        event_at("09:00-10:00").id("e1").summary("Email").priority(2).build(),
+        event_at("10:00-12:30").id("w1").summary("Work").priority(2).build(),
+        event_at("12:30-13:30").id("e3").summary("Lunch").priority(1).build(),
+        event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
+    ];
+    let setup = Setup::new(&[("09:05", "email"), ("11:00", "work done")], Some(events), "11:30");
+    let ended = EventDecision { end_note: Some(setup.note_id(3)), ..keep("w1") };
+    let p = setup.dry_run(vec![ended]).proposal_id.unwrap();
+    (setup, p)
+}
+
+// -- the overlap check sees the layer ------------------------------------------------
+
+#[test]
+fn a_write_under_the_tail_of_the_layer_is_refused() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+    // The user ran the report on past through, to 12:30.
+    let proposal = setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("12:30")), ..keep("e2") }]);
+    assert_eq!((proposal.through, proposal.layer_end), (time_at("11:30"), time_at("12:30")));
+
+    let refusal = create(&setup, "Call", ("11:45", "12:15")).unwrap_err();
+
+    assert!(refusal.contains("lands under the open compaction proposal: 'Report' runs until 12:30 there"), "{refusal}");
+    assert!(refusal.contains("End it earlier in the proposal first"), "{refusal}");
+    assert!(setup.creates().is_empty());
+    // Past the layer's end, the calendar is as it was.
+    create(&setup, "Call", ("13:00", "13:30")).unwrap();
+    assert!(calendar_edits(&setup).is_empty());
+}
+
+#[test]
+fn a_write_into_time_the_layer_freed_is_allowed_and_kept() {
+    let (setup, _p) = work_ended_early();
+    // Without the layer, the calendar's Work would be in the way.
+    let made = create(&setup, "Call", ("11:45", "12:15")).unwrap();
+
+    let call = made["events"][0]["id"].as_str().unwrap().to_string();
+    let edits = calendar_edits(&setup);
+    assert_eq!(edits.len(), 1);
+    let edit = &edits[0];
+    assert_eq!((edit.event.event_id.as_str(), edit.event.summary.as_deref(), edit.kind.as_str()), (call.as_str(), Some("Call"), "freed"));
+    assert_eq!((edit.event.start, edit.event.end), (time_at("11:45"), time_at("12:15")));
+    let overlaps = edit.overlaps.as_ref().unwrap();
+    assert_eq!((overlaps.event_id.as_str(), overlaps.summary.as_deref()), ("w1", Some("Work")));
+    assert_eq!((overlaps.start, overlaps.end), (time_at("10:00"), time_at("12:30")));
+    let shown = setup.call(|c| c.get_proposal(None, None)).unwrap().to_json();
+    assert_eq!(
+        shown["calendar_edits"][0]["overlaps"],
+        json!({"event_id": "w1", "summary": "Work", "start": py::pydantic_datetime(&time_at("10:00")), "end": py::pydantic_datetime(&time_at("12:30"))})
+    );
+    assert_eq!(shown["calendar_edits"][0]["kind"], "freed");
+}
+
+#[test]
+fn what_overlaps_is_read_from_the_calendar_as_it_is_now() {
+    let (setup, _p) = work_ended_early();
+    let made = create(&setup, "Call", ("11:45", "12:15")).unwrap();
+    let call = made["events"][0]["id"].as_str().unwrap().to_string();
+
+    // Moved later by hand in Calendar, past Work.
+    setup.change_event(Event { start: Some(time_at("13:30")), end: Some(time_at("14:00")), ..setup.event(&call) });
+
+    let edit = &calendar_edits(&setup)[0];
+    assert_eq!((edit.event.start, edit.overlaps.as_ref()), (time_at("13:30"), None));
+}
+
+#[test]
+fn a_write_to_an_event_the_layer_covers_is_kept() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+    // The report, run on to 13:00, covers lunch.
+    let proposal = setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("13:00")), ..keep("e2") }]);
+    assert!(proposal.events.as_ref().unwrap().iter().any(|e| e.id == "e3" && e.covered_by.as_deref() == Some("e2")));
+    let etag = setup.event("e3").etag.0.unwrap();
+
+    // The user drags lunch out from under it, to later.
+    tool("update_event", &setup, json!({"updates": [{"event": {"id": "e3", "start": when("14:00"), "end": when("15:00"), "etag": etag}}]})).unwrap();
+
+    let edits = calendar_edits(&setup);
+    assert_eq!(edits.len(), 1);
+    assert_eq!((edits[0].event.event_id.as_str(), edits[0].kind.as_str(), edits[0].overlaps.as_ref()), ("e3", "covered", None));
+    assert_eq!(edits[0].event.start, time_at("14:00"));
+    // No longer under the layer, it's no longer covered.
+    let proposal = setup.get_proposal();
+    assert!(proposal.events.as_ref().unwrap().iter().all(|e| e.id != "e3" || e.covered_by.is_none()));
+}
+
+#[test]
+fn a_write_the_layer_doesnt_bear_on_isnt_kept() {
+    let (setup, _p) = work_ended_early();
+
+    create(&setup, "Call", ("14:00", "14:30")).unwrap();
+
+    assert!(calendar_edits(&setup).is_empty());
+}
+
+// -- abandoning ---------------------------------------------------------------------------
+
+#[test]
+fn abandoning_writes_nothing_and_leaves_the_overlap() {
+    let (setup, p) = work_ended_early();
+    let made = create(&setup, "Call", ("11:45", "12:15")).unwrap();
+    let call = made["events"][0]["id"].as_str().unwrap().to_string();
+    setup.t.fake.clear_requests();
+
+    setup.call(|c| c.abandon(&p)).unwrap();
+
+    assert!(setup.calendar_writes().is_empty());
+    let (work, call) = (setup.event("w1"), setup.event(&call));
+    assert_eq!((work.start, work.end), (Some(time_at("10:00")), Some(time_at("12:30"))));
+    assert_eq!((call.start, call.end), (Some(time_at("11:45")), Some(time_at("12:15"))));
+    // With no proposal open, writes see the calendar as it is.
+    assert!(create(&setup, "Walk", ("12:00", "12:10")).unwrap_err().contains("overlaps"));
+}
+
+#[test]
+fn the_next_round_copes_with_the_overlap_left() {
+    let (setup, p) = work_ended_early();
+    create(&setup, "Call", ("11:45", "12:15")).unwrap();
+    setup.call(|c| c.abandon(&p)).unwrap();
+    setup.set_now("12:45");
+
+    // Nothing decided: the two overlapping events are as planned.
+    let planned = setup.dry_run(vec![]);
+    let proposal = setup.get_proposal();
+    let ids: Vec<&str> = proposal.events.as_ref().unwrap().iter().map(|e| e.id.as_str()).collect();
+    assert!(ids.contains(&"w1"), "{ids:?}");
+    assert!(proposal.problem.is_none());
+
+    // Deciding one of them: the work ended at 11:00, the call is as planned.
+    let ended = EventDecision { end_note: Some(setup.note_id(3)), ..keep("w1") };
+    let revised = setup.try_dry_run(vec![ended], DryRun::revising(planned.proposal_id.as_ref().unwrap(), 1)).unwrap();
+    assert_eq!(change(&revised, "w1").after.as_ref().unwrap().end, Some(time_at("11:00")));
+    let id = revised.proposal_id.unwrap();
+    assert_eq!(setup.call(|c| c.confirm(&id, 2)).unwrap().status, "applied");
+    assert_eq!(setup.event("w1").end, Some(time_at("11:00")));
+}

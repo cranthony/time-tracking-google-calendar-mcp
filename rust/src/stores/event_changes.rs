@@ -223,6 +223,47 @@ pub struct Batch {
     pub until: Option<Moment>,
 }
 
+/// The open compaction proposal's layer, as a calendar write sees the
+/// calendar under it (see compaction::layer): what's decided lies on top,
+/// and what it cuts, covers or frees is as the layer leaves it.
+#[derive(Debug, Clone, Default)]
+pub struct Overlay {
+    /// The layer's own events, as decided (a new one's id is its key).
+    pub layer: Vec<Event>,
+    /// Calendar events the layer leaves otherwise, by id: cut to the
+    /// event given, or gone (None) -- covered, cancelled, or one of
+    /// `layer`.
+    pub replaced: Vec<(String, Option<Event>)>,
+    /// The later pieces of events it splits, as new events.
+    pub added: Vec<Event>,
+}
+
+/// Each moved or new event of `placed` that lands under one of the
+/// layer's events.
+fn under_layer(placed: &[Placed], overlay: &Overlay) -> Vec<Problem> {
+    let mut problems = Vec::new();
+    for p in placed.iter().filter(|p| p.asked && p.moved && p.event.end() > p.event.start()) {
+        for l in overlay.layer.iter().filter(|l| l.end() > l.start()) {
+            if l.id.is_some() && (l.id == p.event.id || l.id.as_deref() == Some(p.key.as_str())) {
+                continue;
+            }
+            if l.start() < p.event.end() && p.event.start() < l.end() {
+                let tz = p.event.start().offset().fix();
+                problems.push(Problem::new(
+                    "under_layer",
+                    format!(
+                        "{} lands under the open compaction proposal: {} runs until {} there. End it earlier in the proposal first (amend_proposal), then make this change.",
+                        describe_placed(p),
+                        summary_repr(l),
+                        hm(&l.end(), &tz)
+                    ),
+                ));
+            }
+        }
+    }
+    problems
+}
+
 pub struct EventChanges {
     client: ActionCalendar,
     cancellations: Option<Cancellations>,
@@ -238,7 +279,6 @@ impl EventChanges {
         EventChanges { client, cancellations }
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn check(
         &self,
         updates: Vec<Event>,
@@ -246,6 +286,23 @@ impl EventChanges {
         cancels: Vec<Cancel>,
         history_until: Option<Moment>,
         allow_compacted: bool,
+    ) -> anyhow::Result<Result<Batch, ChangeError>> {
+        self.check_with(updates, creates, cancels, history_until, allow_compacted, None)
+    }
+
+    /// `check`, against the calendar with `overlay` -- an open proposal's
+    /// layer -- on top: a change landing under one of the layer's events
+    /// is refused (`under_layer`), and one into time it frees is checked
+    /// against the calendar as the layer leaves it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn check_with(
+        &self,
+        updates: Vec<Event>,
+        creates: Vec<Event>,
+        cancels: Vec<Cancel>,
+        history_until: Option<Moment>,
+        allow_compacted: bool,
+        overlay: Option<&Overlay>,
     ) -> anyhow::Result<Result<Batch, ChangeError>> {
         let guarded = if allow_compacted { None } else { history_until };
         let mut problems: Vec<Problem> = Vec::new();
@@ -518,7 +575,15 @@ impl EventChanges {
         for event in &listed {
             let change = changes.iter().rev().find(|c| c.before.as_ref().is_some_and(|b| b.id == event.id));
             match change {
-                None => placed.push(Placed { event: event.clone(), key: event.id.clone().unwrap_or_default(), moved: false, asked: false }),
+                None => {
+                    let laid = overlay.and_then(|o| o.replaced.iter().find(|(id, _)| event.id.as_ref() == Some(id)));
+                    let shown = match laid {
+                        Some((_, None)) => continue,
+                        Some((_, Some(cut))) => cut.clone(),
+                        None => event.clone(),
+                    };
+                    placed.push(Placed { event: shown, key: event.id.clone().unwrap_or_default(), moved: false, asked: false })
+                }
                 Some(change) if change.action == "update" => placed.push(Placed {
                     event: change.after.clone().unwrap(),
                     key: event.id.clone().unwrap_or_default(),
@@ -526,6 +591,11 @@ impl EventChanges {
                     asked: true,
                 }),
                 Some(_) => {}
+            }
+        }
+        for piece in overlay.iter().flat_map(|o| &o.added) {
+            if piece.end() > since && piece.start() < until && !changes.iter().any(|c| c.before.as_ref().is_some_and(|b| b.id == piece.id)) {
+                placed.push(Placed { event: piece.clone(), key: piece.id.clone().unwrap_or_default(), moved: false, asked: false });
             }
         }
         for (number, change) in changes.iter().filter(|c| c.action == "create").enumerate() {
@@ -539,6 +609,15 @@ impl EventChanges {
                 if !listed_ids.contains(&&before.id) && after.end() > since {
                     placed.push(Placed { event: after.clone(), key: before.id.clone().unwrap_or_default(), moved: change.moved, asked: true });
                 }
+            }
+        }
+        if let Some(overlay) = overlay {
+            let under = under_layer(&placed, overlay);
+            if !under.is_empty() {
+                let mut lines: Vec<String> = vec!["Nothing was changed.".into()];
+                lines.extend(under.iter().map(|p| format!("- {}", p.message)));
+                return Ok(Err(ChangeError::of(&under, Some(lines.join("
+")))));
             }
         }
         let problems = overlap_problems(&placed, None);

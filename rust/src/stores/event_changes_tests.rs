@@ -490,3 +490,54 @@ fn a_series_moved_on_by_a_write_outside_the_batch_is_still_stale() {
 
     assert_eq!(error.downcast_ref::<StaleEvents>().unwrap().items[0].event_id, day_of(2));
 }
+
+// -- with an open proposal's layer on top -----------------------------------------------
+
+/// The report, decided in a proposal, runs on to 12:00 over coffee
+/// (covered) and into the gym (cut to start at 12:00); the email, decided
+/// to end at 09:30, frees the rest of its hour.
+fn layered() -> Overlay {
+    Overlay {
+        layer: vec![
+            Event { summary: Some("Report".into()), ..mv("report", "10:00", "12:00") },
+            Event { summary: Some("Email".into()), ..mv("email", "09:00", "09:30") },
+        ],
+        replaced: vec![
+            ("report".into(), None),
+            ("email".into(), None),
+            ("coffee".into(), None),
+            ("gym".into(), Some(Event { summary: Some("Gym".into()), ..mv("gym", "12:00", "12:30") })),
+        ],
+        added: Vec::new(),
+    }
+}
+
+impl Fixture {
+    fn check_layered(&self, asked: Asked) -> Result<Batch, ChangeError> {
+        self.changes.check_with(asked.updates, asked.creates, asked.cancels, asked.history_until, asked.allow_compacted, Some(&layered())).unwrap()
+    }
+}
+
+#[test]
+fn a_change_under_the_layer_is_refused() {
+    let f = fixture(day(), false);
+    let walk = Event { summary: Some("Walk".into()), ..mv("", "11:40", "11:50") };
+
+    let error = refused(f.check_layered(Asked { creates: vec![Event { id: None, ..walk }], ..Default::default() }));
+
+    assert_eq!(error.categories, vec!["under_layer".to_string()]);
+    assert!(error.message.contains("'Walk' (11:40–11:50, as asked) lands under the open compaction proposal: 'Report' runs until 12:00 there"), "{}", error.message);
+}
+
+#[test]
+fn time_the_layer_frees_or_leaves_is_free() {
+    let f = fixture(day(), false);
+    // The rest of the email's hour, freed; coffee's time is under the layer.
+    let walk = Event { id: None, summary: Some("Walk".into()), ..mv("", "09:30", "10:00") };
+    assert!(f.check_layered(Asked { creates: vec![walk.clone()], ..Default::default() }).is_ok());
+    // Without the layer, the email is in the way.
+    assert_eq!(refused(f.check(Asked { creates: vec![walk], ..Default::default() })).categories, vec!["overlap".to_string()]);
+    // The cut gym starts at 12:00: what's after it still overlaps it.
+    let late = Event { id: None, summary: Some("Stretch".into()), ..mv("", "12:15", "12:20") };
+    assert_eq!(refused(f.check_layered(Asked { creates: vec![late], ..Default::default() })).categories, vec!["overlap".to_string()]);
+}

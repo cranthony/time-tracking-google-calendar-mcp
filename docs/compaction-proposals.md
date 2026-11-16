@@ -56,6 +56,22 @@ over is covered (cancelled), and one they fall inside is split -- worked
 out again on every plan, never kept as an edit. Two decided events that
 overlap, or a change to history, are refused, as today.
 
+A covered event counts against follow-through, as a cancel does, unless
+the user answers that it doesn't: a `follow_through` entry in the ledger
+(`amend_proposal`'s `follow_through`), sent with the edit that covers it
+or later on its own. It cancels nothing, and applies only while the
+layer covers that event; otherwise it does nothing, and is kept.
+
+While a proposal is open, the event tools check a write against the
+calendar with the layer on top: one landing under a decided event (the
+tail of the one going on at `through`, run later by the user) is
+refused, and one into time the layer freed (the rest of an event it
+ended early) is allowed. A write to an event the layer cut or covered,
+or into freed time, is kept with the proposal, and `get_proposal` lists
+it in `calendar_edits`, with the calendar event it will overlap once the
+layer is gone. Abandoning the proposal drops the whole layer and writes
+nothing; those writes, and any overlap they leave, stay on the calendar.
+
 Since Claude never sends the user's entries and the server always lays
 the whole ledger on top, no revision can leave a user edit out.
 
