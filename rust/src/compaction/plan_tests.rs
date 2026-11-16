@@ -136,6 +136,11 @@ fn creates(plan: &CompactionPlan) -> Vec<CompactionChange> {
     plan.changes.iter().filter(|c| c.action == "create").cloned().collect()
 }
 
+/// Text with its wrapping undone: every run of whitespace one space.
+fn flat(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
 fn timeline_text(plan: &CompactionPlan) -> String {
     plan.timeline.as_ref().unwrap().text.clone()
 }
@@ -268,35 +273,48 @@ fn renaming_a_future_event_does_not_pin_it() {
 }
 
 #[test]
-fn moving_a_future_event_reschedules_it_and_what_it_runs_into_must_move_too() {
+fn a_decided_event_moved_later_cuts_what_it_runs_into() {
+    // Only the user's edits move an event later (Claude's are refused
+    // past now, before planning): what it runs into is cut.
     let lunch = EventDecision { start: Some(time_at("13:30")), end: Some(time_at("14:30")), ..keep("e3") };
-    refused_with(
-        plan_with(&[], &[lunch.clone()], &day(), "11:30", Extra::default()),
-        &regex::escape("'Lunch' (13:30–14:30, as asked) overlaps 'Review' (14:00–15:00)"),
-    );
-    let plan = plan(&[], &[lunch, EventDecision { start: Some(time_at("14:30")), end: Some(time_at("15:30")), ..keep("e4") }]);
+    let plan = plan(&[], &[lunch]);
     let moved = changed(&plan, "e3");
     assert_eq!(span(moved.after.as_ref().unwrap()), at("13:30", "14:30"));
     assert!(moved.reason.contains("moved as requested"));
-    assert_eq!(span(changed(&plan, "e4").after.as_ref().unwrap()), at("14:30", "15:30"));
+    assert_eq!(moved.implied_by, None);
+    let review = changed(&plan, "e4");
+    assert_eq!(span(review.after.as_ref().unwrap()), at("14:30", "15:00"));
+    assert_eq!((review.reason.as_str(), review.implied_by.as_deref()), ("cut by 'Lunch'", Some("e3")));
 }
 
 #[test]
-fn nothing_is_split_to_make_room() {
+fn a_new_event_inside_another_splits_it() {
     let events = vec![
         event_at("12:00-14:00").id("work").summary("Work").priority(2).build(),
         event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
     ];
-    refused_with(
-        plan_with(
-            &[],
-            &[EventDecision { start: Some(time_at("12:15")), end: Some(time_at("12:45")), ..create(Some("Lunch")) }],
-            &events,
-            "10:00",
-            Extra::default(),
-        ),
-        &regex::escape("'Work' (12:00–14:00) overlaps 'Lunch'"),
-    );
+    let plan = plan_with(
+        &[],
+        &[EventDecision { start: Some(time_at("12:15")), end: Some(time_at("12:45")), ..create(Some("Lunch")) }],
+        &events,
+        "15:00",
+        Extra::default(),
+    )
+    .unwrap();
+    let first = changed(&plan, "work");
+    assert_eq!(span(first.after.as_ref().unwrap()), at("12:00", "12:15"));
+    assert_eq!((first.reason.as_str(), first.implied_by.as_deref()), ("split by 'Lunch'", Some("new:1")));
+    let made = creates(&plan);
+    let rest = made.iter().find(|c| c.key.as_deref() == Some("work~2")).expect("the rest of it, made");
+    let after = rest.after.as_ref().unwrap();
+    assert_eq!(span(after), at("12:45", "14:00"));
+    assert_eq!((after.summary.as_deref(), after.priority), (Some("Work"), Some(2)));
+    assert_eq!((rest.reason.as_str(), rest.implied_by.as_deref()), ("split by 'Lunch' -- the rest of 'Work'", Some("new:1")));
+    let lunch = made.iter().find(|c| c.key.is_none()).unwrap();
+    assert_eq!(lunch.implied_by, None);
+    let shown = plan.timeline.as_ref().unwrap().events.iter().find(|e| e.event_id.as_deref() == Some("work~2")).unwrap().clone();
+    assert_eq!((shown.status.as_str(), shown.cut_by.as_deref(), shown.implied_summary.as_deref()), ("new", Some("new:1"), Some("Lunch")));
+    assert!(flat(&timeline_text(&plan)).contains("Work · new · cut by Lunch"));
 }
 
 #[test]
@@ -311,11 +329,31 @@ fn does_not_mutate_its_inputs() {
 // -- overlaps ---------------------------------------------------------------------
 
 #[test]
-fn an_overrun_into_a_past_event_is_rejected_naming_both() {
-    let error = refused(plan_with(&[note(1, "10:20", None)], &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }], &day(), "11:30", Extra::default()));
-    assert!(error.message.contains("- 'Email' (09:00–10:20, as asked) overlaps 'Report' (10:00–11:00)."));
+fn an_overrun_into_an_undecided_event_cuts_it() {
+    let plan = plan(&[note(1, "10:20", None)], &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }]);
+    let report = changed(&plan, "e2");
+    assert_eq!(span(report.after.as_ref().unwrap()), at("10:20", "11:00"));
+    assert_eq!((report.action.as_str(), report.reason.as_str(), report.implied_by.as_deref()), ("update", "cut by 'Email'", Some("e1")));
+    let shown = plan.timeline.as_ref().unwrap().events.iter().find(|e| e.event_id.as_deref() == Some("e2")).unwrap().clone();
+    assert_eq!((shown.status.as_str(), shown.cut_by.as_deref(), shown.covered_by.as_deref()), ("adjusted", Some("e1"), None));
+    assert_eq!(shown.to_json()["cut_by_summary"], json!("Email"));
+    assert!(flat(&timeline_text(&plan)).contains("Report · +20m (was 10:00) · cut by Email"));
+    // What decided it isn't implied.
+    assert_eq!(changed(&plan, "e1").implied_by, None);
+}
+
+#[test]
+fn two_decided_events_that_overlap_are_rejected_naming_both() {
+    let error = refused(plan_with(
+        &[note(1, "10:20", None)],
+        &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }, EventDecision { end: Some(time_at("10:50")), ..keep("e2") }],
+        &day(),
+        "11:30",
+        Extra::default(),
+    ));
+    assert!(error.message.contains("- 'Email' (09:00–10:20, as asked) overlaps 'Report' (10:00–10:50, as asked)."), "{}", error.message);
     assert!(error.message.starts_with(RESEND_RULE));
-    assert!(error.message.contains("  10:00–11:00  Report  e2"));
+    assert!(error.message.contains("  10:00–10:50  Report *  e2"));
     assert_eq!(error.categories, strings(&["overlap"]));
 }
 
@@ -329,33 +367,133 @@ fn it_passes_once_the_decisions_say_which_gives_way() {
 }
 
 #[test]
-fn an_overrun_into_an_event_still_in_progress_is_an_overlap_to_resolve() {
-    refused_with(
-        plan_with(&[note(1, "10:20", None)], &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }], &day(), "10:30", Extra::default()),
-        &regex::escape("overlaps 'Report' (10:00–11:00)"),
-    );
+fn an_overrun_into_an_event_still_in_progress_cuts_it_too() {
+    let plan = plan_with(&[note(1, "10:20", None)], &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }], &day(), "10:30", Extra::default()).unwrap();
+    let report = changed(&plan, "e2");
+    assert_eq!(span(report.after.as_ref().unwrap()), at("10:20", "11:00"));
+    assert_eq!(report.implied_by.as_deref(), Some("e1"));
 }
 
 #[test]
-fn a_new_event_over_a_past_one_is_rejected() {
-    refused_with(
-        plan_with(&[], &[EventDecision { start: Some(time_at("09:30")), end: Some(time_at("09:45")), ..create(Some("Coffee")) }], &day(), "11:30", Extra::default()),
-        "'Coffee'.*overlaps 'Email'|'Email'.*overlaps 'Coffee'",
-    );
+fn a_new_event_over_part_of_a_past_one_splits_it() {
+    let plan = plan_with(&[], &[EventDecision { start: Some(time_at("09:30")), end: Some(time_at("09:45")), ..create(Some("Coffee")) }], &day(), "11:30", Extra::default())
+        .unwrap();
+    assert_eq!(span(changed(&plan, "e1").after.as_ref().unwrap()), at("09:00", "09:30"));
+    let rest = creates(&plan).into_iter().find(|c| c.key.as_deref() == Some("e1~2")).unwrap();
+    assert_eq!(span(rest.after.as_ref().unwrap()), at("09:45", "10:00"));
 }
 
 #[test]
-fn a_note_cannot_silently_eat_into_last_nights_sleep() {
+fn a_new_event_over_the_whole_of_one_covers_it() {
+    let plan = plan_with(&[], &[EventDecision { start: Some(time_at("10:00")), end: Some(time_at("11:00")), ..create(Some("Call")) }], &day(), "11:30", Extra::default())
+        .unwrap();
+    let report = changed(&plan, "e2");
+    assert_eq!((report.action.as_str(), report.reason.as_str(), report.implied_by.as_deref()), ("cancel", "covered by 'Call'", Some("new:1")));
+    let shown = plan.timeline.as_ref().unwrap().events.iter().find(|e| e.event_id.as_deref() == Some("e2")).unwrap().clone();
+    assert_eq!((shown.status.as_str(), shown.covered_by.as_deref(), shown.cut_by.as_deref()), ("cancelled", Some("new:1"), None));
+    assert_eq!(shown.to_json()["covered_by_summary"], json!("Call"));
+    assert!(flat(&timeline_text(&plan)).contains("✕ Report · covered by Call (was 10:00–11:00)"));
+    // A note that falls within it goes with what covered it.
+    let noted = plan_with(
+        &[note(1, "10:30", Some("on the phone"))],
+        &[EventDecision { start: Some(time_at("10:00")), end: Some(time_at("11:00")), ..create(Some("Call")) }],
+        &day(),
+        "11:30",
+        Extra::default(),
+    )
+    .unwrap();
+    assert_eq!(uses(&noted), using(&[("n1", "annotates", Some("new:1"))]));
+}
+
+#[test]
+fn an_event_the_layer_runs_over_in_several_places_is_cut_by_each() {
+    let events = vec![event_at("09:00-12:00").id("work").summary("Work").priority(2).build()];
+    let plan = plan_with(
+        &[],
+        &[
+            EventDecision { start: Some(time_at("08:30")), end: Some(time_at("09:30")), ..create(Some("Breakfast")) },
+            EventDecision { start: Some(time_at("10:00")), end: Some(time_at("10:30")), ..create(Some("Call")) },
+        ],
+        &events,
+        "12:30",
+        Extra::default(),
+    )
+    .unwrap();
+    let first = changed(&plan, "work");
+    assert_eq!(span(first.after.as_ref().unwrap()), at("09:30", "10:00"));
+    assert_eq!(first.implied_by.as_deref(), Some("new:1"));
+    let rest = creates(&plan).into_iter().find(|c| c.key.as_deref() == Some("work~2")).unwrap();
+    assert_eq!((span(rest.after.as_ref().unwrap()), rest.implied_by.as_deref()), (at("10:30", "12:00"), Some("new:2")));
+}
+
+#[test]
+fn a_note_cannot_eat_into_what_an_earlier_compaction_settled() {
     refused_with(
         plan_with(
             &[note(1, "06:40+1", None)],
             &[EventDecision { start_note: Some("n1".into()), ..keep("gr") }],
             &overnight(),
             "09:00+1",
-            Extra::default(),
+            Extra { history_until: Some(time_at("07:00+1")), ..Default::default() },
         ),
         &regex::escape("'Sleep' (20:00–07:00) overlaps 'Getting Ready'"),
     );
+}
+
+#[test]
+fn but_cuts_into_last_nights_sleep_when_nothing_settled_it() {
+    let plan = plan_with(&[note(1, "06:40+1", None)], &[EventDecision { start_note: Some("n1".into()), ..keep("gr") }], &overnight(), "09:00+1", Extra::default())
+        .unwrap();
+    let night = changed(&plan, "s0");
+    assert_eq!((night.after.unwrap().end, night.implied_by.as_deref()), (Some(time_at("06:40+1")), Some("gr")));
+}
+
+#[test]
+fn what_an_earlier_compaction_settled_isnt_cut_but_the_rest_of_it_is() {
+    let events = vec![event_at("08:00-12:00").id("work").summary("Work").priority(2).build()];
+    let settled = || Extra { history_until: Some(time_at("09:00")), ..Default::default() };
+    let call = |start: &str, end: &str| EventDecision { start: Some(time_at(start)), end: Some(time_at(end)), ..create(Some("Call")) };
+    refused_with(plan_with(&[], &[call("08:30", "08:45")], &events, "11:30", settled()), "overlaps");
+    let plan = plan_with(&[], &[call("10:00", "10:30")], &events, "11:30", settled()).unwrap();
+    assert_eq!(span(changed(&plan, "work").after.as_ref().unwrap()), at("08:00", "10:00"));
+}
+
+#[test]
+fn a_revisited_event_isnt_cut() {
+    let events = day();
+    let revisits = strings(&["e2"]);
+    let result = plan_compaction(
+        &[],
+        &[EventDecision { start: Some(time_at("10:30")), end: Some(time_at("10:45")), ..create(Some("Call")) }],
+        &events,
+        time_at("11:30"),
+        PlanOptions { revisits: Some(&revisits), ..Default::default() },
+    );
+    refused_with(result, "overlaps");
+}
+
+#[test]
+fn the_layer_ends_where_the_event_going_on_at_now_ends() {
+    // An end the user set past now ends the layer there: what it runs over
+    // is covered, and what it runs into cut.
+    let events = vec![
+        event_at("19:00-21:00").id("dance").summary("Dance class").priority(2).build(),
+        event_at("21:00-21:30").id("journal").summary("Journal").priority(3).build(),
+        event_at("21:30-22:00").id("ready").summary("Get ready for bed").priority(2).build(),
+        event_at("22:00-07:00+1").id("s1").summary("Sleep").priority(0).build(),
+    ];
+    let plan = plan_with(&[], &[EventDecision { end: Some(time_at("22:30")), ..keep("dance") }], &events, "20:00", Extra::default()).unwrap();
+    assert_eq!(plan.layer_end, Some(time_at("22:30")));
+    for covered in ["journal", "ready"] {
+        let change = changed(&plan, covered);
+        assert_eq!((change.action.as_str(), change.implied_by.as_deref()), ("cancel", Some("dance")));
+    }
+    let sleep = changed(&plan, "s1");
+    assert_eq!(span(sleep.after.as_ref().unwrap()), (time_at("22:30"), time_at("07:00+1")));
+    assert_eq!((sleep.reason.as_str(), sleep.implied_by.as_deref()), ("cut by 'Dance class'", Some("dance")));
+    // Nothing decided past now: the layer ends at now.
+    let plain = plan_with(&[], &[], &events, "20:00", Extra::default()).unwrap();
+    assert_eq!(plain.layer_end, Some(time_at("20:00")));
 }
 
 #[test]
@@ -808,7 +946,13 @@ fn a_note_outside_every_event_is_reported() {
 
 #[test]
 fn an_overlap_is_categorized() {
-    let error = refused(plan_with(&[note(1, "10:20", None)], &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }], &day(), "11:30", Extra::default()));
+    let error = refused(plan_with(
+        &[note(1, "10:20", None)],
+        &[EventDecision { end_note: Some("n1".into()), ..keep("e1") }, EventDecision { end: Some(time_at("10:50")), ..keep("e2") }],
+        &day(),
+        "11:30",
+        Extra::default(),
+    ));
     assert_eq!(error.categories, strings(&["overlap"]));
 }
 
@@ -919,13 +1063,14 @@ fn a_later_bedtime_just_moves_it() {
 }
 
 #[test]
-fn an_earlier_bedtime_needs_what_runs_past_it_ended_first() {
+fn an_earlier_bedtime_cuts_what_runs_past_it() {
     let reading = event_at("18:00-20:00").id("e5").summary("Reading").priority(3).build();
     let bedtime = EventDecision { start: Some(time_at("19:00")), ..keep("s1") };
-    refused_with(
-        plan_with(&[], &[bedtime.clone()], &bedtime_evening(Some(reading.clone())), "08:00", Extra::default()),
-        &regex::escape("'Reading' (18:00–20:00) overlaps 'Sleep'"),
-    );
+    let plan = plan_with(&[], &[bedtime.clone()], &bedtime_evening(Some(reading.clone())), "08:00", Extra::default()).unwrap();
+    let cut = changed(&plan, "e5");
+    assert_eq!((span(cut.after.as_ref().unwrap()), cut.implied_by.as_deref()), (at("18:00", "19:00"), Some("s1")));
+    assert!(creates(&plan).is_empty());
+    // Ending it there itself is a decision, as before.
     let plan = plan_with(
         &[],
         &[bedtime, EventDecision { end: Some(time_at("19:00")), ..keep("e5") }],
@@ -934,20 +1079,20 @@ fn an_earlier_bedtime_needs_what_runs_past_it_ended_first() {
         Extra::default(),
     )
     .unwrap();
-    assert_eq!(span(changed(&plan, "e5").after.as_ref().unwrap()), at("18:00", "19:00"));
-    assert!(creates(&plan).is_empty());
+    let decided = changed(&plan, "e5");
+    assert_eq!((span(decided.after.as_ref().unwrap()), decided.implied_by), (at("18:00", "19:00"), None));
 }
 
 #[test]
-fn an_earlier_bedtime_needs_what_starts_after_it_cancelled_first() {
+fn an_earlier_bedtime_covers_what_starts_after_it() {
     let journal = event_at("19:30-20:00").id("e5").summary("Journal").priority(1).build();
     let bedtime = EventDecision { start: Some(time_at("19:00")), ..keep("s1") };
-    refused_with(
-        plan_with(&[], &[bedtime.clone()], &bedtime_evening(Some(journal.clone())), "08:00", Extra::default()),
-        &regex::escape("overlaps 'Journal' (19:30–20:00)"),
-    );
+    let plan = plan_with(&[], &[bedtime.clone()], &bedtime_evening(Some(journal.clone())), "08:00", Extra::default()).unwrap();
+    let covered = changed(&plan, "e5");
+    assert_eq!((covered.action.as_str(), covered.reason.as_str(), covered.implied_by.as_deref()), ("cancel", "covered by 'Sleep'", Some("s1")));
     let plan = plan_with(&[], &[bedtime, cancel("e5")], &bedtime_evening(Some(journal)), "08:00", Extra::default()).unwrap();
-    assert_eq!(changed(&plan, "e5").action, "cancel");
+    let cancelled = changed(&plan, "e5");
+    assert_eq!((cancelled.action.as_str(), cancelled.implied_by), ("cancel", None));
 }
 
 #[test]
@@ -1019,24 +1164,19 @@ fn a_later_bedtime_makes_room_for_an_activity_before_it() {
 }
 
 #[test]
-fn an_earlier_bedtime_needs_what_ran_past_it_ended_too() {
+fn an_earlier_bedtime_cuts_what_ran_past_it_too() {
     let bedtime = EventDecision { start_note: Some("n1".into()), ..keep("s1") };
-    refused_with(plan_with(&[note(1, "23:00", None)], &[bedtime.clone()], &late_day(), "07:00+1", Extra::default()), "'Reading' .*overlaps 'Sleep'");
-    let plan = plan_with(
-        &[note(1, "23:00", None)],
-        &[bedtime, EventDecision { end_note: Some("n1".into()), ..keep("e1") }],
-        &late_day(),
-        "07:00+1",
-        Extra::default(),
-    )
-    .unwrap();
+    let plan = plan_with(&[note(1, "23:00", None)], &[bedtime], &late_day(), "07:00+1", Extra::default()).unwrap();
     assert_eq!(span(changed(&plan, "s1").after.as_ref().unwrap()), at("23:00", "07:00+1"));
-    assert_eq!(span(changed(&plan, "e1").after.as_ref().unwrap()), at("21:00", "23:00"));
+    let reading = changed(&plan, "e1");
+    assert_eq!((span(reading.after.as_ref().unwrap()), reading.implied_by.as_deref()), (at("21:00", "23:00"), Some("s1")));
 }
 
 #[test]
-fn running_into_sleep_without_moving_it_is_rejected() {
-    refused_with(plan_with(&late_notes(), &[get_ready()], &late_day(), "07:00+1", Extra::default()), "overlaps 'Sleep'");
+fn running_into_sleep_cuts_its_start() {
+    let plan = plan_with(&late_notes(), &[get_ready()], &late_day(), "07:00+1", Extra::default()).unwrap();
+    let sleep = changed(&plan, "s1");
+    assert_eq!((span(sleep.after.as_ref().unwrap()), sleep.implied_by.as_deref()), (at("00:01+1", "07:00+1"), Some("new:1")));
 }
 
 // -- the timeline -----------------------------------------------------------------
@@ -1273,3 +1413,4 @@ fn reads_a_journal_written_when_events_were_marked_compacted() {
     .unwrap();
     assert_eq!(state.end, Some(time_at("10:00")));
 }
+

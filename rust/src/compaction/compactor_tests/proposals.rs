@@ -382,9 +382,45 @@ fn a_change_since_it_was_proposed_makes_a_revision_to_confirm_again() {
 }
 
 #[test]
-fn one_that_no_longer_plans_is_handed_to_claude() {
+fn an_event_put_under_the_layer_is_rechecked_for_review() {
     let (setup, p) = proposed();
     setup.t.seed_event(&event_at("10:30-10:50").id("x1").summary("Call").priority(2).build());
+
+    let result = confirm(&setup, &p, 1).unwrap();
+
+    assert_eq!(result.status, "rechecked");
+    let proposal = result.proposal.unwrap();
+    let call = event(&proposal, "x1");
+    assert_eq!((call.status.as_str(), call.covered_by.as_deref(), call.implied_summary.as_deref()), ("cancelled", Some("e2"), Some("Report")));
+    assert!(setup.patches().is_empty());
+}
+
+#[test]
+fn only_a_change_under_the_layer_past_through_is_applied_without_asking_again() {
+    let (setup, p) = proposed();
+    // The user's end past through cuts lunch.
+    let amended = setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("12:30")), ..keep("e2") }]);
+    assert_eq!(amended.layer_end, time_at("12:30"));
+    assert_eq!(summary(&setup).layer_end, time_at("12:30"));
+    assert_eq!(setup.prepare().proposal.unwrap().layer_end, time_at("12:30"));
+    let lunch = amended.changes.iter().find(|c| c.event_id.as_deref() == Some("e3")).unwrap();
+    assert_eq!((lunch.after.as_ref().unwrap().start, lunch.implied_by.as_deref()), (Some(time_at("12:30")), Some("e2")));
+    // Then lunch moves on the calendar.
+    setup.change_event(Event { end: Some(time_at("13:15")), ..setup.event("e3") });
+
+    let result = confirm(&setup, &p, 2).unwrap();
+
+    assert_eq!(result.status, "applied");
+    let lunch = setup.event("e3");
+    assert_eq!((lunch.start, lunch.end), (Some(time_at("12:30")), Some(time_at("13:15"))));
+    // Its answer lost, the confirm sent again is answered as applied.
+    assert_eq!(confirm(&setup, &p, 2).unwrap().status, "applied");
+}
+
+#[test]
+fn one_that_no_longer_plans_is_handed_to_claude() {
+    let (setup, p) = proposed();
+    setup.change_event(Event { status: Some("cancelled".into()), ..setup.event("e2") });
 
     let result = confirm(&setup, &p, 1).unwrap();
 

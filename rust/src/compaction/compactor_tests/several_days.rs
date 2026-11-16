@@ -112,13 +112,14 @@ fn the_note_ending_the_night_ends_it_and_starts_the_morning() {
 }
 
 #[test]
-fn a_later_wake_up_is_checked_against_the_mornings_events() {
+fn a_later_wake_up_covers_and_cuts_the_mornings_events() {
     let setup = setup();
 
-    refused(
-        setup.try_dry_run(vec![EventDecision { end_note: Some(setup.note_id(3)), ..keep("s1") }], DryRun::default()),
-        "(?s)'Sleep'.*overlaps 'Getting Ready'",
-    );
+    let planned = setup.dry_run(vec![EventDecision { end_note: Some(setup.note_id(3)), ..keep("s1") }]);
+
+    assert_eq!((change(&planned, "gr1").action.as_str(), change(&planned, "gr1").implied_by.as_deref()), ("cancel", Some("s1")));
+    let work = change(&planned, "w1");
+    assert_eq!((work.after.as_ref().unwrap().start, work.implied_by.as_deref()), (Some(time_at("08:30+1")), Some("s1")));
 }
 
 #[test]

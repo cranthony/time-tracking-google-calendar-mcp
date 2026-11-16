@@ -277,6 +277,11 @@ pub struct CompactionChange {
     pub key: Option<String>,
     pub before: Option<EventState>,
     pub after: Option<EventState>,
+    /// For a change no decision made -- an event the layer (what was
+    /// decided) cut, covered or split -- the id or key of the layer event
+    /// that did it. Worked out again on every plan, never stored as a
+    /// decision.
+    pub implied_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -284,6 +289,9 @@ pub struct CompactionPlan {
     pub changes: Vec<CompactionChange>,
     pub warnings: Vec<String>,
     pub timeline: Option<Timeline>,
+    /// Where the layer ends: `now`, or the end of the last decided event
+    /// that starts before it, if that ends later.
+    pub layer_end: Option<Moment>,
     /// Note id -> (use, the event it's used with), in note order.
     pub note_uses: Vec<(String, (String, Option<String>))>,
     pub note_edges: Vec<(String, String)>,
@@ -450,6 +458,9 @@ pub fn plan_compaction(
         }
         set_fields(copy, decision);
     }
+    let layer_end = facts.iter().filter(|f| !f.default && f.start < now).map(|f| f.end).fold(now, |a, b| if b > a { b } else { a });
+    let mut cancels = cancels;
+    let implied = imply(&mut facts, &mut copies, &mut cancels, &revisits, options.history_until);
     let (annotated, annotated_keys, kept_out) =
         annotate(&ordered, &ignored, &mut facts, &touched, &mut copies, &cancels, &mut warnings, &mut problems, &note_targets);
     if !problems.is_empty() {
@@ -463,12 +474,12 @@ pub fn plan_compaction(
         }
     }
     let simulated = place(&facts, &copies, &cancels, options.history_until)?;
-    let changes = changes_of(&facts, &events_by_id, &copies, &cancels);
+    let changes = changes_of(&facts, &events_by_id, &copies, &cancels, &implied);
     if changes.is_empty() {
         warnings.push("nothing on the calendar needs to change".into());
     }
     let names: Vec<(String, String)> = options.names.map(|n| n.to_vec()).unwrap_or_default();
-    let timeline = timeline_of(&ordered, &ignored, &facts, &live, &copies, &cancels, &merged_into, &annotated, now, &names);
+    let timeline = timeline_of(&ordered, &ignored, &facts, &live, &copies, &cancels, &merged_into, &annotated, now, &names, &implied);
     let timeline = with_context(timeline, options.previous_note, options.last_compaction);
     let _ = simulated;
     let mut edges: Vec<(String, String)> = Vec::new();
@@ -496,7 +507,179 @@ pub fn plan_compaction(
             None => note_uses.push((note.id.clone(), using)),
         }
     }
-    Ok(CompactionPlan { changes, warnings, timeline: Some(timeline), note_uses, note_edges: edges, kept_out })
+    Ok(CompactionPlan { changes, warnings, timeline: Some(timeline), layer_end: Some(layer_end), note_uses, note_edges: edges, kept_out })
+}
+
+/// How the layer left an undecided event it runs over.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum ImpliedKind {
+    /// Nothing of it is left: it didn't happen.
+    Covered,
+    /// One piece of it is left: it's cut to that.
+    Cut,
+    /// More than one: the first keeps the event, each later one is a new
+    /// event like it.
+    Split,
+}
+
+/// An event the layer cut, covered or split, and the layer event that did.
+#[derive(Debug, Clone)]
+struct Implied {
+    kind: ImpliedKind,
+    by: String,
+    by_summary: Option<String>,
+}
+
+impl Implied {
+    fn named(&self) -> String {
+        repr_opt(self.by_summary.as_deref())
+    }
+
+    fn reason(&self) -> String {
+        match self.kind {
+            ImpliedKind::Covered => format!("covered by {}", self.named()),
+            ImpliedKind::Cut => format!("cut by {}", self.named()),
+            ImpliedKind::Split => format!("split by {}", self.named()),
+        }
+    }
+}
+
+/// The key a later piece of a split event is created under.
+fn piece_key(event_id: &str, number: usize) -> String {
+    format!("{event_id}~{number}")
+}
+
+/// The layer -- every decided event: kept with its times, created, or
+/// merged into -- overwrites what's under it. Each undecided event it runs
+/// over (one happening as planned, or still to come) loses the layer's
+/// spans: with nothing left it's covered (cancelled), with one piece left
+/// it's cut to it, and with more it's split -- its first piece keeps it,
+/// and each later one is a new event like it. None of this is a decision:
+/// it's worked out again on every plan. Two layer events that overlap are
+/// still refused (see `place`), and so is one that runs over what an
+/// earlier compaction settled, or over a revisited event: those aren't cut.
+/// Returns each cut, covered or split event's id (a later piece's key),
+/// with what did it.
+fn imply(
+    facts: &mut Vec<Fact>,
+    copies: &mut [(String, Event)],
+    cancels: &mut Vec<(String, String)>,
+    revisits: &[String],
+    history_until: Option<Moment>,
+) -> Vec<(String, Implied)> {
+    struct Layer {
+        start: Moment,
+        end: Moment,
+        key: String,
+        summary: Option<String>,
+    }
+    let layer: Vec<Layer> = facts
+        .iter()
+        .filter(|f| !f.default && f.end > f.start)
+        .map(|f| Layer { start: f.start, end: f.end, key: f.key.clone(), summary: f.event.summary.clone() })
+        .collect();
+    let mut implied: Vec<(String, Implied)> = Vec::new();
+    if layer.is_empty() {
+        return implied;
+    }
+    let decided: Vec<String> = facts.iter().filter(|f| !f.default).filter_map(|f| f.base_id().map(str::to_string)).collect();
+    let mut pieces_made: Vec<Fact> = Vec::new();
+    for (id, copy) in copies.iter_mut() {
+        if decided.contains(id) || cancels.iter().any(|(k, _)| k == id) || revisits.contains(id) {
+            continue;
+        }
+        let (start, end) = (copy.start(), copy.end());
+        if end <= start {
+            continue;
+        }
+        let mut hits: Vec<&Layer> = layer.iter().filter(|l| l.start < end && l.end > start).collect();
+        if hits.is_empty() {
+            continue;
+        }
+        // What an earlier compaction settled of it stays: a layer event
+        // over that is refused, as an overlap.
+        if let Some(history) = history_until.filter(|h| start < *h) {
+            let settled = end.min(history);
+            if hits.iter().any(|l| l.start < settled) {
+                continue;
+            }
+        }
+        hits.sort_by_key(|l| (l.start, l.end));
+        let mut pieces: Vec<(Moment, Moment)> = Vec::new();
+        let mut cursor = start;
+        for l in &hits {
+            if l.start > cursor {
+                pieces.push((cursor, l.start.min(end)));
+            }
+            if l.end > cursor {
+                cursor = l.end;
+            }
+        }
+        if cursor < end {
+            pieces.push((cursor, end));
+        }
+        let overlap = |l: &Layer| l.end.min(end) - l.start.max(start);
+        let mut most = hits[0];
+        for l in &hits[1..] {
+            if overlap(l) > overlap(most) {
+                most = l;
+            }
+        }
+        // A piece's maker: the layer event it now follows, or else the one
+        // it now runs up to.
+        let maker = |(piece_start, piece_end): (Moment, Moment)| -> &Layer {
+            hits.iter()
+                .find(|l| piece_start > start && l.end == piece_start)
+                .or_else(|| hits.iter().find(|l| piece_end < end && l.start == piece_end))
+                .copied()
+                .unwrap_or(most)
+        };
+        let by = |l: &Layer, kind: ImpliedKind| Implied { kind, by: l.key.clone(), by_summary: l.summary.clone() };
+        if pieces.is_empty() {
+            let covered = by(most, ImpliedKind::Covered);
+            cancels.push((id.clone(), covered.reason()));
+            implied.push((id.clone(), covered));
+            facts.retain(|f| !(f.default && f.base_id() == Some(id.as_str())));
+            continue;
+        }
+        let kind = if pieces.len() == 1 { ImpliedKind::Cut } else { ImpliedKind::Split };
+        let (first_start, first_end) = pieces[0];
+        let original = copy.clone();
+        copy.start = Some(first_start);
+        copy.end = Some(first_end);
+        if let Some(fact) = facts.iter_mut().find(|f| f.default && f.base_id() == Some(id.as_str())) {
+            fact.start = first_start;
+            fact.end = first_end;
+            fact.event.start = Some(first_start);
+            fact.event.end = Some(first_end);
+        }
+        implied.push((id.clone(), by(maker(pieces[0]), kind)));
+        for (number, piece) in pieces.iter().enumerate().skip(1) {
+            let key = piece_key(id, number + 1);
+            let made = by(maker(*piece), ImpliedKind::Split);
+            pieces_made.push(Fact {
+                key: key.clone(),
+                start: piece.0,
+                end: piece.1,
+                event: Event { id: None, start: Some(piece.0), end: Some(piece.1), ..original.clone() },
+                base: None,
+                reason: format!("{} -- the rest of {}", made.reason(), repr_opt(original.summary.as_deref())),
+                start_note: None,
+                end_note: None,
+                default: true,
+                annotations: Vec::new(),
+                fixed_description: false,
+                dropped_notes: None,
+                created_key: Some(key.clone()),
+            });
+            implied.push((key, made));
+        }
+    }
+    if !pieces_made.is_empty() {
+        facts.extend(pieces_made);
+        facts.sort_by_key(|f| (f.start, f.end));
+    }
+    implied
 }
 
 type Resolved = (Vec<Fact>, Vec<(String, String)>, Vec<(String, String)>, Vec<(String, EventDecision)>);
@@ -1121,8 +1304,15 @@ fn place(
     Ok(placed.into_iter().map(|p| p.event).collect())
 }
 
-fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(String, Event)], cancels: &[(String, String)]) -> Vec<CompactionChange> {
+fn changes_of(
+    facts: &[Fact],
+    events_by_id: &[(String, Event)],
+    copies: &[(String, Event)],
+    cancels: &[(String, String)],
+    implied: &[(String, Implied)],
+) -> Vec<CompactionChange> {
     let mut changes: Vec<CompactionChange> = Vec::new();
+    let implied_of = |name: &str| implied.iter().find(|(k, _)| k == name).map(|(_, i)| i);
     let decided = |id: &str| facts.iter().rev().find(|f| !f.default && f.base_id() == Some(id));
     let defaults: Vec<&str> = facts.iter().filter(|f| f.default).filter_map(|f| f.base_id()).collect();
     for (event_id, original) in events_by_id {
@@ -1135,6 +1325,7 @@ fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(Strin
                 key: None,
                 before: Some(before),
                 after: None,
+                implied_by: implied_of(event_id).map(|i| i.by.clone()),
             });
             continue;
         }
@@ -1151,7 +1342,9 @@ fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(Strin
                 facts: before.facts.clone(),
                 ..after.clone()
             } == before;
-            let reason = if defaults.contains(&event_id.as_str()) {
+            let reason = if let Some(made) = implied_of(event_id) {
+                made.reason()
+            } else if defaults.contains(&event_id.as_str()) {
                 facts.iter().find(|f| f.default && f.base_id() == Some(event_id.as_str())).unwrap().reason.clone()
             } else if only_notes {
                 "added the notes that fall during it".into()
@@ -1165,7 +1358,15 @@ fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(Strin
             (after, reason)
         };
         if after != before {
-            changes.push(CompactionChange { action: "update".into(), reason, event_id: Some(event_id.clone()), key: None, before: Some(before), after: Some(after) });
+            changes.push(CompactionChange {
+                action: "update".into(),
+                reason,
+                event_id: Some(event_id.clone()),
+                key: None,
+                before: Some(before),
+                after: Some(after),
+                implied_by: if decided(event_id).is_some() { None } else { implied_of(event_id).map(|i| i.by.clone()) },
+            });
         }
     }
     for fact in facts {
@@ -1177,6 +1378,7 @@ fn changes_of(facts: &[Fact], events_by_id: &[(String, Event)], copies: &[(Strin
                 key: fact.created_key.clone(),
                 before: None,
                 after: Some(EventState::from_event(&fact.event)),
+                implied_by: fact.created_key.as_deref().and_then(implied_of).map(|i| i.by.clone()),
             });
         }
     }
@@ -1268,7 +1470,9 @@ fn timeline_of(
     annotated: &[(String, String)],
     now: Moment,
     names: &[(String, String)],
+    implied: &[(String, Implied)],
 ) -> Timeline {
+    let implied_of = |name: &str| implied.iter().find(|(k, _)| k == name).map(|(_, i)| i);
     let named = |ids: Option<&Vec<ActionShare>>| -> Vec<String> { ids.into_iter().flatten().map(|a| name_of(names, &a.action_id)).collect() };
     let fact_fields = |final_: &Event, original: Option<&Event>| -> (Vec<String>, bool) {
         let said = facts_lines(final_.facts.as_ref(), names);
@@ -1305,6 +1509,8 @@ fn timeline_of(
                 event_id: Some(id.clone()),
                 planned_start: original.start,
                 planned_end: original.end,
+                covered_by: implied_of(&id).map(|i| i.by.clone()),
+                implied_summary: implied_of(&id).and_then(|i| i.by_summary.clone()),
                 ..Default::default()
             });
             continue;
@@ -1318,7 +1524,10 @@ fn timeline_of(
             continue;
         }
         let same = (final_.start, final_.end) == (original.start, original.end);
-        let status = if fact.is_some() {
+        let cut = if fact.is_none() { implied_of(&id) } else { None };
+        let status = if cut.is_some() {
+            "adjusted"
+        } else if fact.is_some() {
             if same {
                 if final_.end() <= now { "on_schedule" } else { "planned" }
             } else {
@@ -1351,11 +1560,14 @@ fn timeline_of(
             event_id: Some(id.clone()),
             planned_start: original.start,
             planned_end: original.end,
+            cut_by: cut.map(|i| i.by.clone()),
+            implied_summary: cut.and_then(|i| i.by_summary.clone()),
             ..Default::default()
         });
     }
     for fact in facts {
         if fact.base.is_none() {
+            let piece = fact.created_key.as_deref().and_then(implied_of);
             let actions = named(fact.event.action_ids.as_ref());
             let (facts_said, new_facts) = fact_fields(&fact.event, None);
             let (goals_said, new_goals) = goal_fields(&fact.event, None);
@@ -1375,6 +1587,8 @@ fn timeline_of(
                 new_goals,
                 goal_ids: goal_ids(fact.event.goals.as_ref()),
                 missing: missing(&fact.event, fact.start),
+                cut_by: piece.map(|i| i.by.clone()),
+                implied_summary: piece.and_then(|i| i.by_summary.clone()),
                 ..Default::default()
             });
         }

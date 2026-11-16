@@ -56,6 +56,7 @@ fn plan() -> CompactionPlan {
         key: None,
         before,
         after,
+        implied_by: None,
     };
     CompactionPlan {
         changes: vec![
@@ -118,6 +119,7 @@ fn big_plan(steps: usize, summary: &str) -> CompactionPlan {
                 key: None,
                 before: state.clone(),
                 after: state.clone(),
+                implied_by: None,
             })
             .collect(),
         ..Default::default()

@@ -137,6 +137,10 @@ const HINT_HISTORY_DAYS: i64 = 28;
 const MAX_DAYS: i64 = 7;
 const LOOKBACK_MINUTES: i64 = 15;
 
+/// The reason of a revision confirm planned again because only what the
+/// layer implies had changed: it's applied straight away.
+const IMPLIED_RECHECK: &str = "recheck of what the layer implies";
+
 fn prefetch_before() -> Duration {
     Duration::hours(24) + Duration::minutes(LOOKBACK_MINUTES)
 }
@@ -176,7 +180,8 @@ fn ce_of(problems: &[String], category: &str) -> anyhow::Error {
 /// events must fit in their events.
 fn check_shares(plan: &CompactionPlan) -> anyhow::Result<()> {
     let mut problems: Vec<String> = Vec::new();
-    for change in &plan.changes {
+    // An implied change isn't a decision: it keeps what the event had.
+    for change in plan.changes.iter().filter(|c| c.implied_by.is_none()) {
         let Some(after) = &change.after else { continue };
         let before = change.before.as_ref();
         let minutes = match (after.start, after.end) {
@@ -919,7 +924,8 @@ impl NoteCompactor {
                 known_notes: Some(&known_notes),
             },
         );
-        let (walked, remaining) = self.plan_walk(&settled_decisions(&merged), &merged.ignore_notes, &additions, now, &merged.note_targets.items)?;
+        let (walked, remaining) =
+            self.plan_walk(&settled_decisions(&merged), &merged.ignore_notes, &additions, now, &merged.note_targets.items, Some(&decisions))?;
         if walked.is_empty() || (meta.is_none() && !has_anything(&walked)) {
             return Ok(CompactionResult {
                 status: "nothing_to_compact".into(),
@@ -1031,6 +1037,12 @@ impl NoteCompactor {
             changes.len(),
             iso(&through)
         );
+        let implied = changes.iter().filter(|c| c.implied_by.is_some()).count();
+        if implied > 0 {
+            message.push_str(&format!(
+                " {implied} of the changes are implied: events what was decided runs over, cut, covered (cancelled) or split -- each change's implied_by names what did it. Check them; decide one yourself only when the notes say what became of it."
+            ));
+        }
         if superseded > 0 {
             message.push_str(&format!(" (Replaced {superseded} unapplied plan(s) from before proposals.)"));
         }
@@ -1063,7 +1075,8 @@ impl NoteCompactor {
 
     /// `_plan_walk`: walk the span up to `now`, planning it with
     /// `decisions`, the notes to ignore and those added to a particular
-    /// event.
+    /// event. `claude`: Claude's own decisions, checked first to reach no
+    /// further than the span's now (see `past_through`).
     fn plan_walk(
         &self,
         decisions: &[EventDecision],
@@ -1071,9 +1084,16 @@ impl NoteCompactor {
         additions: &Additions,
         now: Moment,
         note_targets: &[(String, Option<String>)],
+        claude: Option<&[EventDecision]>,
     ) -> anyhow::Result<(Vec<Walked>, usize)> {
         let (day, remaining) = self.walk(now, decisions, MAX_DAYS)?;
         let Some(day) = day else { return Ok((Vec::new(), remaining)) };
+        if let Some(claude) = claude {
+            let problems = past_through(claude, &day);
+            if !problems.is_empty() {
+                return Err(error_of(&problems, "past_through").into());
+            }
+        }
         let plan = self.plan(&day, decisions, ignore_notes, additions, note_targets)?;
         Ok((
             vec![Walked { day, plan, decisions: decisions.to_vec(), ignore_notes: ignore_notes.to_vec(), note_targets: note_targets.to_vec() }],
@@ -1255,6 +1275,8 @@ impl NoteCompactor {
             revision: meta.revision,
             state: state_of(&current, &feedback),
             user_seq: meta.user_seq,
+            through: current.last().unwrap().now,
+            layer_end: stored_layer_end(&current),
             updates,
             creates,
             cancels,
@@ -1287,6 +1309,7 @@ impl NoteCompactor {
             state: state_of(&current, &feedback),
             window_start: meta.window_start(),
             through: current.last().unwrap().now,
+            layer_end: stored_layer_end(&current),
             open_feedback: feedback.iter().filter(|f| f.status == "open").count() as i64,
         }))
     }
@@ -1347,6 +1370,7 @@ impl NoteCompactor {
             state: state.clone(),
             window_start: meta.window_start(),
             through: current.last().unwrap().now,
+            layer_end: stored_layer_end(current),
             claude_through: Some(meta.claude_through.unwrap_or(current.last().unwrap().now)),
             by: meta.by.clone(),
             reason: meta.reason.clone(),
@@ -1392,6 +1416,9 @@ impl NoteCompactor {
                 view.settled_additions = merged.settled.values().cloned().collect();
                 view.changes = walked.iter().flat_map(|w| w.plan.changes.clone()).collect();
                 view.timeline = Some(joined(&walked));
+                if let Some(layer_end) = walked.last().and_then(|w| w.plan.layer_end) {
+                    view.layer_end = layer_end;
+                }
             }
         }
         if let Some(since) = since_revision {
@@ -1584,6 +1611,7 @@ impl NoteCompactor {
                 &unsettled(&claude_additions, &merged.settled),
                 through,
                 &merged.note_targets.items,
+                None,
             )?;
             Ok((merged, walked))
         };
@@ -1948,7 +1976,10 @@ impl NoteCompactor {
         if let Ok(days) = self.current(proposal_id) {
             let meta = days[0].meta();
             let applying = days.iter().any(|d| d.status == STAMPED || OPEN_STATUSES.contains(&d.status.as_str()));
-            if meta.revision == revision && applying {
+            // Or planned again from it by that confirm, for what the layer
+            // implies, and applied (see below).
+            let refreshed = meta.revision == revision + 1 && meta.base == Some(revision) && meta.reason == IMPLIED_RECHECK;
+            if (meta.revision == revision || refreshed) && applying {
                 return self.finish(proposal_id);
             }
             if meta.revision == revision + 1 && meta.base == Some(revision) && meta.reason == "recheck" && !applying {
@@ -1986,8 +2017,20 @@ impl NoteCompactor {
         }
         self.require_no_open_compaction()?;
         self.journal.garbage_collect()?;
-        let current = self.current(proposal_id)?;
-        if let Err(e) = self.replan(&current, true) {
+        let mut current = self.current(proposal_id)?;
+        // What the layer implies is left out of the recheck (see
+        // `comparable`), but a change to it in the window -- an event put
+        // under the layer before `through` -- is the user's to see: it's
+        // rechecked like any other.
+        let through = current.last().unwrap().now;
+        let rechecked = match self.replan(&current, true) {
+            Ok(walked) if implied_differ_before(&current, &walked, through) => Err(ce(
+                format!("the notes or calendar changed since compaction {} was previewed; run a new dry run", current[0].batch_id()),
+                "stale",
+            )),
+            other => other,
+        };
+        if let Err(e) = rechecked {
             let Some(problem) = compaction_error(&e) else { return Err(e) };
             if !problem.categories.iter().any(|c| c == "stale") {
                 return self.needs_claude(proposal_id, &current, &format!("it no longer plans: {}", problem.message));
@@ -2020,6 +2063,28 @@ impl NoteCompactor {
                 ),
                 proposal: Some(self.view(&refreshed, Replanned::Walked(walked), Some(revision), None, None, None)?),
             });
+        }
+        // The decisions plan as they did, but what they imply -- the events
+        // the layer cuts, covers and splits -- is worked out from the calendar
+        // as it is now: when that changed under the layer, the revision is
+        // planned again, as it now plans, and that's what's applied.
+        let walked = rechecked.expect("the recheck passed");
+        let planned: Vec<CompactionChange> = current.iter().flat_map(|d| d.changes()).collect();
+        let replanned: Vec<CompactionChange> = walked.iter().flat_map(|w| w.plan.changes.clone()).collect();
+        if every_change(&planned) != every_change(&replanned) {
+            let outcomes = outcomes_of(&walked);
+            let mut new_meta = meta.clone();
+            new_meta.revision = meta.revision + 1;
+            new_meta.window_start = Some(walked[0].day.compaction_window_start);
+            new_meta.created = Some(self.clock());
+            new_meta.base = Some(meta.revision);
+            new_meta.by = "server".into();
+            new_meta.reason = IMPLIED_RECHECK.into();
+            new_meta.changed = changed(Some(&meta.outcomes), &outcomes);
+            new_meta.outcomes = outcomes;
+            let additions = Additions::from_json_dict(Some(&Value::Object(current[0].additions.clone())))?;
+            self.write_revision(&walked, &new_meta, &additions, Some(current), &[])?;
+            current = self.current(proposal_id)?;
         }
         self.apply(proposal_id, current, Some(feedback))
     }
@@ -2182,7 +2247,7 @@ impl NoteCompactor {
         }
         let stopped = format!("applying revision {} stopped: {failure}", meta.revision);
         let additions = unsettled(&Additions::from_json_dict(Some(&Value::Object(claude_additions_of(&days))))?, &merged.settled);
-        let mut walked = match self.plan_walk(&settled_decisions(&merged), &merged.ignore_notes, &additions, through, &merged.note_targets.items) {
+        let mut walked = match self.plan_walk(&settled_decisions(&merged), &merged.ignore_notes, &additions, through, &merged.note_targets.items, None) {
             Ok((walked, _)) => walked,
             Err(e) => match compaction_error(&e) {
                 Some(problem) => {
@@ -3138,6 +3203,7 @@ impl NoteCompactor {
         let tagged: Vec<&CompactionChange> = plan
             .changes
             .iter()
+            .filter(|c| c.implied_by.is_none())
             .filter(|c| {
                 let goals = c.after.as_ref().and_then(|a| a.goals.as_ref()).filter(|g| !g.is_empty());
                 goals.is_some() && goals != c.before.as_ref().and_then(|b| b.goals.as_ref())
@@ -3188,11 +3254,14 @@ impl NoteCompactor {
 
     fn show_follow_through(&self, day: &Day, decisions: &[EventDecision], plan: &mut CompactionPlan) -> anyhow::Result<()> {
         let (Some(cancellations), Some(timeline)) = (&self.cancellations, plan.timeline.as_mut()) else { return Ok(()) };
-        let cancelled: Vec<String> = decisions
+        // A cancel that counts, and an event the layer covers: as a cancel
+        // by default, it counts.
+        let mut cancelled: Vec<String> = decisions
             .iter()
             .filter(|d| d.action == "cancel" && d.counts_against_follow_through != Some(false))
             .filter_map(|d| d.event_id.clone())
             .collect();
+        cancelled.extend(plan.changes.iter().filter(|c| c.action == "cancel" && c.implied_by.is_some()).filter_map(|c| c.event_id.clone()));
         let mut marked = false;
         for shown in timeline.events.iter_mut() {
             let Some(event_id) = &shown.event_id else { continue };
@@ -3222,7 +3291,7 @@ impl NoteCompactor {
             if only_done && step.status != "done" {
                 continue;
             }
-            if step.action == "cancel" && step.event_id.as_ref().is_some_and(|e| cancelled.contains(e)) {
+            if step.action == "cancel" && (step.implied_by.is_some() || step.event_id.as_ref().is_some_and(|e| cancelled.contains(e))) {
                 if let Some(before) = &step.before {
                     cancellations.record(&before.to_event(step.event_id.as_deref()), &format!("compaction {}", journal.batch_id()), Some(self.clock()))?;
                 }
@@ -3440,6 +3509,63 @@ fn require_not_being_applied(journal: &CompactionJournal, note_id: &str) -> anyh
     Ok(())
 }
 
+/// What's wrong with Claude's own `decisions` for reaching past the span's
+/// now (the proposal's `through`): compaction consolidates the past, and
+/// what's still to come stays on the calendar. An explicit start or end
+/// after now, and a decision about an event that starts at or after now --
+/// unless a keep brings its start before now -- are refused. (The user's
+/// edits aren't checked: theirs may end an event going on at `through`
+/// later.)
+fn past_through(decisions: &[EventDecision], day: &Day) -> Vec<Issue> {
+    let now = day.now;
+    let notes = plan_notes(day);
+    let note_time = |id: Option<&str>| id.and_then(|id| notes.iter().rev().find(|n| n.id == id)).map(|n| n.timestamp);
+    let rule = "compaction records the past, up to this round's now, and doesn't change what's still to come: that stays on the calendar";
+    let mut problems: Vec<Issue> = Vec::new();
+    for (number, decision) in decisions.iter().enumerate() {
+        let label = format!(
+            "decision {} ({}{})",
+            number + 1,
+            decision.action,
+            decision.event_id.as_deref().filter(|i| !i.is_empty()).map(|i| format!(" {i}")).unwrap_or_default()
+        );
+        let mut late: Vec<String> = Vec::new();
+        for (edge, at) in [("start", decision.start), ("end", decision.end)] {
+            if let Some(at) = at.filter(|a| *a > now) {
+                late.push(format!("its {edge} ({})", iso(&at)));
+            }
+        }
+        if !late.is_empty() {
+            problems.push(Issue::tagged(
+                "past_through",
+                format!("{label}: {} is after this round's now ({}): {rule}", late.join(" and "), iso(&now)),
+            ));
+            continue;
+        }
+        if decision.action == "create" {
+            continue;
+        }
+        let Some(event) = decision.event_id.as_deref().and_then(|id| day.events.iter().rev().find(|e| e.id.as_deref() == Some(id))) else { continue };
+        if event.start() < now {
+            continue;
+        }
+        let start = decision.start.or_else(|| note_time(decision.start_note.as_deref()));
+        if decision.action == "keep" && start.is_some_and(|s| s < now) {
+            continue;
+        }
+        problems.push(Issue::tagged(
+            "past_through",
+            format!(
+                "{label}: {} starts at {}, not before this round's now ({}): {rule}. A note about it changes nothing this round.",
+                repr_opt(event.summary.as_deref()),
+                iso(&event.start()),
+                iso(&now)
+            ),
+        ));
+    }
+    problems
+}
+
 /// `_cut`: the span `day_for` reads. Where `decisions` move one of its
 /// events, or create one, past its end, it takes in the events up to there
 /// too, for the decisions to make room among -- and so on, for where they
@@ -3467,10 +3593,47 @@ fn lookup_event<'a>(befores: &'a [(String, Event)], id: &str) -> Option<&'a Even
     befores.iter().rev().find(|(k, _)| k == id).map(|(_, e)| e)
 }
 
-/// The changes, comparable as Python compares them (sorted reprs).
+/// Whether what `walked` implies differs from what `days` planned for an
+/// event that starts before `through`.
+fn implied_differ_before(days: &[JournalCompaction], walked: &[Walked], through: Moment) -> bool {
+    let planned: Vec<CompactionChange> = days.iter().flat_map(|d| d.changes()).collect();
+    let replanned: Vec<CompactionChange> = walked.iter().flat_map(|w| w.plan.changes.clone()).collect();
+    let before_through = |c: &CompactionChange| {
+        c.implied_by.is_some() && [&c.before, &c.after].into_iter().flatten().filter_map(|s| s.start).any(|s| s < through)
+    };
+    let planned: Vec<CompactionChange> = planned.into_iter().filter(before_through).collect();
+    let replanned: Vec<CompactionChange> = replanned.into_iter().filter(before_through).collect();
+    every_change(&planned) != every_change(&replanned)
+}
+
+/// Every change, the implied ones too, comparable: whether a plan's steps
+/// are still what it would write.
+fn every_change(changes: &[CompactionChange]) -> Vec<String> {
+    let mut out: Vec<String> = changes
+        .iter()
+        .map(|c| {
+            py::json_default(&json!([
+                c.action,
+                c.event_id,
+                c.key,
+                c.implied_by,
+                c.before.as_ref().map(EventState::to_json_dict),
+                c.after.as_ref().map(EventState::to_json_dict)
+            ]))
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+/// The decided changes, comparable as Python compares them (sorted
+/// reprs). What the layer implies -- what it cuts, covers and splits -- is
+/// left out: it's worked out from the calendar each time, so a change to
+/// the calendar under it (past `through`, say) changes no decision.
 fn comparable(changes: &[CompactionChange]) -> Vec<String> {
     let mut out: Vec<String> = changes
         .iter()
+        .filter(|c| c.implied_by.is_none())
         .map(|c| {
             py::json_default(&json!([
                 c.action,
@@ -3653,6 +3816,13 @@ fn proposal_notes(walked: &[Walked], merged: &Merged) -> Vec<ProposalNote> {
     notes
 }
 
+/// Where a revision's layer ends, as it was planned: its `now`, or later
+/// where the last decided event going on then ends.
+fn stored_layer_end(days: &[JournalCompaction]) -> Moment {
+    let last = days.last().expect("a revision has a day");
+    last.layer_end.filter(|l| *l > last.now).unwrap_or(last.now)
+}
+
 fn has_anything(walked: &[Walked]) -> bool {
     walked.iter().any(|w| !w.day.notes.is_empty())
         || walked.iter().any(|w| w.day.events.iter().any(|e| e.start() < w.day.now && e.end() > w.day.compaction_window_start))
@@ -3720,6 +3890,17 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
         let change_of = |id: &str| w.plan.changes.iter().rev().find(|c| c.event_id.as_deref() == Some(id));
         let merged: Vec<&String> = w.decisions.iter().filter(|d| d.action == "merge").filter_map(|d| d.event_id.as_ref()).collect();
         let cancel_of = |id: &str| w.decisions.iter().rev().find(|d| d.action == "cancel" && d.event_id.as_deref() == Some(id));
+        // The summary of the layer event an implied change names: as the plan
+        // leaves it, or as it is.
+        let layer_summary = |name: &str| -> Option<String> {
+            w.plan
+                .changes
+                .iter()
+                .rev()
+                .find(|c| c.action != "cancel" && (c.event_id.as_deref() == Some(name) || c.key.as_deref() == Some(name)))
+                .and_then(|c| c.after.as_ref().and_then(|a| a.summary.clone()))
+                .or_else(|| day.events.iter().rev().find(|e| e.id.as_deref() == Some(name)).and_then(|e| e.summary.clone()))
+        };
         let against = |id: &str| -> Vec<String> {
             w.plan
                 .timeline
@@ -3752,7 +3933,12 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
             } else {
                 None
             };
+            let implied_by = change.and_then(|c| c.implied_by.clone());
+            let covered = change.is_some_and(|c| c.action == "cancel");
             let shown = ProposalEvent {
+                cut_by: implied_by.clone().filter(|_| !covered),
+                covered_by: implied_by.clone().filter(|_| covered),
+                implied_summary: implied_by.as_deref().and_then(layer_summary),
                 counts_against_follow_through: counts,
                 follow_through: if counts == Some(true) { against(&id) } else { Vec::new() },
                 id: id.clone(),
@@ -3768,7 +3954,7 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 action_ids: state.action_ids.clone(),
                 goals: state.goals.clone(),
                 facts: state.facts.as_ref().map(|f| facts_from_dict(Some(f))),
-                decided_by: decided_by.get(&id).cloned(),
+                decided_by: if implied_by.is_some() { None } else { decided_by.get(&id).cloned() },
                 history_until: day.history_until.filter(|h| event.start() < *h).map(|h| event.end().min(h)),
                 revisited: day.revisits.contains(&id),
             };
@@ -3781,6 +3967,8 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
             let Some(after) = change.after.as_ref().filter(|_| change.action == "create") else { continue };
             let name = change.key.clone().unwrap_or_else(|| format!("new{}", out.len() + 1));
             let shown = ProposalEvent {
+                cut_by: change.implied_by.clone(),
+                implied_summary: change.implied_by.as_deref().and_then(layer_summary),
                 id: name.clone(),
                 summary: after.summary.clone(),
                 start: after.start,
@@ -3792,7 +3980,7 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 action_ids: after.action_ids.clone(),
                 goals: after.goals.clone(),
                 facts: after.facts.as_ref().map(|f| facts_from_dict(Some(f))),
-                decided_by: change.key.as_ref().and_then(|k| decided_by.get(k).cloned()),
+                decided_by: if change.implied_by.is_some() { None } else { change.key.as_ref().and_then(|k| decided_by.get(k).cloned()) },
                 ..Default::default()
             };
             match out.iter_mut().find(|(k, _)| *k == name) {
@@ -4011,6 +4199,7 @@ fn keep_priorities(plan: &mut CompactionPlan, tree: &ActionTree, day: &Day) {
                 reason: "kept the priority its actions give it, as its own".into(),
                 before: Some(before),
                 after: Some(after),
+                implied_by: None,
             });
         }
     }
