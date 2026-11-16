@@ -944,7 +944,7 @@ impl NoteCompactor {
         // Claude's trait examples, each with an id (kept, or made) and the
         // event it happened at by its key; checked, less those the user
         // settled.
-        let events: Vec<String> = proposal_events(&walked, &merged.decided_by).into_iter().map(|e| e.id).collect();
+        let events: Vec<String> = proposal_events(&walked, &merged.decided_by, None).into_iter().map(|e| e.id).collect();
         let settled_example_ids: Vec<String> = settled_examples.keys().cloned().collect();
         let claude_examples: Vec<TraitExample> = example_changes::with_ids(trait_examples, &settled_example_ids)
             .into_iter()
@@ -1413,14 +1413,16 @@ impl NoteCompactor {
                     &included,
                     MergeOptions { aliases: &meta.aliases, claude_ignore: &ignore, claude_targets: &meta.claude_note_targets, ..Default::default() },
                 );
-                view.events = Some(proposal_events(&walked, &merged.decided_by));
+                if let Some(layer_end) = walked.last().and_then(|w| w.plan.layer_end) {
+                    view.layer_end = layer_end;
+                }
+                // Past the layer's end the app draws the calendar: only what
+                // the layer bears on is listed there.
+                view.events = Some(proposal_events(&walked, &merged.decided_by, Some(view.layer_end)));
                 view.notes = proposal_notes(&walked, &merged);
                 view.settled_additions = merged.settled.values().cloned().collect();
                 view.changes = walked.iter().flat_map(|w| w.plan.changes.clone()).collect();
                 view.timeline = Some(joined(&walked));
-                if let Some(layer_end) = walked.last().and_then(|w| w.plan.layer_end) {
-                    view.layer_end = layer_end;
-                }
             }
         }
         if let Some(since) = since_revision {
@@ -1709,7 +1711,7 @@ impl NoteCompactor {
         // The examples the user changed here, as they'd now be made.
         let changing: Vec<&str> = trait_examples.iter().filter(|s| s.use_ == "change").map(|s| s.id.as_str()).collect();
         if !changing.is_empty() {
-            let events: Vec<String> = proposal_events(&walked, &merged.decided_by).into_iter().map(|e| e.id).collect();
+            let events: Vec<String> = proposal_events(&walked, &merged.decided_by, None).into_iter().map(|e| e.id).collect();
             let theirs: Vec<TraitExample> = example_changes::effective(&claude_examples, &merged.settled_trait_examples)
                 .into_iter()
                 .map(|(e, _)| e)
@@ -3950,8 +3952,15 @@ pub fn state_of(days: &[JournalCompaction], feedback: &[Feedback]) -> String {
     "awaiting_review".into()
 }
 
-fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<ProposalEvent> {
+/// Every event of the proposal's days as it leaves them. With `layer_end`
+/// (as get_proposal shows them to the app), less those it leaves alone
+/// further on: planned events nothing changed, starting at or after the
+/// layer's end -- the app draws those from the calendar. What the layer
+/// decided, cut (a split's pieces too) or covered stays, however late.
+fn proposal_events(walked: &[Walked], decided_by: &Dict<String>, layer_end: Option<Moment>) -> Vec<ProposalEvent> {
     let mut out: Vec<(String, ProposalEvent)> = Vec::new();
+    // The events listed as planned with nothing changing them, as last listed.
+    let mut untouched: Vec<String> = Vec::new();
     for w in walked {
         let day = &w.day;
         let change_of = |id: &str| w.plan.changes.iter().rev().find(|c| c.event_id.as_deref() == Some(id));
@@ -4028,6 +4037,10 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 history_until: day.history_until.filter(|h| event.start() < *h).map(|h| event.end().min(h)),
                 revisited: day.revisits.contains(&id),
             };
+            untouched.retain(|k| *k != id);
+            if change.is_none() && status == "planned" && shown.decided_by.is_none() {
+                untouched.push(id.clone());
+            }
             match out.iter_mut().find(|(k, _)| *k == id) {
                 Some(slot) => slot.1 = shown,
                 None => out.push((id, shown)),
@@ -4053,13 +4066,18 @@ fn proposal_events(walked: &[Walked], decided_by: &Dict<String>) -> Vec<Proposal
                 decided_by: if change.implied_by.is_some() { None } else { change.key.as_ref().and_then(|k| decided_by.get(k).cloned()) },
                 ..Default::default()
             };
+            untouched.retain(|k| *k != name);
             match out.iter_mut().find(|(k, _)| *k == name) {
                 Some(slot) => slot.1 = shown,
                 None => out.push((name, shown)),
             }
         }
     }
-    let mut events: Vec<ProposalEvent> = out.into_iter().map(|(_, e)| e).collect();
+    let mut events: Vec<ProposalEvent> = out
+        .into_iter()
+        .filter(|(id, e)| !(layer_end.is_some_and(|l| e.planned_start.is_some_and(|s| s >= l)) && untouched.contains(id)))
+        .map(|(_, e)| e)
+        .collect();
     events.sort_by(|a, b| (a.start.or(a.planned_start), &a.id).cmp(&(b.start.or(b.planned_start), &b.id)));
     events
 }

@@ -1252,6 +1252,9 @@ pub struct Proposal {
     pub reason: String,
     pub created: DateTimeText,
     pub claude_through: Option<DateTimeText>,
+    /// Its days' events as it leaves them, ending with the layer: planned
+    /// events nothing changed starting at or after `layer_end` aren't
+    /// listed (the calendar shows them); what the layer cut or covered is.
     pub events: Option<Vec<ProposalEvent>>,
     pub problem: Option<String>,
     #[schema(optional)]
@@ -1965,9 +1968,12 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
 /// planned again on the calendar as it is now: its window (`window_start`
 /// to `through`), where its layer ends (`layer_end`: `through`, or later
 /// where the last decided event going on at `through` ends), `state`,
-/// every event of its days as it leaves them (`events`, each with its id
+/// the events of its days as it leaves them (`events`, each with its id
 /// -- or a new event's key -- its times, what it was planned as, and who
-/// decided it; one no decision changed that a decided event ran over has
+/// decided it; ending with the layer: a planned event nothing changed
+/// that starts at or after `layer_end` isn't listed, as the calendar
+/// shows it, while one the layer cut or covered is, however late; one no
+/// decision changed that a decided event ran over has
 /// no `decided_by`, but `cut_by` -- cut short or split, a later piece of
 /// it being new -- or `covered_by` -- cancelled, counting against
 /// follow-through as a cancel does, unless the user's answer says it
