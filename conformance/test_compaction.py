@@ -137,9 +137,16 @@ async def test_refusals(session, plan):
     d5 = plan[FIRST]
     await notes(session, ("2026-10-05T07:45:00-04:00", "finished breakfast"))
     note = ids_of(await session.call("prepare_compaction"))
-    # Overlapping what's next.
-    overlap = await session.call_error("compact_notes", recap=RECAP, updates=[{"event_id": d5["Breakfast"], "end": "2026-10-05T08:30:00-04:00"}])
+    # Two decided events overlapping (an undecided one is cut instead).
+    overlap = await session.call_error(
+        "compact_notes",
+        recap=RECAP,
+        updates=[{"event_id": d5["Breakfast"], "end": "2026-10-05T08:30:00-04:00"}, {"event_id": d5["Work"], "end": "2026-10-05T11:00:00-04:00"}],
+    )
     assert "Work" in overlap
+    # Past this round's now: Claude records the past.
+    late = await session.call_error("compact_notes", recap=RECAP, updates=[{"event_id": plan[date(2026, 10, 7)]["Afternoon work"], "end": "2026-10-07T17:30:00-04:00"}])
+    assert "after this round's now" in late
     await session.call_error("compact_notes", recap=RECAP, updates=[{"event_id": "nosuch", "end_note": note["finished breakfast"]}])
     await session.call_error("compact_notes", recap=RECAP, updates=[{"event_id": d5["Breakfast"], "end_note": "nosuch"}])
     await session.call_error("compact_notes", recap=RECAP, updates=[{"event_id": d5["Breakfast"], "action_ids": ["new:undeclared"]}])

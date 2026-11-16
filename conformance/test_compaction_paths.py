@@ -447,7 +447,8 @@ async def test_refusals(session, plan):
         {"creates": [{"summary": "Nap", "start": "2026-10-05T14:00:00-04:00"}]},
         {"creates": [{"summary": "Nap", "start_note": lunch, "end": "2026-10-05T12:40:00-04:00", "key": "abcabcabcabcc7"}]},
         {"creates": [{"summary": "A", "ref": "x", "start": "2026-10-05T19:10:00-04:00", "end": "2026-10-05T19:20:00-04:00"}, {"summary": "B", "ref": "x", "start": "2026-10-05T19:30:00-04:00", "end": "2026-10-05T19:40:00-04:00"}]},
-        {"creates": [{"summary": "Overlaps", "start": "2026-10-05T11:00:00-04:00", "end": "2026-10-05T12:30:00-04:00"}]},
+        {"creates": [{"summary": "Overlaps", "start": "2026-10-05T11:00:00-04:00", "end": "2026-10-05T12:30:00-04:00"}], "updates": [{"event_id": d5["Lunch"], "end": "2026-10-05T13:00:00-04:00"}]},
+        {"creates": [{"summary": "Later", "start": "2026-10-07T16:00:00-04:00", "end": "2026-10-07T16:30:00-04:00"}]},
         {"updates": [{"event_id": d5["Breakfast"], "end_note": breakfast}], "cancels": [{"event_id": d5["Breakfast"], "counts_against_follow_through": False}]},
         {"updates": [{"event_id": d5["Lunch"], "facts": {"with_ids": ["nobody"]}}]},
         {"updates": [{"event_id": d5["Lunch"], "facts": {"location_ids": ["nowhere"]}}]},
@@ -487,9 +488,12 @@ async def test_refusals(session, plan):
     await session.call_error("get_proposal", proposal_id=pid + "x")
     await session.call_error("prepare_judgments", compaction_id=pid + "r1")
     extended = await session.call("amend_proposal", proposal_id=pid, revision=revision, through="2026-10-07T15:30:00-04:00", updates=[{"event": {"id": d5["Lunch"], "summary": "Lunch break", "location": "Park", "priority": 1}, "start_note": lunch}])
-    # Nothing moves to make room for what the user adds.
-    await session.call_error("amend_proposal", proposal_id=pid, revision=extended["revision"], creates=[{"summary": "Nap", "start": "2026-10-05T14:00:00-04:00", "end": "2026-10-05T14:30:00-04:00"}])
-    await session.call("amend_proposal", proposal_id=pid, revision=extended["revision"], creates=[{"summary": "Nap", "start": "2026-10-05T19:30:00-04:00", "end": "2026-10-05T20:00:00-04:00"}], cancels=[{"event_id": d5["Afternoon work"], "counts_against_follow_through": True}])
+    # What the user adds may not overlap what's decided; what isn't, it
+    # splits (or cuts, or covers).
+    await session.call_error("amend_proposal", proposal_id=pid, revision=extended["revision"], creates=[{"summary": "Nap", "start": "2026-10-05T12:40:00-04:00", "end": "2026-10-05T12:50:00-04:00"}])
+    split = await session.call("amend_proposal", proposal_id=pid, revision=extended["revision"], creates=[{"summary": "Nap", "start": "2026-10-05T14:00:00-04:00", "end": "2026-10-05T14:30:00-04:00"}])
+    assert [c["action"] for c in split["changes"] if c.get("implied_by")] == ["update", "create"]
+    await session.call("amend_proposal", proposal_id=pid, revision=split["revision"], creates=[{"summary": "Nap", "start": "2026-10-05T19:30:00-04:00", "end": "2026-10-05T20:00:00-04:00"}], cancels=[{"event_id": d5["Afternoon work"], "counts_against_follow_through": True}])
     abandoned = await session.call("abandon_compaction", proposal_id=pid)
     assert abandoned["status"] == "abandoned"
     # A revision by its own id: a compaction from before proposals, as far

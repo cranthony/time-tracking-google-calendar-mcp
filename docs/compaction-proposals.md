@@ -50,8 +50,11 @@ decisions applied, then the whole user ledger on top. A user entry
 overrides Claude's decision on the same event field by field (an entry
 that only moves an end keeps the facts Claude set); `as_planned` clears
 Claude's decision on that event. The planner then works out the calendar
-writes, deterministically, refusing any overlap (nothing is moved to
-make room) or change to history, as today.
+writes, deterministically. The decided events are a layer over the
+calendar: an undecided event they run into is cut, one they run right
+over is covered (cancelled), and one they fall inside is split -- worked
+out again on every plan, never kept as an edit. Two decided events that
+overlap, or a change to history, are refused, as today.
 
 Since Claude never sends the user's entries and the server always lays
 the whole ledger on top, no revision can leave a user edit out.
@@ -297,7 +300,7 @@ event_id?, clear_fields?}]`; `as_planned` event ids, keys, note ids or refs. Ret
   response names each of Claude's newer changes it replaced.
 - Refused as a whole if an edit names an event or note outside the
   window or gone, adds a note to an event of another day, would make a
-  description too long, if the result overlaps, or if it changes
+  description too long, if two decided events overlap, or if it changes
   history. The response
   returns the current revision and the refused edits.
 - Changing history -- moving the start of, ending earlier, or cancelling
@@ -385,8 +388,12 @@ proposal}`, `status` one of `applied`, `rechecked`, `needs_claude`,
     on the calendar as it is now: a calendar write isn't a ledger
     entry, so where Claude's decision sets a field it changed, the
     decision wins.
-  - Can't be planned -- an event a decision names is gone, say, or an
-    event now overlaps one the plan keeps or creates: adds server
+  - Only what the layer implies changed, after `through` -- an event
+    it cuts was moved on the calendar, say: planned again as it now is
+    (a revision by the server) and applied, without asking again. A
+    change to what it implies before `through` is rechecked as above.
+  - Can't be planned -- an event a decision names is gone, say, or two
+    decided events now overlap: adds server
     feedback for Claude (`needs_claude`).
   - A write that can never succeed while applying: as
     `finish_proposal` (`rebuilt`). Any other failure leaves it

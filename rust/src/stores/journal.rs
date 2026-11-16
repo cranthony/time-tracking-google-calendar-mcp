@@ -81,6 +81,9 @@ pub struct JournalStep {
     pub reason: String,
     pub row: i64,
     pub key: Option<String>,
+    /// The layer event that cut, covered or split it, for a change no
+    /// decision made (see compaction::plan's `imply`).
+    pub implied_by: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -223,6 +226,10 @@ pub struct JournalCompaction {
     pub steps: Vec<JournalStep>,
     pub note_targets: Vec<(String, Option<String>)>,
     pub revisits: Vec<String>,
+    /// Where its layer ends: its `now`, or later where the last decided
+    /// event going on then ends (see compaction::plan). None in a journal
+    /// from before it was kept.
+    pub layer_end: Option<Moment>,
     pub row: i64,
     pub batch: Option<String>,
     pub day: i64,
@@ -251,6 +258,7 @@ impl JournalCompaction {
                 key: s.key.clone(),
                 before: s.before.clone(),
                 after: s.after.clone(),
+                implied_by: s.implied_by.clone(),
             })
             .collect()
     }
@@ -361,6 +369,20 @@ impl CompactionJournal {
             }
             if !day.revisits.is_empty() {
                 detail.insert("revisits".into(), json!(day.revisits));
+            }
+            if let Some(layer_end) = day.plan.layer_end.filter(|l| *l > day.now) {
+                detail.insert("layer_end".into(), json!(py::isoformat(&layer_end)));
+            }
+            // Which steps are implied (by step number), and by what.
+            let implied: Map<String, Value> = day
+                .plan
+                .changes
+                .iter()
+                .enumerate()
+                .filter_map(|(step, c)| Some(((step + 1).to_string(), json!(c.implied_by.clone()?))))
+                .collect();
+            if !implied.is_empty() {
+                detail.insert("implied".into(), Value::Object(implied));
             }
             if let Some(meta) = meta {
                 if number == 1 {
@@ -870,6 +892,10 @@ fn load_from(rows: &Rows, compaction_id: &str) -> anyhow::Result<JournalCompacti
                         .map(|m| m.iter().map(|(k, v)| (k.clone(), v.as_str().map(str::to_string))).collect())
                         .unwrap_or_default(),
                     revisits: strings(detail.get("revisits")),
+                    layer_end: match detail.get("layer_end").and_then(Value::as_str) {
+                        Some(t) => Some(parse_iso(t, None)?),
+                        None => None,
+                    },
                     row: sheet_row,
                     batch: detail.get("batch").and_then(Value::as_str).map(str::to_string),
                     day: detail.get("day").and_then(Value::as_i64).unwrap_or(1),
@@ -896,12 +922,18 @@ fn load_from(rows: &Rows, compaction_id: &str) -> anyhow::Result<JournalCompacti
                     reason: row[7].clone(),
                     row: sheet_row,
                     key: if create { Some(row[3].clone()).filter(|e| !e.is_empty()) } else { None },
+                    implied_by: None,
                 });
             }
         }
         let Some(mut compaction) = compaction else { return Ok(None) };
         compaction.decisions = decisions;
         steps.sort_by_key(|s| s.step);
+        if let Some(implied) = detail.get("implied").and_then(Value::as_object) {
+            for step in steps.iter_mut() {
+                step.implied_by = implied.get(&step.step.to_string()).and_then(Value::as_str).map(str::to_string);
+            }
+        }
         compaction.steps = steps;
         if compaction.proposal.is_some() && compaction.day == 1 {
             compaction.meta = Some(RevisionMeta::from_detail(&detail, claude)?);

@@ -47,21 +47,31 @@ fn judgments_of(setup: &Setup, event_id: &str) -> Value {
 
 // -- only the past is judged -------------------------------------------------------
 // An event moved to after now hasn't happened yet: it has no facts to
-// record, nor judgments.
+// record, nor judgments. Only the user moves one there (Claude's decisions
+// stop at now).
 
 fn email_after_lunch() -> EventDecision {
     EventDecision { start: Some(time_at("13:00")), end: Some(time_at("14:00")), ..keep("e1") }
+}
+
+/// Proposed with nothing decided, then `edit` made by the user and
+/// confirmed.
+fn moved_by_the_user(setup: &Setup, edit: EventDecision) -> Proposal {
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
+    let proposal = setup.amend(&p, 1, vec![edit]);
+    assert_eq!(setup.call(|c| c.confirm(&p, proposal.revision)).unwrap().status, "applied");
+    proposal
 }
 
 #[test]
 fn an_event_moved_after_now_isnt_judged() {
     let setup = judged(sam(), vec![heard()]);
 
-    let planned = setup.dry_run(vec![EventDecision { facts: Some(facts(json!({"with": ["sam"]}))), ..email_after_lunch() }]);
-    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().facts, None);
-    let applied = setup.commit(&planned.compaction_id.unwrap());
+    let proposal = moved_by_the_user(&setup, EventDecision { facts: Some(facts(json!({"with": ["sam"]}))), ..email_after_lunch() });
 
-    assert!(applied.judgments.is_none());
+    let moved = proposal.changes.iter().find(|c| c.event_id.as_deref() == Some("e1")).unwrap();
+    assert_eq!(moved.after.as_ref().unwrap().facts, None);
+    assert!(setup.call(|c| c.judgments_due(None, false)).unwrap().is_none_or(|d| d.events.is_empty()));
     assert!(setup.event("e1").facts.is_none_or(|f| f.is_empty()));
 }
 
@@ -72,10 +82,9 @@ fn one_moved_after_now_loses_the_facts_and_judgments_it_had() {
     let events = vec![email, event_at("20:00-07:00+1").id("s1").summary("Sleep").priority(0).build()];
     let setup = Setup::with(&[("09:05", "email")], Some(events), "11:30", Stores { people: sam(), traits: Some(vec![heard()]), ..Default::default() });
 
-    let id = setup.dry_run(vec![email_after_lunch()]).compaction_id.unwrap();
-    let applied = setup.commit(&id);
+    moved_by_the_user(&setup, email_after_lunch());
 
-    assert!(applied.judgments.is_none());
+    assert!(setup.call(|c| c.judgments_due(None, false)).unwrap().is_none_or(|d| d.events.is_empty()));
     let email = setup.event("e1");
     assert!(email.facts.is_none_or(|f| f.is_empty()));
     assert!(email.judgments.is_none_or(|j| j.is_empty()));
@@ -98,6 +107,7 @@ fn a_step_that_starts_after_its_now_isnt_judged() {
         reason: String::new(),
         row: n,
         key: None,
+        implied_by: None,
     };
     let day = crate::stores::journal::JournalCompaction {
         id: "c1".into(),
@@ -110,6 +120,7 @@ fn a_step_that_starts_after_its_now_isnt_judged() {
         steps: vec![step(1, "09:00-10:00"), step(2, "11:00-12:00"), step(3, "13:00-14:00")],
         note_targets: Vec::new(),
         revisits: Vec::new(),
+        layer_end: None,
         row: 1,
         batch: None,
         day: 1,
@@ -545,6 +556,34 @@ fn the_proposal_tells_the_app_whether_a_cancel_counts_and_against_whom() {
     let events = flipped.events.unwrap();
     let email = events.iter().find(|e| e.id == "e1").unwrap();
     assert_eq!((email.counts_against_follow_through, email.follow_through.clone(), email.decided_by.as_deref()), (Some(false), vec![], Some("user")));
+}
+
+#[test]
+fn an_event_what_was_decided_covers_counts_as_a_cancel_does() {
+    let setup = follow_through();
+    let call = EventDecision { summary: Some("Call".into()), start: Some(time_at("09:00")), end: Some(time_at("10:00")), ..EventDecision::new("create") };
+    let planned = setup.dry_run(vec![call]);
+
+    let covered = change(&planned, "e1");
+    assert_eq!((covered.action.as_str(), covered.implied_by.is_some()), ("cancel", true));
+    let timeline = planned.timeline.clone().unwrap();
+    assert!(timeline.text.contains("Follow-through:
+  ✗ Email: Me (Reliable), Sam (Reliable)
+"), "{}", timeline.text);
+    let events = setup.get_proposal().events.unwrap();
+    let email = events.iter().find(|e| e.id == "e1").unwrap();
+    assert_eq!((email.status.as_str(), email.counts_against_follow_through, email.decided_by.as_deref()), ("cancelled", Some(true), None));
+    assert_eq!(email.follow_through, strings(&["Me (Reliable)", "Sam (Reliable)"]));
+    assert!(email.covered_by.is_some());
+
+    let id = planned.compaction_id.unwrap();
+    setup.commit(&id);
+
+    let source = format!("compaction {id}");
+    assert_eq!(
+        cancellations(&setup),
+        vec![("e1/sam/with".to_string(), "Email".to_string(), source.clone()), ("e1/self/with".to_string(), "Email".to_string(), source)]
+    );
 }
 
 #[test]

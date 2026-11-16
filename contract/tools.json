@@ -23005,6 +23005,11 @@
               "format": "date-time",
               "type": "string"
             },
+            "layer_end": {
+              "description": "Where its layer ends: `through`, or later where the last decided\nevent going on at `through` ends.",
+              "format": "date-time",
+              "type": "string"
+            },
             "open_feedback": {
               "type": "integer"
             }
@@ -23015,6 +23020,7 @@
             "state",
             "window_start",
             "through",
+            "layer_end",
             "open_feedback"
           ],
           "type": "object"
@@ -24410,6 +24416,15 @@
             "user_seq": {
               "type": "integer"
             },
+            "through": {
+              "description": "How far it runs, and where its layer ends: `through`, or later\nwhere the last decided event going on at `through` ends.",
+              "format": "date-time",
+              "type": "string"
+            },
+            "layer_end": {
+              "format": "date-time",
+              "type": "string"
+            },
             "updates": {
               "items": {
                 "additionalProperties": true,
@@ -24537,7 +24552,9 @@
             "id",
             "revision",
             "state",
-            "user_seq"
+            "user_seq",
+            "through",
+            "layer_end"
           ],
           "type": "object"
         },
@@ -24768,6 +24785,31 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -25006,7 +25048,7 @@
     }
   },
   {
-    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` when it clearly matches a goal's hints, or with none its\ntitle -- a closed goal only if the event started before it closed\n(refused otherwise); the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes are added to the\nevent they fall within -- or, one that sets an edge, to the event it\nends, else the one it starts -- except those in `ignore_notes` (which\nstill set their edges) -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. new_goals propose\ngoals -- inactive -- from notes where the user says they want or mean\nto do something longer term that no open goal covers, or told someone\nthey would -- with the people it's with or for (ids, or new_people\nrefs) -- created when it's applied too. goal_changes propose changes\nto goals there are, applied when it's applied: {goal_id, status: done\n| missed | obsolete, at?, note_ids?, retry_deadline?} -- `done` at\nthe note's time when a note says the goal's outcome was reached,\n`obsolete` when one says the user dropped it, and `missed` at its\ndeadline for every goal with `due_in_window` that nothing shows done\n(never with a retry_deadline: the user picks that in review). A\nchange naming a goal that isn't open, timed outside the window, or\nthat the goal rules refuse (open sub-goals, unless the call closes\nthem too) is refused, naming the goal. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block, then the additions, the goal changes and the warnings.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`), the notes\n(`note_ids`) and the goal changes (`goal_ids`) it's about, so the user\ncan go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given; your goal_changes too, less those the user settled\n-- `proposal.settled_goal_changes`), and answer every open feedback item in\n`replies`. The user's own edits -- of events, of what notes are\nfor, and of goal changes -- are laid over your decisions by the server; never send them.\n\nNOTHING IS MOVED TO MAKE ROOM: every event you update or create must\nend after it starts and must not overlap any other event -- past or\nstill to come, the others you change included -- so move, shorten or\ncancel whatever's in the way in the same call. A call that breaks this\nchanges nothing, and the error lists every problem and the day as it\nwould leave it, to fix them all at once.\n\nAn update that moves a future event reschedules it. A night's sleep\nis an event like any other: an earlier bedtime needs whatever runs\npast it shortened or cancelled too, a later one leaves the evening\nfree, and a later wake-up has to move, shorten or cancel the morning\nevents it now runs over, even those after now, in the same call. One\nthat puts an event past what the round offers takes in the events it\nlands among, for the same call to make room among.\n\nfact_summaries rewrite people's trait facts (see prepare_compaction's\n`trait_facts`): each {person_id, fact: \"<trait id>/<fact id>\",\nsummary} -- the whole summary, as it stands after the proposal's\nevents -- only beside a log of what changed in the facts of the event\n(or events) whose notes showed it ({\"logs\": {person id: {fact: log}}}),\nand every log beside its summary. Change a fact only when the notes\nhave something relevant to it: most events say nothing new about most\nfacts.\n\ntrait_examples propose examples of traits done well (see\nprepare_compaction's `traits`): when a note tells of the user or\nsomeone else embodying a trait well, one each, as create_trait_example\ntakes it -- {trait_id, when (\"YYYY-MM-DD\"), person_id (\"self\", a\nperson's or community's id, or a new_people ref) and/or who (in\nwords), what, why, event_id (the plan's event it happened at: an\nevent's id, a create's key or its ref)} -- created when it's applied.\nEach gets an id (yours, or one made); with a proposal open, send\n`proposal.trait_examples` again with their ids, less those the user\nsettled (`proposal.settled_trait_examples`).\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
+    "description": "Step 2 of compacting notes: propose what happened -- each day's\nevents realigned to its notes, and the calendar changes that makes --\nfor the user to review and confirm in the app. Nothing on the calendar\nchanges, and you can't apply it: only the user's confirmation does.\nEvery day since the last compaction is planned together, as one span;\none call covers them all, to now.\n\nCall with what the notes show happened differently from the plan, as\nupdate_event takes a batch (see prepare_compaction's instructions):\n`updates` (events that happened, with edges moved to a time or a\nnote's, renamed, annotated, their actions, goals and facts set),\n`creates` (something unplanned that happened) and `cancels` (what\ndidn't happen, each saying whether it counts against follow-through:\nthe user dropped it, or the plan changed). Any past event you don't\nmention is recorded as on schedule. Tag an event with goals (`goals`,\ngoal shares as update_event takes them) only from prepare_compaction's\n`goals` when it clearly matches a goal's hints, or with none its\ntitle -- a closed goal only if the event started before it closed\n(refused otherwise); the most specific goal, with minutes or\npercent when only part of it was for the goal. Notes are added to the\nevent they fall within -- or, one that sets an edge, to the event it\nends, else the one it starts -- except those in `ignore_notes` (which\nstill set their edges) -- and\nthose in `annotate_notes`, added to the event they name (an event's\nid, a create's key from the open proposal, or its `ref`) instead.\nnew_actions, new_people and new_locations add what isn't there yet,\neach with a `ref` (\"new:ukulele\") the updates and creates use in\nplace of its id; they're created when it's applied. new_goals propose\ngoals -- inactive -- from notes where the user says they want or mean\nto do something longer term that no open goal covers, or told someone\nthey would -- with the people it's with or for (ids, or new_people\nrefs) -- created when it's applied too. goal_changes propose changes\nto goals there are, applied when it's applied: {goal_id, status: done\n| missed | obsolete, at?, note_ids?, retry_deadline?} -- `done` at\nthe note's time when a note says the goal's outcome was reached,\n`obsolete` when one says the user dropped it, and `missed` at its\ndeadline for every goal with `due_in_window` that nothing shows done\n(never with a retry_deadline: the user picks that in review). A\nchange naming a goal that isn't open, timed outside the window, or\nthat the goal rules refuse (open sub-goals, unless the call closes\nthem too) is refused, naming the goal. You get the\nproposal's id and revision, the proposed changes, the additions, and\na `timeline` of the notes beside the resulting events, each with its\nactions and facts -- in a conversation, show its `text` to the user in\na code block, then the additions, the goal changes and the warnings.\n\n`recap` is your account of it, for the user reviewing it in the app:\na short `overview`, then one point for each thing you `did` (what you\ndecided, and from which notes) and each thing you're `unsure` of\n(saying what you assumed -- empty only if nothing is in doubt). Each\npoint is Markdown (bold, italics, code, lists; no headings) and cites\nthe events (`event_ids`: ids, keys, or a create's `ref`), the notes\n(`note_ids`) and the goal changes (`goal_ids`) it's about, so the user\ncan go straight to them. Give a\ncreate a `ref` of your choosing to name it before it has a key, here\nand in `annotate_notes`. Write it afresh every call, for the proposal\nas it now stands.\n\nWith a proposal open (prepare_compaction's `proposal`), every call\nrevises or extends it: pass its `proposal_id` and the `revision` you\nstarted from, send all your decisions again (each create with the\n`key` it was given; your goal_changes too, less those the user settled\n-- `proposal.settled_goal_changes`), and answer every open feedback item in\n`replies`. The user's own edits -- of events, of what notes are\nfor, and of goal changes -- are laid over your decisions by the server; never send them.\n\nWHAT YOU DECIDE OVERWRITES THE PLAN UNDER IT: every event you update\nor create must end after it starts, and is laid over the planned\nevents -- one it runs into is cut where it stops, one it runs right over\nis covered (cancelled, counting against follow-through as a cancel\ndoes), and one it falls inside is split around it. Those are implied,\nnot decided: don't cancel or move them yourself unless the notes say\nwhat became of them. The result lists them -- each change with\n`implied_by`, naming the event that did it, and the timeline's\n'cut by' and 'covered by' -- to check. Two events you decide may not\noverlap each other, nor run over what an earlier compaction settled; a\ncall that breaks this changes nothing, and the error lists every\nproblem and the day as it would leave it, to fix them all at once.\n\nCompaction records the past: no time you give may be later than the\nround's now, and an event that starts at or after it isn't yours to\nupdate, cancel or merge -- unless an update brings its start before now\n-- so a note about a later event changes nothing (refused, as\n`past_through`). A night's sleep is an event like any other: an earlier\nbedtime cuts what runs past it, a later one leaves the evening free,\nand a later wake-up -- the night's end moved to the note that marks it\n-- covers or cuts the morning events it now runs over.\n\nfact_summaries rewrite people's trait facts (see prepare_compaction's\n`trait_facts`): each {person_id, fact: \"<trait id>/<fact id>\",\nsummary} -- the whole summary, as it stands after the proposal's\nevents -- only beside a log of what changed in the facts of the event\n(or events) whose notes showed it ({\"logs\": {person id: {fact: log}}}),\nand every log beside its summary. Change a fact only when the notes\nhave something relevant to it: most events say nothing new about most\nfacts.\n\ntrait_examples propose examples of traits done well (see\nprepare_compaction's `traits`): when a note tells of the user or\nsomeone else embodying a trait well, one each, as create_trait_example\ntakes it -- {trait_id, when (\"YYYY-MM-DD\"), person_id (\"self\", a\nperson's or community's id, or a new_people ref) and/or who (in\nwords), what, why, event_id (the plan's event it happened at: an\nevent's id, a create's key or its ref)} -- created when it's applied.\nEach gets an id (yours, or one made); with a proposal open, send\n`proposal.trait_examples` again with their ids, less those the user\nsettled (`proposal.settled_trait_examples`).\n\nOnce the user confirms it and it's applied, make its judgments with\nprepare_judgments and record_judgments: the compaction isn't complete\nuntil they're all recorded.",
     "inputSchema": {
       "properties": {
         "recap": {
@@ -26267,6 +26309,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "implied_by": {
+              "description": "Only on a change no decision made: the id (or key) of the decided\nevent that cut, covered or split this one -- worked out again on\nevery plan.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -26751,6 +26800,31 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -26805,7 +26879,7 @@
     }
   },
   {
-    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), `state`, every event of its days as it leaves them\n(`events`, each with its id -- or a new event's key -- its times, what\nit was planned as, and who decided it), the notes, the calendar writes\nit makes, its `timeline`, the goal changes it makes when applied\n(`goal_changes`, each with who decided it) and those the user settled\n(`settled_goal_changes`), the trait examples it makes when applied\n(`trait_examples`, each with its trait's and person's names and who\ndecided it) and those the user settled (`settled_trait_examples`), the\nuser's edits and the feedback with any\nreplies. With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
+    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), where its layer ends (`layer_end`: `through`, or later\nwhere the last decided event going on at `through` ends), `state`,\nevery event of its days as it leaves them (`events`, each with its id\n-- or a new event's key -- its times, what it was planned as, and who\ndecided it; one no decision changed that a decided event ran over has\nno `decided_by`, but `cut_by` -- cut short or split, a later piece of\nit being new -- or `covered_by` -- cancelled, counting against\nfollow-through as a cancel does -- naming that event, with its\nsummary), the notes, the calendar writes\nit makes, its `timeline`, the goal changes it makes when applied\n(`goal_changes`, each with who decided it) and those the user settled\n(`settled_goal_changes`), the trait examples it makes when applied\n(`trait_examples`, each with its trait's and person's names and who\ndecided it) and those the user settled (`settled_trait_examples`), the\nuser's edits and the feedback with any\nreplies. With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -26848,6 +26922,11 @@
           "type": "string"
         },
         "through": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "layer_end": {
+          "description": "Where its layer ends: `through`, or later where the last decided\nevent going on at `through` ends (an end the user set past it).",
           "format": "date-time",
           "type": "string"
         },
@@ -27019,6 +27098,7 @@
         "state",
         "window_start",
         "through",
+        "layer_end",
         "by",
         "reason",
         "created"
@@ -27163,6 +27243,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "implied_by": {
+              "description": "Only on a change no decision made: the id (or key) of the decided\nevent that cut, covered or split this one -- worked out again on\nevery plan.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -27724,6 +27811,31 @@
             "revisited": {
               "description": "Settled by an earlier compaction, and revisited for a historical note:\nonly what happened at it changes, not when.",
               "type": "boolean"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -28191,6 +28303,31 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -28359,7 +28496,7 @@
     }
   },
   {
-    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; `goal_changes`, settling a goal change\nthe proposal makes (by its goal's id) now -- `apply` it (an update of\nthe goal, refused as update_goals would refuse it), `drop` it, or\n`change` it, the user's status, `at`, retry_deadline and retry_fit over\nClaude's, kept in the proposal (a `change` of a goal the proposal\ndoesn't change adds one, with a status); `trait_examples`, settling\na trait example the proposal makes (by its id) -- `drop` it, or\n`change` it, the user's fields over Claude's (clear_fields blanking\nperson_id, who or event_id), kept in the proposal and checked as\ncreate_trait_example checks it, its event_id one of the proposal's\nevents (a `change` with a new id adds one of the user's own); and\n`as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created or applied stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or the result overlaps, or changes history -- moves\nthe start of, ends earlier, or cancels an event an earlier compaction\nrecorded -- unless allow_compacted_changes is set: ONLY set it when the\nuser has explicitly approved changing history. It's kept with these\nedits, so later revisions keep to it. Nothing is moved to make room.\nAn update or create that puts an event past the proposal's events\ntakes in the events it lands among -- and, where those are moved, the\nones there -- as the proposal's, so move them aside in the same call;\nwhat nothing reaches stays outside. An event that starts after now\nhasn't happened: it records no facts (one moved there loses those it\nhad, and its judgments), and isn't judged.",
+    "description": "The user's edits to the open proposal, from the app: `updates`,\n`creates` and `cancels` as update_event takes them (an update's id may\nbe a new event's key), each update and create also taking a\n`start_note`/`end_note` that sets that edge. A description given is\nthe event's whole description, notes and all -- as the proposal\nshows it, edited: no notes are added to it. `notes`, what notes are for --\neach annotating the event it falls within, or the one named\n(`event_id`), or ignored; `additions`, settling an action, person,\nlocation or goal the proposal adds (by its ref) now, without\nconfirming the rest -- `create` it (with its name -- a goal's title --,\na person's context or a location's hint corrected), say it's one that's `existing` (its id),\nor `drop` it from the events; `goal_changes`, settling a goal change\nthe proposal makes (by its goal's id) now -- `apply` it (an update of\nthe goal, refused as update_goals would refuse it), `drop` it, or\n`change` it, the user's status, `at`, retry_deadline and retry_fit over\nClaude's, kept in the proposal (a `change` of a goal the proposal\ndoesn't change adds one, with a status); `trait_examples`, settling\na trait example the proposal makes (by its id) -- `drop` it, or\n`change` it, the user's fields over Claude's (clear_fields blanking\nperson_id, who or event_id), kept in the proposal and checked as\ncreate_trait_example checks it, its event_id one of the proposal's\nevents (a `change` with a new id adds one of the user's own); and\n`as_planned` -- events (or keys)\nwhose decisions to clear, notes to leave as Claude had them, and refs\nto leave unsettled. One created or applied stays, whatever becomes of the\nproposal. `through`, later than the proposal's, extends it there (no\nlater than now; it can't be cut short): each note it takes in is added\nto the event it falls within, unless `notes` says otherwise, and the\nproposal's `claude_through` still says where Claude's revision ran\nto.\n`revision` is the one the user was looking at. They're laid over the current revision as a new one,\nwhich is returned, with `replaced`: the events whose newer change by\nClaude they overrode. If you amend it, give the revision you last read;\nwhen `replaced` names events changed since that revision, or the\nproposal moved on so it's refused, read it again: if what changed is\nin events you aren't changing, make your edit again on it as it is\nnow; if it's in events you're changing, stop and ask the user --\nshowing what changed and what you meant to do -- and never overwrite\ntheir edit without their OK. Refused, changing nothing, if one names an\nevent or a note that isn't in the proposal, adds a note to an event\nof another day, or two decided events overlap, or changes history --\nmoves the start of, ends earlier, or cancels an event an earlier\ncompaction recorded -- unless allow_compacted_changes is set: ONLY set\nit when the user has explicitly approved changing history. It's kept\nwith these edits, so later revisions keep to it. What an edit runs\nover that no decision changed is cut, covered or split by it (see\nget_proposal's `cut_by` and `covered_by`) -- worked out again on every\nrevision, never kept as an edit. An end may run past `through`: what\nit runs over there is cut or covered too, and the proposal's\n`layer_end` moves there. An update or create that puts an event past\nthe proposal's events takes in the events it lands among as the\nproposal's; what nothing reaches stays outside. An event that starts after now\nhasn't happened: it records no facts (one moved there loses those it\nhad, and its judgments), and isn't judged.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -29529,6 +29666,11 @@
           "format": "date-time",
           "type": "string"
         },
+        "layer_end": {
+          "description": "Where its layer ends: `through`, or later where the last decided\nevent going on at `through` ends (an end the user set past it).",
+          "format": "date-time",
+          "type": "string"
+        },
         "by": {
           "enum": [
             "claude",
@@ -29697,6 +29839,7 @@
         "state",
         "window_start",
         "through",
+        "layer_end",
         "by",
         "reason",
         "created"
@@ -29841,6 +29984,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "implied_by": {
+              "description": "Only on a change no decision made: the id (or key) of the decided\nevent that cut, covered or split this one -- worked out again on\nevery plan.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -30402,6 +30552,31 @@
             "revisited": {
               "description": "Settled by an earlier compaction, and revisited for a historical note:\nonly what happened at it changes, not when.",
               "type": "boolean"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -30869,6 +31044,31 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -31254,7 +31454,7 @@
     }
   },
   {
-    "description": "For the app: the user confirms the open proposal's current\nrevision -- the one they reviewed -- as what happened, and it's\napplied. Not for Claude: only the user confirms. Refused while\nfeedback is waiting for Claude, or if `revision` isn't the current\none. If the notes or calendar changed since -- through the\nproposal's events, a little past `through` -- so it would write something\nelse, it's planned again as a new revision to confirm instead\n(`rechecked`); if it no longer plans at all, it's handed to Claude\n(`needs_claude`). A change that can never be made while applying\nproposes what's left again (`rebuilt`); any other failure leaves it\nto finish_proposal.",
+    "description": "For the app: the user confirms the open proposal's current\nrevision -- the one they reviewed -- as what happened, and it's\napplied. Not for Claude: only the user confirms. Refused while\nfeedback is waiting for Claude, or if `revision` isn't the current\none. If the notes or calendar changed since -- through the\nproposal's events, a little past `through` -- so it would write something\nelse, it's planned again as a new revision to confirm instead\n(`rechecked`) -- except where all that changed is what the decided\nevents cut, cover or split after `through`: that's planned again as\nit now is and applied, without asking again. If it no longer plans\nat all, it's handed to Claude\n(`needs_claude`). A change that can never be made while applying\nproposes what's left again (`rebuilt`); any other failure leaves it\nto finish_proposal.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -31442,6 +31642,13 @@
                 {
                   "type": "null"
                 }
+              ]
+            },
+            "implied_by": {
+              "description": "Only on a change no decision made: the id (or key) of the decided\nevent that cut, covered or split this one -- worked out again on\nevery plan.",
+              "type": [
+                "string",
+                "null"
               ]
             }
           },
@@ -31889,6 +32096,11 @@
               "format": "date-time",
               "type": "string"
             },
+            "layer_end": {
+              "description": "Where its layer ends: `through`, or later where the last decided\nevent going on at `through` ends (an end the user set past it).",
+              "format": "date-time",
+              "type": "string"
+            },
             "by": {
               "enum": [
                 "claude",
@@ -32057,6 +32269,7 @@
             "state",
             "window_start",
             "through",
+            "layer_end",
             "by",
             "reason",
             "created"
@@ -32204,6 +32417,31 @@
             "revisited": {
               "description": "Settled by an earlier compaction, and revisited for a historical note:\nonly what happened at it changes, not when.",
               "type": "boolean"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -32671,6 +32909,31 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -33024,6 +33287,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "implied_by": {
+              "description": "Only on a change no decision made: the id (or key) of the decided\nevent that cut, covered or split this one -- worked out again on\nevery plan.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -33470,6 +33740,11 @@
               "format": "date-time",
               "type": "string"
             },
+            "layer_end": {
+              "description": "Where its layer ends: `through`, or later where the last decided\nevent going on at `through` ends (an end the user set past it).",
+              "format": "date-time",
+              "type": "string"
+            },
             "by": {
               "enum": [
                 "claude",
@@ -33638,6 +33913,7 @@
             "state",
             "window_start",
             "through",
+            "layer_end",
             "by",
             "reason",
             "created"
@@ -33785,6 +34061,31 @@
             "revisited": {
               "description": "Settled by an earlier compaction, and revisited for a historical note:\nonly what happened at it changes, not when.",
               "type": "boolean"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -34252,6 +34553,31 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -35150,6 +35476,13 @@
                   "type": "null"
                 }
               ]
+            },
+            "implied_by": {
+              "description": "Only on a change no decision made: the id (or key) of the decided\nevent that cut, covered or split this one -- worked out again on\nevery plan.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -35634,6 +35967,31 @@
                 "type": "string"
               },
               "type": "array"
+            },
+            "cut_by": {
+              "description": "For an event no decision changed that a decided event ran over:\nthe id (or key) of the one that cut it short (or split it -- a later\npiece of it is `new`), or covered it whole (it's `cancelled`), and\nthat event's summary.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cut_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "covered_by_summary": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [

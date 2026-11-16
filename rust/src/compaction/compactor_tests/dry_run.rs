@@ -84,15 +84,34 @@ fn invalid_decisions_raise_with_what_to_fix() {
 }
 
 #[test]
-fn overlapping_past_events_are_rejected_for_the_model_to_resolve() {
+fn overlapping_decided_events_are_rejected_for_the_model_to_resolve() {
     let setup = Setup::standard();
 
     refused(
-        setup.try_dry_run(vec![EventDecision { end_note: Some(setup.note_id(3)), ..keep("e1") }], DryRun::default()),
+        setup.try_dry_run(
+            vec![EventDecision { end_note: Some(setup.note_id(3)), ..keep("e1") }, EventDecision { end: Some(time_at("10:50")), ..keep("e2") }],
+            DryRun::default(),
+        ),
         "'Email'.*overlaps 'Report'",
     );
 
     assert!(setup.journal().compactions_with_status(&[PLANNED]).unwrap().is_empty());
+}
+
+#[test]
+fn an_overrun_into_an_undecided_event_cuts_it_and_says_so() {
+    let setup = Setup::standard();
+
+    let planned = setup.dry_run(vec![EventDecision { end_note: Some(setup.note_id(3)), ..keep("e1") }]);
+
+    let report = change(&planned, "e2");
+    assert_eq!((report.after.as_ref().unwrap().start, report.implied_by.as_deref()), (Some(time_at("10:20")), Some("e1")));
+    assert!(planned.message.contains("1 of the changes are implied"), "{}", planned.message);
+    assert_eq!(crate::compaction::proposals::change_json(report)["implied_by"], json!("e1"));
+    // Kept with the step, for applying it.
+    let day = setup.load(planned.compaction_id.as_ref().unwrap());
+    let step = day.steps.iter().find(|s| s.event_id.as_deref() == Some("e2")).unwrap();
+    assert_eq!(step.implied_by.as_deref(), Some("e1"));
 }
 
 #[test]
@@ -191,4 +210,22 @@ fn a_rejected_plan_can_be_redone_with_a_rename_and_a_note() {
     assert_eq!(email.summary.as_deref(), Some("Deep work"));
     assert_eq!(email.description.as_deref(), Some("Notes:\n- 09:05 email\n- 10:20 report\n- phone rang"));
     assert!(setup.calendar_writes().is_empty());
+}
+
+#[test]
+fn applying_it_writes_a_split_as_a_cut_and_a_create() {
+    let setup = Setup::standard();
+    let call = EventDecision { summary: Some("Call".into()), start: Some(time_at("10:30")), end: Some(time_at("10:45")), ..EventDecision::new("create") };
+    let planned = setup.dry_run(vec![call]);
+
+    setup.commit(planned.compaction_id.as_ref().unwrap());
+
+    assert_eq!(moment_in(&setup.patch("e2"), "end"), Some(time_at("10:30")));
+    let made: Vec<(Option<String>, Option<Moment>, Option<Moment>)> = setup
+        .creates()
+        .iter()
+        .map(|c| (c["summary"].as_str().map(str::to_string), moment_in(c, "start"), moment_in(c, "end")))
+        .collect();
+    assert!(made.contains(&(Some("Call".into()), Some(time_at("10:30")), Some(time_at("10:45")))), "{made:?}");
+    assert!(made.contains(&(Some("Report".into()), Some(time_at("10:45")), Some(time_at("11:00")))), "{made:?}");
 }

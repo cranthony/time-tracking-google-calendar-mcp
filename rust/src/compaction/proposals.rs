@@ -371,6 +371,12 @@ pub struct ProposalEvent {
     pub follow_through: Vec<String>,
     /// Settled by an earlier compaction, and revisited for a historical note.
     pub revisited: bool,
+    /// For an event the layer ran over, no decision having changed it: the
+    /// layer event that cut it short (or split it), or covered it whole
+    /// (it's cancelled), by id or key, and that event's summary.
+    pub cut_by: Option<String>,
+    pub covered_by: Option<String>,
+    pub implied_summary: Option<String>,
 }
 
 impl ProposalEvent {
@@ -395,6 +401,12 @@ impl ProposalEvent {
         out.insert("follow_through".into(), json!(self.follow_through));
         if self.revisited {
             out.insert("revisited".into(), json!(true));
+        }
+        for (key, by) in [("cut_by", &self.cut_by), ("covered_by", &self.covered_by)] {
+            if let Some(by) = by {
+                out.insert(key.into(), json!(by));
+                out.insert(format!("{key}_summary"), json!(self.implied_summary));
+            }
         }
         Value::Object(out)
     }
@@ -454,6 +466,9 @@ pub fn change_json(change: &CompactionChange) -> Value {
     out.insert("key".into(), json!(change.key));
     out.insert("before".into(), state(&change.before));
     out.insert("after".into(), state(&change.after));
+    if let Some(by) = &change.implied_by {
+        out.insert("implied_by".into(), json!(by));
+    }
     Value::Object(out)
 }
 
@@ -464,6 +479,9 @@ pub struct Proposal {
     pub state: String,
     pub window_start: Moment,
     pub through: Moment,
+    /// Where the layer ends: `through`, or later where the last decided
+    /// event going on at `through` ends.
+    pub layer_end: Moment,
     pub by: String,
     pub reason: String,
     pub created: Moment,
@@ -503,6 +521,7 @@ impl Proposal {
         out.insert("state".into(), json!(self.state));
         out.insert("window_start".into(), json!(py::pydantic_datetime(&self.window_start)));
         out.insert("through".into(), json!(py::pydantic_datetime(&self.through)));
+        out.insert("layer_end".into(), json!(py::pydantic_datetime(&self.layer_end)));
         out.insert("by".into(), json!(self.by));
         out.insert("reason".into(), json!(self.reason));
         out.insert("created".into(), json!(py::pydantic_datetime(&self.created)));
@@ -539,6 +558,7 @@ pub struct ProposalSummary {
     pub state: String,
     pub window_start: Moment,
     pub through: Moment,
+    pub layer_end: Moment,
     pub open_feedback: i64,
 }
 
@@ -550,6 +570,7 @@ impl ProposalSummary {
         out.insert("state".into(), json!(self.state));
         out.insert("window_start".into(), json!(py::pydantic_datetime(&self.window_start)));
         out.insert("through".into(), json!(py::pydantic_datetime(&self.through)));
+        out.insert("layer_end".into(), json!(py::pydantic_datetime(&self.layer_end)));
         out.insert("open_feedback".into(), json!(self.open_feedback));
         Value::Object(out)
     }
@@ -576,6 +597,8 @@ pub struct ProposalContext {
     pub revision: i64,
     pub state: String,
     pub user_seq: i64,
+    pub through: Moment,
+    pub layer_end: Moment,
     pub updates: Vec<Value>,
     pub creates: Vec<Value>,
     pub cancels: Vec<Value>,
@@ -607,6 +630,8 @@ impl ProposalContext {
         out.insert("revision".into(), json!(self.revision));
         out.insert("state".into(), json!(self.state));
         out.insert("user_seq".into(), json!(self.user_seq));
+        out.insert("through".into(), json!(py::pydantic_datetime(&self.through)));
+        out.insert("layer_end".into(), json!(py::pydantic_datetime(&self.layer_end)));
         out.insert("updates".into(), json!(self.updates));
         out.insert("creates".into(), json!(self.creates));
         out.insert("cancels".into(), json!(self.cancels));

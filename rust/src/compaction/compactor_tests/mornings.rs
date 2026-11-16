@@ -55,96 +55,73 @@ fn a_round_in_the_evening_stops_at_now_and_the_next_settles_the_night() {
 }
 
 #[test]
-fn a_later_end_takes_in_what_it_runs_into() {
+fn claude_cant_end_the_night_past_now() {
     let setup = night_setup();
 
-    let planned = setup.dry_run(vec![EventDecision { end: Some(time_at("09:00+1")), ..keep("s1") }, cancel("gr1")]);
+    let message = refused(
+        setup.try_dry_run(vec![EventDecision { end: Some(time_at("09:00+1")), ..keep("s1") }, cancel("gr1")], DryRun::default()),
+        "decision 1 \\(keep s1\\): its end .* is after this round's now",
+    );
+    assert!(message.contains("decision 2 (cancel gr1): 'Getting Ready' starts at"), "{message}");
+    let Err(error) = setup.try_dry_run(vec![EventDecision { end: Some(time_at("09:00+1")), ..keep("s1") }], DryRun::default()) else { panic!("not refused") };
+    assert_eq!(compaction_error(&error).unwrap().categories, strings(&["past_through"]));
+}
 
-    assert_eq!(change(&planned, "s1").after.as_ref().unwrap().end, Some(time_at("09:00+1")));
-    assert_eq!(change(&planned, "gr1").action, "cancel");
+#[test]
+fn the_users_later_end_covers_what_it_runs_over() {
+    let setup = night_setup();
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
+
+    let proposal = setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("09:00+1")), ..keep("s1") }]);
+
+    assert_eq!((proposal.through, proposal.layer_end), (time_at("05:30+1"), time_at("09:00+1")));
+    let covered = proposal.changes.iter().find(|c| c.event_id.as_deref() == Some("gr1")).unwrap();
+    assert_eq!((covered.action.as_str(), covered.implied_by.as_deref()), ("cancel", Some("s1")));
+    let shown = proposal.events.as_ref().unwrap().iter().find(|e| e.id == "gr1").unwrap();
+    assert_eq!((shown.status.as_str(), shown.covered_by.as_deref(), shown.decided_by.as_deref()), ("cancelled", Some("s1"), None));
+    assert_eq!(shown.counts_against_follow_through, Some(true));
     // Work, at 9:15, it doesn't reach.
-    assert!(!planned.changes.iter().any(|c| c.event_id.as_deref() == Some("w1")));
-}
-
-#[test]
-fn what_it_runs_into_must_be_settled() {
-    let setup = night_setup();
-
-    refused(
-        setup.try_dry_run(vec![EventDecision { end: Some(time_at("09:00+1")), ..keep("s1") }], DryRun::default()),
-        "(?s)'Sleep'.*overlaps 'Getting Ready'",
-    );
-}
-
-#[test]
-fn what_it_doesnt_reach_is_still_outside() {
-    let setup = night_setup();
-
-    refused(
-        setup.try_dry_run(
-            vec![
-                EventDecision { end: Some(time_at("09:00+1")), ..keep("s1") },
-                cancel("gr1"),
-                EventDecision { start: Some(time_at("09:30+1")), ..keep("w1") },
-            ],
-            DryRun::default(),
-        ),
-        "w1' isn't one of this day's events",
-    );
+    assert!(!proposal.changes.iter().any(|c| c.event_id.as_deref() == Some("w1")));
 }
 
 // -- moving past the span ------------------------------------------------------------
-// A decision that moves one of the span's events past its end takes
-// in what it lands among, for the decisions to make room -- and where they
-// move those to, in turn.
+// Claude records the past: a decision that moves one of the span's events
+// past its now is refused. The user may: what it lands on is cut.
 
 fn reading_tomorrow() -> EventDecision {
     EventDecision { start: Some(time_at("09:15+1")), end: Some(time_at("10:15+1")), ..keep("e1") }
 }
 
 #[test]
-fn a_move_past_the_span_takes_in_what_it_lands_on() {
+fn claude_cant_move_an_event_past_now() {
     let setup = night_setup();
 
-    refused(setup.try_dry_run(vec![reading_tomorrow()], DryRun::default()), "(?s)'Reading'.*overlaps 'Work'|(?s)'Work'.*overlaps 'Reading'");
+    refused(setup.try_dry_run(vec![reading_tomorrow()], DryRun::default()), "decision 1 \\(keep e1\\): its start .* and its end .* after this round's now");
 }
 
 #[test]
-fn what_it_lands_on_can_be_moved_aside() {
+fn the_users_move_past_the_span_cuts_what_it_lands_on() {
     let setup = night_setup();
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
 
-    let planned = setup.dry_run(vec![reading_tomorrow(), EventDecision { start: Some(time_at("10:15+1")), ..keep("w1") }]);
+    let proposal = setup.amend(&p, 1, vec![reading_tomorrow()]);
 
-    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().start, Some(time_at("09:15+1")));
-    assert_eq!(change(&planned, "w1").after.as_ref().unwrap().start, Some(time_at("10:15+1")));
+    let work = proposal.changes.iter().find(|c| c.event_id.as_deref() == Some("w1")).unwrap();
+    assert_eq!((work.after.as_ref().unwrap().start, work.implied_by.as_deref()), (Some(time_at("10:15+1")), Some("e1")));
     // The next night, it doesn't reach.
-    assert!(!planned.changes.iter().any(|c| c.event_id.as_deref() == Some("s2")));
-    let id = planned.compaction_id.unwrap();
-    assert_eq!(setup.commit(&id).status, "applied");
+    assert!(!proposal.changes.iter().any(|c| c.event_id.as_deref() == Some("s2")));
+    assert_eq!(setup.call(|c| c.confirm(&p, 2)).unwrap().status, "applied");
     assert_eq!(setup.event("w1").start, Some(time_at("10:15+1")));
-}
-
-#[test]
-fn where_it_moves_them_takes_in_what_is_there() {
-    let setup = night_setup();
-
-    refused(
-        setup.try_dry_run(
-            vec![reading_tomorrow(), EventDecision { start: Some(time_at("21:30+1")), end: Some(time_at("23:00+1")), ..keep("w1") }],
-            DryRun::default(),
-        ),
-        "(?s)'Work'.*overlaps 'Sleep'|(?s)'Sleep'.*overlaps 'Work'",
-    );
 }
 
 #[test]
 fn a_move_past_the_span_takes_no_facts_there() {
     let setup = night_setup();
+    let p = setup.dry_run(vec![]).proposal_id.unwrap();
 
-    let planned =
-        setup.dry_run(vec![EventDecision { facts: Some(crate::testing::facts(json!({"notes": {"self": "a good chapter"}}))), ..reading_tomorrow() }, cancel("w1")]);
+    let proposal = setup.amend(&p, 1, vec![EventDecision { facts: Some(crate::testing::facts(json!({"notes": {"self": "a good chapter"}}))), ..reading_tomorrow() }]);
 
-    assert_eq!(change(&planned, "e1").after.as_ref().unwrap().facts, None);
+    assert_eq!(proposal.changes.iter().find(|c| c.event_id.as_deref() == Some("e1")).unwrap().after.as_ref().unwrap().facts, None);
 }
 
 // -- sleeping in --------------------------------------------------------------------
@@ -178,13 +155,26 @@ fn prepare_offers_it_to_the_days_first_note() {
 }
 
 #[test]
-fn extending_it_over_the_morning_needs_the_morning_moved_too() {
+fn a_late_wake_up_covers_and_cuts_the_morning_it_runs_over() {
     let setup = slept_in();
 
-    refused(
-        setup.try_dry_run(vec![EventDecision { end_note: Some(setup.note_id(3)), ..keep("s1") }], DryRun::default()),
-        r"(?s)'Sleep' \(20:00–08:30, as asked\) overlaps 'Getting Ready'",
-    );
+    let planned = setup.dry_run(vec![EventDecision { end_note: Some(setup.note_id(3)), ..keep("s1") }]);
+
+    let ready = change(&planned, "gr1");
+    assert_eq!((ready.action.as_str(), ready.reason.as_str(), ready.implied_by.as_deref()), ("cancel", "covered by 'Sleep'", Some("s1")));
+    let work = change(&planned, "w1");
+    assert_eq!((work.after.as_ref().unwrap().start, work.implied_by.as_deref()), (Some(time_at("08:30+1")), Some("s1")));
+    assert!(planned.message.contains("2 of the changes are implied"), "{}", planned.message);
+    let text = planned.timeline.as_ref().unwrap().text.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(text.contains("✕ Getting Ready · covered by Sleep"), "{text}");
+    assert!(text.contains("cut by Sleep"), "{text}");
+
+    setup.commit(planned.compaction_id.as_ref().unwrap());
+
+    assert_eq!(moment_in(&setup.patch("s1"), "end"), Some(time_at("08:30+1")));
+    assert_eq!(moment_in(&setup.patch("w1"), "start"), Some(time_at("08:30+1")));
+    assert!(setup.event("gr1").is_cancelled());
+    assert!(!setup.patches().iter().any(|(id, _)| id == "s2"));
 }
 
 #[test]
@@ -270,30 +260,39 @@ fn a_note_outside_the_compaction_being_applied_can_still_change() {
 // -- moving future events ---------------------------------------------------------------
 
 #[test]
-fn a_keep_with_new_times_reschedules_a_future_event() {
+fn claude_cant_reschedule_a_future_event() {
     let setup = Setup::standard();
     let mut decisions = setup.email_then_report();
     decisions.push(EventDecision { start: Some(time_at("12:15")), end: Some(time_at("12:45")), ..keep("e3") });
 
-    let planned = setup.dry_run(decisions);
-    setup.commit(planned.compaction_id.as_ref().unwrap());
-
-    let changed: std::collections::BTreeSet<String> = planned.changes.iter().filter_map(|c| c.event_id.clone()).collect();
-    assert_eq!(changed, ["e1", "e2", "e3"].iter().map(|s| s.to_string()).collect());
-    let lunch = setup.patch("e3");
-    assert_eq!((moment_in(&lunch, "start"), moment_in(&lunch, "end")), (Some(time_at("12:15")), Some(time_at("12:45"))));
+    refused(setup.try_dry_run(decisions, DryRun::default()), "decision 3 \\(keep e3\\): its start .* is after this round's now");
+    // Nor cancel one, nor change what happened at it.
+    let mut decisions = setup.email_then_report();
+    decisions.push(cancel("e3"));
+    refused(setup.try_dry_run(decisions, DryRun::default()), "'Lunch' starts at .* not before this round's now");
 }
 
 #[test]
-fn moving_bedtime_late_in_the_day_plans_and_commits() {
-    let setup = Setup::new(&[("09:05", "email"), ("10:20", "report")], None, "19:45");
+fn but_a_keep_may_bring_a_future_events_start_before_now() {
+    let setup = Setup::standard();
     let mut decisions = setup.email_then_report();
-    decisions.push(EventDecision { start: Some(time_at("22:30")), end: Some(time_at("08:00") + Duration::days(1)), ..keep("s1") });
+    decisions[1].end = Some(time_at("11:00"));
+    decisions.push(EventDecision { start: Some(time_at("11:00")), end: Some(time_at("11:30")), ..keep("e3") });
 
     let planned = setup.dry_run(decisions);
-    setup.commit(planned.compaction_id.as_ref().unwrap());
 
-    assert_eq!(planned.status, "proposed");
+    assert_eq!(change(&planned, "e3").after.as_ref().unwrap().start, Some(time_at("11:00")));
+}
+
+#[test]
+fn the_user_may_move_bedtime_past_through_and_it_commits() {
+    let setup = Setup::new(&[("09:05", "email"), ("10:20", "report")], None, "19:45");
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+
+    let proposal = setup.amend(&p, 1, vec![EventDecision { start: Some(time_at("22:30")), end: Some(time_at("08:00") + Duration::days(1)), ..keep("s1") }]);
+    let result = setup.call(|c| c.confirm(&p, proposal.revision)).unwrap();
+
+    assert_eq!(result.status, "applied");
     let night = setup.patch("s1");
     assert_eq!((moment_in(&night, "start"), moment_in(&night, "end")), (Some(time_at("22:30")), Some(time_at("08:00") + Duration::days(1))));
 }

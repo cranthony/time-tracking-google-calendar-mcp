@@ -305,6 +305,9 @@ pub struct ProposalSummary {
     pub state: ProposalSummaryState,
     pub window_start: DateTimeText,
     pub through: DateTimeText,
+    /// Where its layer ends: `through`, or later where the last decided
+    /// event going on at `through` ends.
+    pub layer_end: DateTimeText,
     pub open_feedback: i64,
 }
 
@@ -682,6 +685,10 @@ pub struct ProposalContext {
     pub revision: i64,
     pub state: ProposalSummaryState,
     pub user_seq: i64,
+    /// How far it runs, and where its layer ends: `through`, or later
+    /// where the last decided event going on at `through` ends.
+    pub through: DateTimeText,
+    pub layer_end: DateTimeText,
     #[schema(optional)]
     #[serde(default)]
     pub updates: Vec<Map<String, Value>>,
@@ -811,6 +818,22 @@ pub struct TimelineEvent {
     #[schema(optional)]
     #[serde(default)]
     pub follow_through: Vec<String>,
+    /// For an event no decision changed that a decided event ran over:
+    /// the id (or key) of the one that cut it short (or split it -- a later
+    /// piece of it is `new`), or covered it whole (it's `cancelled`), and
+    /// that event's summary.
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut_by: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut_by_summary: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub covered_by: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub covered_by_summary: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -999,6 +1022,12 @@ pub struct CompactionChange {
     pub key: Option<String>,
     pub before: Option<EventState>,
     pub after: Option<EventState>,
+    /// Only on a change no decision made: the id (or key) of the decided
+    /// event that cut, covered or split this one -- worked out again on
+    /// every plan.
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub implied_by: Option<String>,
 }
 
 /// The judgments one event calls for.
@@ -1133,6 +1162,22 @@ pub struct ProposalEvent {
     #[schema(optional)]
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub revisited: bool,
+    /// For an event no decision changed that a decided event ran over:
+    /// the id (or key) of the one that cut it short (or split it -- a later
+    /// piece of it is `new`), or covered it whole (it's `cancelled`), and
+    /// that event's summary.
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut_by: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut_by_summary: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub covered_by: Option<String>,
+    #[schema(optional)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub covered_by_summary: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Schema)]
@@ -1156,6 +1201,9 @@ pub struct Proposal {
     pub state: ProposalSummaryState,
     pub window_start: DateTimeText,
     pub through: DateTimeText,
+    /// Where its layer ends: `through`, or later where the last decided
+    /// event going on at `through` ends (an end the user set past it).
+    pub layer_end: DateTimeText,
     pub by: ProposalBy,
     pub reason: String,
     pub created: DateTimeText,
@@ -1771,20 +1819,27 @@ pub fn prepare_compaction(app: &App) -> Result<CompactionContext, ToolError> {
 /// `replies`. The user's own edits -- of events, of what notes are
 /// for, and of goal changes -- are laid over your decisions by the server; never send them.
 ///
-/// NOTHING IS MOVED TO MAKE ROOM: every event you update or create must
-/// end after it starts and must not overlap any other event -- past or
-/// still to come, the others you change included -- so move, shorten or
-/// cancel whatever's in the way in the same call. A call that breaks this
-/// changes nothing, and the error lists every problem and the day as it
-/// would leave it, to fix them all at once.
+/// WHAT YOU DECIDE OVERWRITES THE PLAN UNDER IT: every event you update
+/// or create must end after it starts, and is laid over the planned
+/// events -- one it runs into is cut where it stops, one it runs right over
+/// is covered (cancelled, counting against follow-through as a cancel
+/// does), and one it falls inside is split around it. Those are implied,
+/// not decided: don't cancel or move them yourself unless the notes say
+/// what became of them. The result lists them -- each change with
+/// `implied_by`, naming the event that did it, and the timeline's
+/// 'cut by' and 'covered by' -- to check. Two events you decide may not
+/// overlap each other, nor run over what an earlier compaction settled; a
+/// call that breaks this changes nothing, and the error lists every
+/// problem and the day as it would leave it, to fix them all at once.
 ///
-/// An update that moves a future event reschedules it. A night's sleep
-/// is an event like any other: an earlier bedtime needs whatever runs
-/// past it shortened or cancelled too, a later one leaves the evening
-/// free, and a later wake-up has to move, shorten or cancel the morning
-/// events it now runs over, even those after now, in the same call. One
-/// that puts an event past what the round offers takes in the events it
-/// lands among, for the same call to make room among.
+/// Compaction records the past: no time you give may be later than the
+/// round's now, and an event that starts at or after it isn't yours to
+/// update, cancel or merge -- unless an update brings its start before now
+/// -- so a note about a later event changes nothing (refused, as
+/// `past_through`). A night's sleep is an event like any other: an earlier
+/// bedtime cuts what runs past it, a later one leaves the evening free,
+/// and a later wake-up -- the night's end moved to the note that marks it
+/// -- covers or cuts the morning events it now runs over.
 ///
 /// fact_summaries rewrite people's trait facts (see prepare_compaction's
 /// `trait_facts`): each {person_id, fact: "<trait id>/<fact id>",
@@ -1859,9 +1914,15 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
 
 /// The open proposal (or the one named) -- its current revision,
 /// planned again on the calendar as it is now: its window (`window_start`
-/// to `through`), `state`, every event of its days as it leaves them
-/// (`events`, each with its id -- or a new event's key -- its times, what
-/// it was planned as, and who decided it), the notes, the calendar writes
+/// to `through`), where its layer ends (`layer_end`: `through`, or later
+/// where the last decided event going on at `through` ends), `state`,
+/// every event of its days as it leaves them (`events`, each with its id
+/// -- or a new event's key -- its times, what it was planned as, and who
+/// decided it; one no decision changed that a decided event ran over has
+/// no `decided_by`, but `cut_by` -- cut short or split, a later piece of
+/// it being new -- or `covered_by` -- cancelled, counting against
+/// follow-through as a cancel does -- naming that event, with its
+/// summary), the notes, the calendar writes
 /// it makes, its `timeline`, the goal changes it makes when applied
 /// (`goal_changes`, each with who decided it) and those the user settled
 /// (`settled_goal_changes`), the trait examples it makes when applied
@@ -1916,15 +1977,18 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// showing what changed and what you meant to do -- and never overwrite
 /// their edit without their OK. Refused, changing nothing, if one names an
 /// event or a note that isn't in the proposal, adds a note to an event
-/// of another day, or the result overlaps, or changes history -- moves
-/// the start of, ends earlier, or cancels an event an earlier compaction
-/// recorded -- unless allow_compacted_changes is set: ONLY set it when the
-/// user has explicitly approved changing history. It's kept with these
-/// edits, so later revisions keep to it. Nothing is moved to make room.
-/// An update or create that puts an event past the proposal's events
-/// takes in the events it lands among -- and, where those are moved, the
-/// ones there -- as the proposal's, so move them aside in the same call;
-/// what nothing reaches stays outside. An event that starts after now
+/// of another day, or two decided events overlap, or changes history --
+/// moves the start of, ends earlier, or cancels an event an earlier
+/// compaction recorded -- unless allow_compacted_changes is set: ONLY set
+/// it when the user has explicitly approved changing history. It's kept
+/// with these edits, so later revisions keep to it. What an edit runs
+/// over that no decision changed is cut, covered or split by it (see
+/// get_proposal's `cut_by` and `covered_by`) -- worked out again on every
+/// revision, never kept as an edit. An end may run past `through`: what
+/// it runs over there is cut or covered too, and the proposal's
+/// `layer_end` moves there. An update or create that puts an event past
+/// the proposal's events takes in the events it lands among as the
+/// proposal's; what nothing reaches stays outside. An event that starts after now
 /// hasn't happened: it records no facts (one moved there loses those it
 /// had, and its judgments), and isn't judged.
 #[tool(writes)]
@@ -2010,7 +2074,10 @@ pub fn withdraw_proposal_note(app: &App, feedback_id: String) -> Result<Feedback
 /// one. If the notes or calendar changed since -- through the
 /// proposal's events, a little past `through` -- so it would write something
 /// else, it's planned again as a new revision to confirm instead
-/// (`rechecked`); if it no longer plans at all, it's handed to Claude
+/// (`rechecked`) -- except where all that changed is what the decided
+/// events cut, cover or split after `through`: that's planned again as
+/// it now is and applied, without asking again. If it no longer plans
+/// at all, it's handed to Claude
 /// (`needs_claude`). A change that can never be made while applying
 /// proposes what's left again (`rebuilt`); any other failure leaves it
 /// to finish_proposal.

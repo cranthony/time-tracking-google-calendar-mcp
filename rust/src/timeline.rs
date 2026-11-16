@@ -76,6 +76,13 @@ pub struct TimelineEvent {
     pub goal_ids: Vec<String>,
     pub missing: Vec<String>,
     pub follow_through: Vec<String>,
+    /// For an event no decision changed that the decided events (the
+    /// layer) ran over: the id or key of the one that cut it short (or
+    /// split it: a later piece of it is `new`), or covered it whole (it's
+    /// `cancelled`), with that event's summary.
+    pub cut_by: Option<String>,
+    pub covered_by: Option<String>,
+    pub implied_summary: Option<String>,
 }
 
 impl TimelineEvent {
@@ -86,7 +93,7 @@ impl TimelineEvent {
 
     pub fn to_json(&self) -> Value {
         let when = |m: &Option<Moment>| m.map(|t| py::pydantic_datetime(&t));
-        json!({
+        let mut out = json!({
             "summary": self.summary,
             "status": self.status,
             "event_id": self.event_id,
@@ -105,7 +112,20 @@ impl TimelineEvent {
             "new_goals": self.new_goals,
             "missing": self.missing,
             "follow_through": self.follow_through,
-        })
+        });
+        // Only on an implied event, so the others are as they were.
+        for (key, by) in [("cut_by", &self.cut_by), ("covered_by", &self.covered_by)] {
+            if let Some(by) = by {
+                out[key] = json!(by);
+                out[format!("{key}_summary")] = json!(self.implied_summary);
+            }
+        }
+        out
+    }
+
+    /// What it was cut or covered by, as the timeline names it.
+    fn implied_by_name(&self) -> String {
+        self.implied_summary.clone().or(self.cut_by.clone()).or(self.covered_by.clone()).unwrap_or_default()
     }
 }
 
@@ -438,7 +458,8 @@ fn edge_lines(
     for event in &starting {
         let joint = if ending.is_empty() { "┌" } else { "├" };
         let anchored = event.start_note.as_deref().is_some_and(|n| here.contains(&n));
-        lines.push((anchored, format!("{joint} {}{}", event.summary, start_tag(event, hm))));
+        let cut = if event.cut_by.is_some() { format!(" · cut by {}", event.implied_by_name()) } else { String::new() };
+        lines.push((anchored, format!("{joint} {}{}{cut}", event.summary, start_tag(event, hm))));
         let actions = action_tag(event);
         if !actions.is_empty() {
             lines.push((false, format!("    {actions}")));
@@ -459,6 +480,8 @@ fn edge_lines(
         }
         let what = if event.status == "merged" {
             format!("merged into {}", event.merged_into.clone().unwrap_or_else(|| "None".into()))
+        } else if event.covered_by.is_some() {
+            format!("covered by {}", event.implied_by_name())
         } else {
             "cancelled".into()
         };
