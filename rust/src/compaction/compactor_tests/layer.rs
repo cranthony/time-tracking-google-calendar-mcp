@@ -171,3 +171,53 @@ fn the_next_round_copes_with_the_overlap_left() {
     assert_eq!(setup.call(|c| c.confirm(&id, 2)).unwrap().status, "applied");
     assert_eq!(setup.event("w1").end, Some(time_at("11:00")));
 }
+
+// -- the events listed end with the layer ------------------------------------------------
+
+fn listed(proposal: &Proposal) -> Vec<(String, String)> {
+    proposal.events.as_ref().unwrap().iter().map(|e| (e.id.clone(), e.status.clone())).collect()
+}
+
+#[test]
+fn a_planned_event_past_the_layers_end_isnt_listed() {
+    let setup = Setup::standard();
+    setup.dry_run(setup.email_then_report());
+
+    let proposal = setup.get_proposal();
+
+    let ids: Vec<String> = listed(&proposal).into_iter().map(|(id, _)| id).collect();
+    // Lunch and Sleep, untouched after it, are drawn from the calendar.
+    assert_eq!(proposal.layer_end, time_at("11:30"));
+    assert!(!ids.iter().any(|id| id == "e3" || id == "s1"), "{ids:?}");
+    // The report still going on at through is listed.
+    assert!(ids.iter().any(|id| id == "e2"), "{ids:?}");
+}
+
+#[test]
+fn an_event_the_layer_cuts_past_through_is_still_listed() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+
+    // The user ran the report on to 12:30, cutting lunch.
+    let proposal = setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("12:30")), ..keep("e2") }]);
+
+    let lunch = proposal.events.as_ref().unwrap().iter().find(|e| e.id == "e3").unwrap();
+    assert_eq!((lunch.status.as_str(), lunch.cut_by.as_deref(), lunch.start), ("adjusted", Some("e2"), Some(time_at("12:30"))));
+    assert_eq!(lunch.planned_start, Some(time_at("12:00")));
+    // Sleep, past the layer's end and untouched, isn't.
+    assert!(!listed(&proposal).iter().any(|(id, _)| id == "s1"), "{:?}", listed(&proposal));
+}
+
+#[test]
+fn an_event_the_layer_covers_past_through_is_still_listed() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+
+    // The report, run on to 13:00, covers lunch.
+    let proposal = setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("13:00")), ..keep("e2") }]);
+
+    assert_eq!(proposal.layer_end, time_at("13:00"));
+    let lunch = proposal.events.as_ref().unwrap().iter().find(|e| e.id == "e3").unwrap();
+    assert_eq!((lunch.status.as_str(), lunch.covered_by.as_deref()), ("cancelled", Some("e2")));
+    assert!(!listed(&proposal).iter().any(|(id, _)| id == "s1"), "{:?}", listed(&proposal));
+}

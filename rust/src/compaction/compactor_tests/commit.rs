@@ -203,7 +203,8 @@ fn getting_the_proposal_returns_its_current_revision_without_applying_it() {
     let email = events.iter().find(|e| e.id == "e1").unwrap();
     assert_eq!((email.status.as_str(), email.decided_by.as_deref()), ("adjusted", Some("claude")));
     assert_eq!((email.start, email.planned_start), (Some(time_at("09:05")), Some(time_at("09:00"))));
-    assert_eq!(events.iter().find(|e| e.id == "e3").unwrap().status, "planned");
+    // Lunch, planned past the layer's end, is drawn from the calendar.
+    assert!(!events.iter().any(|e| e.id == "e3"));
     assert!(setup.calendar_writes().is_empty());
 }
 

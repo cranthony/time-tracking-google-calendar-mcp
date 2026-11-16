@@ -26879,7 +26879,7 @@
     }
   },
   {
-    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), where its layer ends (`layer_end`: `through`, or later\nwhere the last decided event going on at `through` ends), `state`,\nevery event of its days as it leaves them (`events`, each with its id\n-- or a new event's key -- its times, what it was planned as, and who\ndecided it; one no decision changed that a decided event ran over has\nno `decided_by`, but `cut_by` -- cut short or split, a later piece of\nit being new -- or `covered_by` -- cancelled, counting against\nfollow-through as a cancel does, unless the user's answer says it\ndoesn't (amend_proposal's `follow_through`) -- naming that event, with its\nsummary), the notes, the calendar writes\nit makes, its `timeline`, the goal changes it makes when applied\n(`goal_changes`, each with who decided it) and those the user settled\n(`settled_goal_changes`), the trait examples it makes when applied\n(`trait_examples`, each with its trait's and person's names and who\ndecided it) and those the user settled (`settled_trait_examples`), the\nuser's edits and the feedback with any\nreplies, and `calendar_edits`: the calendar writes made by the event\ntools while it was open that touched an event its layer cut or\ncovered, or landed in time it freed -- each with the calendar event\nit will overlap once the layer is gone, as the calendar is now (abandoning\nit leaves them as they are). With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
+    "description": "The open proposal (or the one named) -- its current revision,\nplanned again on the calendar as it is now: its window (`window_start`\nto `through`), where its layer ends (`layer_end`: `through`, or later\nwhere the last decided event going on at `through` ends), `state`,\nthe events of its days as it leaves them (`events`, each with its id\n-- or a new event's key -- its times, what it was planned as, and who\ndecided it; ending with the layer: a planned event nothing changed\nthat starts at or after `layer_end` isn't listed, as the calendar\nshows it, while one the layer cut or covered is, however late; one no\ndecision changed that a decided event ran over has\nno `decided_by`, but `cut_by` -- cut short or split, a later piece of\nit being new -- or `covered_by` -- cancelled, counting against\nfollow-through as a cancel does, unless the user's answer says it\ndoesn't (amend_proposal's `follow_through`) -- naming that event, with its\nsummary), the notes, the calendar writes\nit makes, its `timeline`, the goal changes it makes when applied\n(`goal_changes`, each with who decided it) and those the user settled\n(`settled_goal_changes`), the trait examples it makes when applied\n(`trait_examples`, each with its trait's and person's names and who\ndecided it) and those the user settled (`settled_trait_examples`), the\nuser's edits and the feedback with any\nreplies, and `calendar_edits`: the calendar writes made by the event\ntools while it was open that touched an event its layer cut or\ncovered, or landed in time it freed -- each with the calendar event\nit will overlap once the layer is gone, as the calendar is now (abandoning\nit leaves them as they are). With since_revision, `changed_since` lists the events whose\noutcome changed after it. Read-only.",
     "inputSchema": {
       "properties": {
         "proposal_id": {
@@ -26953,6 +26953,7 @@
           ]
         },
         "events": {
+          "description": "Its days' events as it leaves them, ending with the layer: planned\nevents nothing changed starting at or after `layer_end` aren't\nlisted (the calendar shows them); what the layer cut or covered is.",
           "items": {
             "$ref": "#/$defs/ProposalEvent"
           },
@@ -29801,6 +29802,7 @@
           ]
         },
         "events": {
+          "description": "Its days' events as it leaves them, ending with the layer: planned\nevents nothing changed starting at or after `layer_end` aren't\nlisted (the calendar shows them); what the layer cut or covered is.",
           "items": {
             "$ref": "#/$defs/ProposalEvent"
           },
@@ -32386,6 +32388,7 @@
               ]
             },
             "events": {
+              "description": "Its days' events as it leaves them, ending with the layer: planned\nevents nothing changed starting at or after `layer_end` aren't\nlisted (the calendar shows them); what the layer cut or covered is.",
               "items": {
                 "$ref": "#/$defs/ProposalEvent"
               },
@@ -34111,6 +34114,7 @@
               ]
             },
             "events": {
+              "description": "Its days' events as it leaves them, ending with the layer: planned\nevents nothing changed starting at or after `layer_end` aren't\nlisted (the calendar shows them); what the layer cut or covered is.",
               "items": {
                 "$ref": "#/$defs/ProposalEvent"
               },

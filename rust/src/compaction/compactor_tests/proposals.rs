@@ -62,7 +62,7 @@ fn a_day_that_went_to_plan_is_proposed_without_notes() {
     let events: Vec<(String, String)> =
         proposal.events.unwrap().into_iter().filter(|e| e.id.starts_with('e')).map(|e| (e.id, e.status)).collect();
     let expected: Vec<(String, String)> =
-        [("e1", "on_schedule"), ("e2", "on_schedule"), ("e3", "planned")].iter().map(|(a, b)| (a.to_string(), b.to_string())).collect();
+        [("e1", "on_schedule"), ("e2", "on_schedule")].iter().map(|(a, b)| (a.to_string(), b.to_string())).collect();
     assert_eq!(events, expected);
 }
 
