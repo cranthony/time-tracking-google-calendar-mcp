@@ -511,6 +511,48 @@ pub struct Proposal {
     /// example_changes::shown), and those the user settled.
     pub trait_examples: Vec<Value>,
     pub settled_trait_examples: Vec<ExampleSettled>,
+    /// The calendar writes made while it was open that its layer bears
+    /// on (see compaction::layer), each as the calendar has it now.
+    pub calendar_edits: Vec<CalendarEdit>,
+}
+
+/// A calendar event, as a calendar edit names it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct EditedEvent {
+    pub event_id: String,
+    pub summary: Option<String>,
+    pub start: Moment,
+    pub end: Moment,
+}
+
+impl EditedEvent {
+    fn to_json(&self) -> Map<String, Value> {
+        let mut out = Map::new();
+        out.insert("event_id".into(), json!(self.event_id));
+        out.insert("summary".into(), json!(self.summary));
+        out.insert("start".into(), json!(py::pydantic_datetime(&self.start)));
+        out.insert("end".into(), json!(py::pydantic_datetime(&self.end)));
+        out
+    }
+}
+
+/// A calendar write made while the proposal was open, to an event its
+/// layer `cut` or `covered`, or into time it `freed`: the event, and the
+/// calendar event it will overlap once the layer is gone.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CalendarEdit {
+    pub event: EditedEvent,
+    pub kind: String,
+    pub overlaps: Option<EditedEvent>,
+}
+
+impl CalendarEdit {
+    pub fn to_json(&self) -> Value {
+        let mut out = self.event.to_json();
+        out.insert("kind".into(), json!(self.kind));
+        out.insert("overlaps".into(), self.overlaps.as_ref().map(|o| Value::Object(o.to_json())).unwrap_or(Value::Null));
+        Value::Object(out)
+    }
 }
 
 impl Proposal {
@@ -548,6 +590,7 @@ impl Proposal {
         out.insert("settled_goal_changes".into(), Value::Array(self.settled_goal_changes.iter().map(GoalChangeSettled::to_json).collect()));
         out.insert("trait_examples".into(), json!(self.trait_examples));
         out.insert("settled_trait_examples".into(), Value::Array(self.settled_trait_examples.iter().map(ExampleSettled::to_json).collect()));
+        out.insert("calendar_edits".into(), Value::Array(self.calendar_edits.iter().map(CalendarEdit::to_json).collect()));
         Value::Object(out)
     }
 }
@@ -718,6 +761,36 @@ pub struct Merged {
     /// The trait examples the user settled, by id (the last entry for one
     /// wins).
     pub settled_trait_examples: Dict<ExampleSettled>,
+    /// The user's follow-through answers, by event id (the last for an
+    /// event wins): whether that event counts against follow-through while
+    /// the layer covers it. One for an event the layer doesn't cover does
+    /// nothing, and is kept.
+    pub follow_through: Dict<bool>,
+}
+
+/// A follow-through answer's action, as a user edit and as the decision
+/// it's planned with (see `follow_through_decision`).
+pub const FOLLOW_THROUGH: &str = "follow_through";
+
+/// A follow-through answer, as the decision a revision is planned (and
+/// journaled) with. It cancels nothing: the plan sets it aside, and reads
+/// it only for an event the layer covers.
+pub fn follow_through_decision(event_id: &str, counts: bool) -> EventDecision {
+    EventDecision { event_id: Some(event_id.into()), counts_against_follow_through: Some(counts), ..EventDecision::new(FOLLOW_THROUGH) }
+}
+
+/// The follow-through answers among `decisions`: (event id, whether it
+/// counts), the last for an event winning.
+pub fn follow_through_answers(decisions: &[EventDecision]) -> Vec<(String, bool)> {
+    let mut answers: Vec<(String, bool)> = Vec::new();
+    for d in decisions.iter().filter(|d| d.action == FOLLOW_THROUGH) {
+        let (Some(id), Some(counts)) = (d.event_id.clone(), d.counts_against_follow_through) else { continue };
+        match answers.iter_mut().find(|(k, _)| *k == id) {
+            Some(slot) => slot.1 = counts,
+            None => answers.push((id, counts)),
+        }
+    }
+    answers
 }
 
 /// `edit` as a decision (its `as_planned` as a bare keep).
@@ -785,6 +858,7 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
     let mut settled_goals: Dict<GoalChangeSettled> = Dict::new();
     let mut settled_examples: Dict<ExampleSettled> = Dict::new();
     let mut described: Dict<i64> = Dict::new();
+    let mut answers: Dict<bool> = Dict::new();
     let unknown_target = |keyed: &Dict<EventDecision>, target: Option<&str>| -> bool {
         let creating = target.and_then(|t| keyed.get(t)).is_some_and(|d| d.action == "create");
         !creating && (is_key(proposal, target) || options.known_ids.is_some_and(|known| target.is_none_or(|t| !known.iter().any(|k| k == t))))
@@ -820,6 +894,15 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
             settled_examples.set(&id, ExampleSettled::from_edit(&id, &edit.edit));
             continue;
         }
+        if action == FOLLOW_THROUGH {
+            // Kept whatever the event is now: it applies only while the
+            // layer covers it.
+            let target = alias(aliases, edit.event_id.as_deref().unwrap_or_default());
+            if let Some(counts) = edit.edit.get("counts_against_follow_through").and_then(Value::as_bool) {
+                answers.set(&target, counts);
+            }
+            continue;
+        }
         if action == "as_planned" && is_ref(edit.event_id.as_deref()) {
             settled_refs.pop(edit.event_id.as_deref().unwrap());
             continue;
@@ -843,6 +926,7 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
         if action == "as_planned" {
             keyed.pop(&target);
             decided_by.pop(&target);
+            answers.pop(&target);
             continue;
         }
         if action == "cancel" {
@@ -936,6 +1020,7 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
         settled: settled_refs,
         settled_goal_changes: settled_goals,
         settled_trait_examples: settled_examples,
+        follow_through: answers,
     }
 }
 

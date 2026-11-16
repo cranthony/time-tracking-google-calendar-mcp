@@ -139,7 +139,7 @@ async def test_extending_a_backlog_round(session, google, calendar_id):
     assert await session.call("prepare_compaction")
 
 
-async def test_no_longer_plans_when_confirmed(session, plan):
+async def test_no_longer_plans_when_confirmed(session, google, calendar_id, plan):
     d5 = plan[FIRST]
     await notes(session, ("2026-10-05T19:20:00-04:00", "dinner done, then a walk"))
     note = ids_of(await session.call("prepare_compaction"))
@@ -149,8 +149,10 @@ async def test_no_longer_plans_when_confirmed(session, plan):
         creates=[{"summary": "Walk", "start": "2026-10-05T19:30:00-04:00", "end": "2026-10-05T20:30:00-04:00"}],
     )
     pid = proposed["proposal_id"]
-    # An event added by hand where the walk goes: it no longer plans.
-    await session.call("create_event", events=[{"summary": "Call", "start": "2026-10-05T19:45:00-04:00", "end": "2026-10-05T20:00:00-04:00"}])
+    # The event tools see the proposal's layer: one can't land under the walk.
+    await session.call_error("create_event", events=[{"summary": "Call", "start": "2026-10-05T19:45:00-04:00", "end": "2026-10-05T20:00:00-04:00"}])
+    # One added there in Google Calendar itself: it no longer plans.
+    seed.event(google, calendar_id, FIRST, "19:45", "20:00", "Call")
     handed = await session.call("confirm_proposal", proposal_id=pid, revision=proposed["revision"])
     assert handed["status"] in ("needs_claude", "rechecked")
     if handed["status"] == "needs_claude":

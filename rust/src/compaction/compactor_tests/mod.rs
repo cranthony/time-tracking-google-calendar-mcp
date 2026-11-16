@@ -20,6 +20,7 @@ mod facts;
 mod goal_changes;
 mod goals;
 mod judging;
+mod layer;
 mod historical_notes;
 mod mornings;
 mod new_goals;

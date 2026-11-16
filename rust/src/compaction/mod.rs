@@ -8,5 +8,6 @@ pub mod fact_changes;
 pub mod goal_changes;
 pub mod guide;
 pub mod judgments;
+pub mod layer;
 pub mod plan;
 pub mod proposals;

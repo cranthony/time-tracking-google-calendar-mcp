@@ -481,6 +481,50 @@ pub struct GoalChangeSettled {
     pub retry_fit: Option<RetryFit>,
 }
 
+/// The user's answer for an event the proposal's layer covers (a
+/// `covered_by` event): whether it counts against follow-through, as a
+/// cancel says. It cancels nothing, and applies only while the layer
+/// covers the event; for one it doesn't cover, it does nothing, but is
+/// kept.
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+#[schema(deny_unknown)]
+pub struct FollowThroughAnswer {
+    pub event_id: String,
+    pub counts_against_follow_through: bool,
+}
+
+/// A calendar write made while a proposal was open that the layer bears
+/// on: to an event the layer `cut` or `covered`, or into time it `freed`
+/// (where a decided event ends earlier than planned, say). The event as
+/// it is now (as written, if it's gone), and the calendar event it will
+/// overlap once the layer is gone, if any (for `freed`, the event whose
+/// planned time comes back).
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct CalendarEdit {
+    pub event_id: String,
+    pub summary: Option<String>,
+    pub start: DateTimeText,
+    pub end: DateTimeText,
+    pub kind: CalendarEditKind,
+    pub overlaps: Option<CalendarEditOverlap>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Schema)]
+#[serde(rename_all = "snake_case")]
+pub enum CalendarEditKind {
+    Cut,
+    Covered,
+    Freed,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Schema)]
+pub struct CalendarEditOverlap {
+    pub event_id: String,
+    pub summary: Option<String>,
+    pub start: DateTimeText,
+    pub end: DateTimeText,
+}
+
 /// What the user says of a trait example a proposal makes (by its id):
 /// `drop` it, or `change` it -- their fields over Claude's, and those in
 /// clear_fields blanked -- kept in the proposal. A `change` with an id the
@@ -1251,6 +1295,11 @@ pub struct Proposal {
     #[schema(optional)]
     #[serde(default)]
     pub settled_trait_examples: Vec<TraitExampleSettled>,
+    /// The calendar writes made while it was open that its layer bears on
+    /// (see CalendarEdit): what abandoning it leaves as it is.
+    #[schema(optional)]
+    #[serde(default)]
+    pub calendar_edits: Vec<CalendarEdit>,
 }
 
 /// The user's say on an action, person, location or goal Claude's
@@ -1921,7 +1970,8 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
 /// decided it; one no decision changed that a decided event ran over has
 /// no `decided_by`, but `cut_by` -- cut short or split, a later piece of
 /// it being new -- or `covered_by` -- cancelled, counting against
-/// follow-through as a cancel does -- naming that event, with its
+/// follow-through as a cancel does, unless the user's answer says it
+/// doesn't (amend_proposal's `follow_through`) -- naming that event, with its
 /// summary), the notes, the calendar writes
 /// it makes, its `timeline`, the goal changes it makes when applied
 /// (`goal_changes`, each with who decided it) and those the user settled
@@ -1929,7 +1979,11 @@ pub fn compact_notes(app: &App, recap: Recap, updates: Option<Vec<CompactionUpda
 /// (`trait_examples`, each with its trait's and person's names and who
 /// decided it) and those the user settled (`settled_trait_examples`), the
 /// user's edits and the feedback with any
-/// replies. With since_revision, `changed_since` lists the events whose
+/// replies, and `calendar_edits`: the calendar writes made by the event
+/// tools while it was open that touched an event its layer cut or
+/// covered, or landed in time it freed -- each with the calendar event
+/// it will overlap once the layer is gone, as the calendar is now (abandoning
+/// it leaves them as they are). With since_revision, `changed_since` lists the events whose
 /// outcome changed after it. Read-only.
 #[tool]
 pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Option<i64>) -> Result<Proposal, ToolError> {
@@ -1958,7 +2012,13 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// `change` it, the user's fields over Claude's (clear_fields blanking
 /// person_id, who or event_id), kept in the proposal and checked as
 /// create_trait_example checks it, its event_id one of the proposal's
-/// events (a `change` with a new id adds one of the user's own); and
+/// events (a `change` with a new id adds one of the user's own);
+/// `follow_through`, the user's answers for events the layer covers --
+/// whether each counts against follow-through (true by default, as a
+/// cancel's) -- sent with the edit that covers them, or later on their
+/// own to change one: an answer cancels nothing, applies only while the
+/// layer covers its event, and otherwise does nothing (it's kept, and
+/// `as_planned` for the event drops it); and
 /// `as_planned` -- events (or keys)
 /// whose decisions to clear, notes to leave as Claude had them, and refs
 /// to leave unsettled. One created or applied stays, whatever becomes of the
@@ -1992,7 +2052,7 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// hasn't happened: it records no facts (one moved there loses those it
 /// had, and its judgments), and isn't judged.
 #[tool(writes)]
-pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Option<Vec<ProposalUpdate>>, creates: Option<Vec<ProposalCreate>>, cancels: Option<Vec<EventCancel>>, as_planned: Option<Vec<String>>, notes: Option<Vec<NoteEdit>>, additions: Option<Vec<AdditionChoice>>, through: Option<DateTimeText>, #[schema(default = "false")] allow_compacted_changes: bool, goal_changes: Option<Vec<GoalChangeChoice>>, trait_examples: Option<Vec<TraitExampleChoice>>) -> Result<Proposal, ToolError> {
+pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Option<Vec<ProposalUpdate>>, creates: Option<Vec<ProposalCreate>>, cancels: Option<Vec<EventCancel>>, as_planned: Option<Vec<String>>, notes: Option<Vec<NoteEdit>>, additions: Option<Vec<AdditionChoice>>, through: Option<DateTimeText>, #[schema(default = "false")] allow_compacted_changes: bool, goal_changes: Option<Vec<GoalChangeChoice>>, trait_examples: Option<Vec<TraitExampleChoice>>, follow_through: Option<Vec<FollowThroughAnswer>>) -> Result<Proposal, ToolError> {
     let compactor = compactor(app)?;
     let allow = allow_compacted_changes;
     let run = || -> anyhow::Result<Value> {
@@ -2009,6 +2069,13 @@ pub fn amend_proposal(app: &App, proposal_id: String, revision: i64, updates: Op
             for d in decisions.iter_mut() {
                 d.allow_history = Some(true);
             }
+        }
+        for answer in follow_through.unwrap_or_default() {
+            if answer.event_id.trim().is_empty() {
+                let issue = crate::compaction::plan::Issue::plain("follow_through: an answer needs the covered event's id");
+                return Err(crate::compaction::plan::error_of(&[issue], "malformed_decision").into());
+            }
+            decisions.push(proposals::follow_through_decision(&answer.event_id, answer.counts_against_follow_through));
         }
         let notes: Vec<proposals::NoteEdit> = notes
             .unwrap_or_default()

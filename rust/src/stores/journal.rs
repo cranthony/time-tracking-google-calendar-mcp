@@ -29,6 +29,9 @@ pub const OPEN_STATUSES: [&str; 2] = [APPLYING, APPLIED];
 pub const USER_EDIT: &str = "user_decision";
 pub const FEEDBACK: &str = "feedback";
 pub const CLAUDE_DECISION: &str = "claude_decision";
+/// A calendar write made while a proposal was open that its layer bears
+/// on (see compaction::layer), kept with the proposal's edits and feedback.
+pub const CALENDAR_EDIT: &str = "calendar_edit";
 
 pub const HEADER: [&str; 8] = ["compaction_id", "step", "kind", "event_id", "before", "after", "status", "detail"];
 pub const HEADER_RANGE: &str = "A1:H1";
@@ -278,6 +281,19 @@ pub struct PlannedDay<'a> {
     pub revisits: Vec<String>,
 }
 
+/// A calendar write made while a proposal was open, to an event its layer
+/// `cut` or `covered`, or into time it `freed`: the event as written.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CalendarEditRecord {
+    pub seq: i64,
+    pub event_id: String,
+    pub kind: String,
+    pub summary: Option<String>,
+    pub start: Moment,
+    pub end: Moment,
+    pub created: Moment,
+}
+
 #[derive(Clone)]
 pub struct CompactionJournal {
     pub(crate) sheets: SheetsClient,
@@ -468,6 +484,61 @@ impl CompactionJournal {
 
     pub fn set_user_edit_status(&self, row: i64, status: &str) -> anyhow::Result<()> {
         self.write_status(row, status)
+    }
+
+    /// Keep `edits` with `proposal`, numbered after those it has (their
+    /// `seq` is ignored).
+    pub fn add_calendar_edits(&self, proposal: &str, edits: &[CalendarEditRecord]) -> anyhow::Result<()> {
+        if edits.is_empty() {
+            return Ok(());
+        }
+        let mut seq = self.calendar_edits(proposal)?.iter().map(|e| e.seq).max().unwrap_or(0);
+        let rows: Rows = edits
+            .iter()
+            .map(|edit| {
+                seq += 1;
+                let written = json!({
+                    "kind": edit.kind,
+                    "summary": edit.summary,
+                    "start": py::isoformat(&edit.start),
+                    "end": py::isoformat(&edit.end),
+                });
+                vec![
+                    proposal.to_string(),
+                    seq.to_string(),
+                    CALENDAR_EDIT.into(),
+                    edit.event_id.clone(),
+                    py::json_default(&written),
+                    String::new(),
+                    String::new(),
+                    py::json_default(&json!({"created": py::isoformat(&edit.created)})),
+                ]
+            })
+            .collect();
+        self.append(rows)
+    }
+
+    /// The calendar writes kept with `proposal`, in the order made.
+    pub fn calendar_edits(&self, proposal: &str) -> anyhow::Result<Vec<CalendarEditRecord>> {
+        let mut found: Vec<CalendarEditRecord> = Vec::new();
+        for row in self.read_rows()? {
+            if row[0] != proposal || row[2] != CALENDAR_EDIT {
+                continue;
+            }
+            let written = parse(&row[4])?;
+            let detail = if row[7].is_empty() { json!({}) } else { parse(&row[7])? };
+            found.push(CalendarEditRecord {
+                seq: row[1].trim().parse()?,
+                event_id: row[3].clone(),
+                kind: written["kind"].as_str().unwrap_or_default().into(),
+                summary: written.get("summary").and_then(Value::as_str).map(str::to_string),
+                start: moment(written["start"].as_str())?,
+                end: moment(written["end"].as_str())?,
+                created: moment(detail.get("created").and_then(Value::as_str))?,
+            });
+        }
+        found.sort_by_key(|e| e.seq);
+        Ok(found)
     }
 
     pub fn add_feedback(&self, feedback: &Feedback, proposal: &str) -> anyhow::Result<()> {
@@ -667,7 +738,7 @@ impl CompactionJournal {
     ///   finished blocks go, oldest first, until it's down to
     ///   `TRIM_TO_ROWS`: a stamped, abandoned or superseded compaction
     ///   (or a failed one, its proposal finished), and a finished
-    ///   proposal's edits and feedback. Never the most recently stamped
+    ///   proposal's edits, feedback and calendar edits. Never the most recently stamped
     ///   batch, which `last_stamped_now` depends on, nor anything of an
     ///   open proposal or a compaction still planned or open.
     ///
@@ -741,7 +812,7 @@ impl CompactionJournal {
                 if row[0].is_empty() {
                     continue;
                 }
-                let unit = if row[2] == USER_EDIT || row[2] == FEEDBACK { format!("ledger:{}", row[0]) } else { row[0].clone() };
+                let unit = if [USER_EDIT, FEEDBACK, CALENDAR_EDIT].contains(&row[2].as_str()) { format!("ledger:{}", row[0]) } else { row[0].clone() };
                 match units.iter_mut().find(|(u, _)| *u == unit) {
                     Some(slot) => slot.1.push(i),
                     None => units.push((unit, vec![i])),
@@ -908,7 +979,7 @@ fn load_from(rows: &Rows, compaction_id: &str) -> anyhow::Result<JournalCompacti
                 decisions.push(EventDecision::from_json_dict(&parse(&row[4])?)?);
             } else if kind == CLAUDE_DECISION {
                 claude.push(EventDecision::from_json_dict(&parse(&row[4])?)?);
-            } else if ["disposition", USER_EDIT, FEEDBACK].contains(&kind) {
+            } else if ["disposition", USER_EDIT, FEEDBACK, CALENDAR_EDIT].contains(&kind) {
                 continue;
             } else {
                 let create = kind == "create";
