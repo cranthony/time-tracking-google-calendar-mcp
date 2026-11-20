@@ -116,7 +116,7 @@ use crate::py;
 use crate::stores::action_calendar::ActionCalendar;
 use crate::stores::actions::{share_ids, ActionShare, ActionTree, Actions};
 use crate::stores::cancellations::Cancellations;
-use crate::stores::event_changes::{ChangeError, Problem};
+use crate::stores::event_changes::{ChangeError, Problem, RESEND_RULE};
 use crate::stores::goals::{self, deadline_end, share_problems, Goals};
 use crate::stores::groups::{python_repr, python_str, truthy};
 use crate::stores::habits::{subject_id, SUBJECT_PREFIX};
@@ -1667,7 +1667,7 @@ impl NoteCompactor {
         if !creating.is_empty() || !applying.is_empty() {
             // Made only once the revision is known to plan.
             let without: Vec<UserEdit> = new_edits.iter().filter(|e| e.event_id.as_ref().is_none_or(|id| !creating.contains(id))).cloned().collect();
-            planned(&without)?;
+            planned(&without).map_err(for_the_user)?;
             if !applying.is_empty() {
                 let Some(store) = &self.goals else { return Err(ce("this calendar has no goals to change", "goal_changes")) };
                 let zone = self.zone()?;
@@ -1706,7 +1706,7 @@ impl NoteCompactor {
                 }
             }
         }
-        let (merged, mut walked) = planned(&new_edits)?;
+        let (merged, mut walked) = planned(&new_edits).map_err(for_the_user)?;
         let additions = unsettled(&claude_additions, &merged.settled);
         // The examples the user changed here, as they'd now be made.
         let changing: Vec<&str> = trait_examples.iter().filter(|s| s.use_ == "change").map(|s| s.id.as_str()).collect();
@@ -3630,6 +3630,24 @@ fn past_through(decisions: &[EventDecision], day: &Day) -> Vec<Issue> {
 /// too, for the decisions to make room among -- and so on, for where they
 /// move those. What no decision reaches stays outside: a decision on an
 /// event outside it doesn't reach for it.
+/// What an amend that would overlap says: the edits are the user's, made
+/// in the app, so the refusal speaks to them -- what the proposal already
+/// decides isn't cut to make room, as an untouched calendar event is.
+const AMEND_OVERLAP_RULE: &str = "Nothing was changed: this edit would overlap an event the proposal already decides. The proposal cuts and covers only events nothing in it has changed, so move, shorten or cancel that one too, in the same change.";
+
+/// `error`, if it's an overlap refusal, worded for the user's edit.
+fn for_the_user(error: anyhow::Error) -> anyhow::Error {
+    match error.downcast::<ChangeError>() {
+        Ok(mut refusal) => {
+            if refusal.categories.iter().all(|c| c == "overlap") && refusal.message.starts_with(RESEND_RULE) {
+                refusal.message = refusal.message.replacen(RESEND_RULE, AMEND_OVERLAP_RULE, 1);
+            }
+            refusal.into()
+        }
+        Err(other) => other,
+    }
+}
+
 fn cut(day_for: &dyn Fn(Option<Moment>) -> anyhow::Result<Day>, decisions: &[EventDecision]) -> anyhow::Result<Day> {
     let mut day = day_for(None)?;
     while let Some(reach) = reach(decisions, &day).filter(|r| *r > day.day_end) {

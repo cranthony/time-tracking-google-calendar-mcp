@@ -221,3 +221,18 @@ fn an_event_the_layer_covers_past_through_is_still_listed() {
     assert_eq!((lunch.status.as_str(), lunch.covered_by.as_deref()), ("cancelled", Some("e2")));
     assert!(!listed(&proposal).iter().any(|(id, _)| id == "s1"), "{:?}", listed(&proposal));
 }
+
+#[test]
+fn an_amend_over_an_event_the_proposal_decides_is_refused_in_the_users_words() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+    // Claude decided both: the user runs the email on over the report.
+    let refusal = setup
+        .try_amend(&p, 1, Amend { decisions: vec![EventDecision { end: Some(time_at("11:00")), ..keep("e1") }], ..Default::default() })
+        .unwrap_err()
+        .to_string();
+
+    assert!(refusal.starts_with("Nothing was changed: this edit would overlap an event the proposal already decides."), "{refusal}");
+    assert!(!refusal.contains("Resend the whole batch"), "{refusal}");
+    assert!(refusal.contains("overlaps 'Report'"), "{refusal}");
+}
