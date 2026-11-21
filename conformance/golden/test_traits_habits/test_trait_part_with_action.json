@@ -69,10 +69,11 @@
     ],
     "scoring": null,
     "status": "active",
+    "techniques": null,
     "version": 1
    },
    "is_error": false,
-   "text": "{\n  \"id\": \"outdoorsy\",\n  \"name\": \"Outdoorsy\",\n  \"status\": \"active\",\n  \"definition\": \"Time outside.\",\n  \"parts\": [\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"count\",\n      \"target\": 2,\n      \"interval_days\": 14,\n      \"noun\": \"hikes\",\n      \"action\": \"co2yzn\"\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"icon\": null,\n  \"version\": 1\n}",
+   "text": "{\n  \"id\": \"outdoorsy\",\n  \"name\": \"Outdoorsy\",\n  \"status\": \"active\",\n  \"definition\": \"Time outside.\",\n  \"parts\": [\n    {\n      \"id\": \"3dnjav\",\n      \"kind\": \"count\",\n      \"target\": 2,\n      \"interval_days\": 14,\n      \"noun\": \"hikes\",\n      \"action\": \"co2yzn\"\n    }\n  ],\n  \"scoring\": null,\n  \"facts\": null,\n  \"icon\": null,\n  \"techniques\": null,\n  \"version\": 1\n}",
    "tool": "create_trait"
   },
   {
@@ -958,6 +959,7 @@
         "scoring",
         "facts",
         "icon",
+        "techniques",
         "version"
        ]
       ]
@@ -994,6 +996,7 @@
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
         "",
+        "",
         ""
        ],
        [
@@ -1002,6 +1005,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "",
@@ -1016,6 +1020,7 @@
         "",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -1027,6 +1032,7 @@
         "",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -1035,6 +1041,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         "",
         "",
         "",
@@ -1096,6 +1103,7 @@
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
         "",
+        "",
         "1"
        ],
        [
@@ -1104,6 +1112,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "",
@@ -1118,6 +1127,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -1126,6 +1136,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         "",
         "",
         "",
@@ -1140,6 +1151,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -1148,6 +1160,7 @@
         "active",
         "Time outside.",
         "[{\"id\":\"3dnjav\",\"kind\":\"count\",\"target\":2,\"interval_days\":14,\"noun\":\"hikes\",\"action\":\"co2yzn\"}]",
+        "",
         "",
         "",
         "",
@@ -1505,6 +1518,7 @@
         "scoring",
         "facts",
         "icon",
+        "techniques",
         "version"
        ],
        [
@@ -1516,6 +1530,7 @@
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
         "",
+        "",
         "1"
        ],
        [
@@ -1524,6 +1539,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"id\":\"continuity\",\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"id\":\"follow_through\",\"kind\":\"follow_through\"},{\"id\":\"count\",\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "",
@@ -1538,6 +1554,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -1546,6 +1563,7 @@
         "active",
         "Share new experiences with them: new activities, new places.",
         "[{\"id\":\"judgment\",\"kind\":\"judgment\",\"rubric\":\"Was this activity or place new?\",\"ratings\":{\"0\":\"The activity and place were routine\",\"1\":\"There was a twist on the activity or place\",\"2\":\"The activity or the place were new\",\"3\":\"Both the activity and place were new, or the event was otherwise adventurous\"},\"facts\":[\"action\",{\"fact\":\"action_history\",\"lookback_days\":90},\"location\",{\"fact\":\"location_history\",\"lookback_days\":90}]}]",
+        "",
         "",
         "",
         "",
@@ -1560,6 +1578,7 @@
         "",
         "",
         "",
+        "",
         "1"
        ],
        [
@@ -1568,6 +1587,7 @@
         "active",
         "Time outside.",
         "[{\"id\":\"3dnjav\",\"kind\":\"count\",\"target\":2,\"interval_days\":14,\"noun\":\"hikes\",\"action\":\"co2yzn\"}]",
+        "",
         "",
         "",
         "",

@@ -4998,6 +4998,7 @@
         "scoring",
         "facts",
         "icon",
+        "techniques",
         "version"
        ]
       ]
@@ -5034,6 +5035,7 @@
         "",
         "[{\"id\":\"what_matters\",\"name\":\"What matters\",\"summary_prompt\":\"What's important to them, so I can remember it and prepare for it: the people, interests, plans, hopes, worries and coming events in their life that they care about. A Markdown list, kept current -- add what's new, change what's changed, and drop what no longer holds.\",\"log_prompt\":\"What changed in what matters to them, and what in the event showed it.\"}]",
         "",
+        "",
         ""
        ],
        [
@@ -5042,6 +5044,7 @@
         "active",
         "Do what I said I would, and keep contact going -- reliable to myself too.",
         "[{\"kind\":\"continuity\",\"last_within_days\":14,\"next_within_days\":14},{\"kind\":\"follow_through\"},{\"kind\":\"count\",\"target\":1,\"interval_days\":14,\"zero_at_days\":30,\"noun\":\"meetings\"}]",
+        "",
         "",
         "",
         "",
@@ -5056,6 +5059,7 @@
         "",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -5067,6 +5071,7 @@
         "",
         "",
         "",
+        "",
         ""
        ],
        [
@@ -5075,6 +5080,7 @@
         "active",
         "Make an effort for them, including the attention I give them: the follow-through of thoughtfulness.",
         "[{\"kind\":\"judgment\",\"rubric\":\"How much effort and attention did I give them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]},{\"kind\":\"judgment\",\"engagement_type\":\"for\",\"rubric\":\"How much effort did I put into doing this for them?\",\"ratings\":{\"0\":\"Little effort, or my attention was elsewhere\",\"1\":\"Some effort or attention\",\"2\":\"Real effort, or my full attention\",\"3\":\"I went out of my way for them and was fully present\"},\"facts\":[\"action\",\"general_notes\"]}]",
+        "",
         "",
         "",
         "",
@@ -7549,6 +7555,7 @@
         "scoring",
         "facts",
         "icon",
+        "techniques",
         "version"
        ],
        [

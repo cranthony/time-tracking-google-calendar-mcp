@@ -139,6 +139,8 @@ fn parts_of(traits: &Option<Map<String, Value>>) -> Option<&Value> {
 pub enum TraitField {
     #[serde(rename = "definition")]
     Definition,
+    #[serde(rename = "techniques")]
+    Techniques,
     #[serde(rename = "icon")]
     Icon,
     #[serde(rename = "scoring")]
@@ -198,7 +200,12 @@ pub enum HabitField {
 /// themselves), in order -- by default the active ones (rated) and those
 /// turned off (kept, but not rated for now), not archived ones
 /// (retired). Each has an id (fixed when it's created, and what a
-/// person's traits name), name, definition, icon, parts and scoring. Its
+/// person's traits name), name, definition, techniques, icon, parts and
+/// scoring. Its techniques, if it has any, are the user's own ways of
+/// developing it, in order -- each plain text, at most 2000 characters
+/// ("Name the emotion I'm avoiding by distracting myself"): when planning
+/// or reviewing time where a trait is at stake, a fitting one can be
+/// offered as a reminder, in the user's words. Its
 /// icon, if it has one, is SVG markup the app draws for it: at most 8192
 /// characters, an <svg> with a viewBox, one colour -- every fill and
 /// stroke currentColor or none (set fill="currentColor" on the <svg> so
@@ -290,7 +297,7 @@ pub fn get_traits(app: &App, statuses: Option<Vec<TraitStatus>>) -> Result<Vec<L
 /// (what it means, in a sentence or two), parts (at least one; see
 /// get_traits for each kind and its fields) and optionally facts (see
 /// get_traits; leave out each new fact's id, and one is made from its
-/// name) and an icon (see get_traits). Its status is active unless
+/// name), techniques (see get_traits) and an icon (see get_traits). Its status is active unless
 /// given ("off" to keep it unrated for now). Its id is made from its name
 /// and never changes, so renaming it later doesn't touch the measures
 /// naming it. A trait with a part that isn't well formed is refused,
@@ -303,8 +310,9 @@ pub fn create_trait(app: &App, r#trait: Trait) -> Result<Trait, ToolError> {
 }
 
 /// Change a trait, by id: rename it, reword its definition, change its
-/// icon, status or scoring, or give it new parts. Fields left out keep their
-/// value; parts, if given, replace them whole, so send every part to keep,
+/// techniques, icon, status or scoring, or give it new parts. Fields left
+/// out keep their value; techniques, if given, replace them whole, in the
+/// order given; parts, if given, replace them whole, so send every part to keep,
 /// each with its id (a part sent without one is new, and starts with no
 /// judgments); a part left out takes its weight with it. facts, if given,
 /// replace them whole too, each with its id (one sent without is new);
