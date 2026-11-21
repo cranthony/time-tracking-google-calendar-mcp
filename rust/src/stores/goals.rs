@@ -994,6 +994,9 @@ impl Goals {
                 },
             }
         };
+        // The goals deleted, as they were: what waited for one is spliced
+        // onto what it waited for.
+        let mut removed: Vec<Goal> = Vec::new();
         for removal in removals {
             let id = removal.goal_id.trim();
             let current = goals.iter().find(|g| g.id.as_deref() == Some(id));
@@ -1002,19 +1005,30 @@ impl Goals {
                 if current.is_none() {
                     find(&goals, id)?;
                 }
+                removed.extend(goals.iter().find(|g| g.id.as_deref() == Some(id)).cloned());
                 goals.retain(|g| g.id.as_deref() != Some(id));
             }
             deleted.push(id.to_string());
         }
-        // What waited for a goal deleted doesn't; a deadline measured from
-        // one keeps the date it had.
+        // What waited for a goal deleted waits, in its place, for what that
+        // goal waited for (spliced, as a queue closes up); for nothing at
+        // all -- held by hand -- if that goal was inactive waiting for
+        // nothing. A deadline measured from one keeps the date it had.
+        let snapshot = goals.clone();
         for goal in goals.iter_mut() {
             let mut changed = false;
-            if let Some(when) = goal.activate_when.as_mut() {
-                if let Some(after) = when.after.as_mut() {
-                    let before = after.len();
-                    after.retain(|t| !t.goal_closed.as_ref().is_some_and(|id| deleted.iter().any(|d| d == id.trim())));
-                    changed |= after.len() != before;
+            if goal.activate_when.as_ref().and_then(|w| w.after.as_ref()).is_some_and(|after| after.iter().any(|t| t.goal_closed.as_ref().is_some_and(|id| deleted.iter().any(|d| d == id.trim())))) {
+                changed = true;
+                let parents = ancestor_ids(goal, &snapshot);
+                let me = goal.id.clone();
+                match spliced(goal.activate_when.as_ref().and_then(|w| w.after.as_deref()).unwrap_or_default(), &removed, &deleted) {
+                    None => goal.activate_when = None,
+                    Some(after) => {
+                        let after: Vec<Trigger> = after.into_iter().filter(|t| !t.goal_closed.as_deref().is_some_and(|id| Some(id) == me.as_deref() || parents.iter().any(|p| p == id))).collect();
+                        if let Some(when) = goal.activate_when.as_mut() {
+                            when.after = Some(after);
+                        }
+                    }
                 }
             }
             if goal.deadline_rule.as_ref().and_then(|r| r.after_goal.as_ref()).is_some_and(|o| deleted.iter().any(|d| d == o.id.trim())) {
@@ -1509,6 +1523,46 @@ fn trigger_problems(goal: &Goal, goals: &[Goal], status: GoalStatus) -> Vec<Stri
         problems.push("waits, through others, for the goal itself".into());
     }
     problems
+}
+
+/// `after`, a goal's triggers, with each goal in `deleted` it waits for
+/// replaced by what that goal waited for (`removed` has them as they
+/// were): the goals it waited to close and the times it waited for (not
+/// a time before its parent's deadline: its parent isn't this one's), and
+/// so on through those deleted too. A goal deleted that was active or
+/// closed is dropped, as it had started or come. None if one was inactive
+/// waiting for nothing: held by hand, so what waits for it is too.
+fn spliced(after: &[Trigger], removed: &[Goal], deleted: &[String]) -> Option<Vec<Trigger>> {
+    fn add(after: &[Trigger], own: bool, removed: &[Goal], deleted: &[String], seen: &mut Vec<String>, out: &mut Vec<Trigger>) -> bool {
+        for trigger in after {
+            if !own && trigger.before_parent.is_some() {
+                continue;
+            }
+            if let Some(id) = set(trigger.goal_closed.as_deref()) {
+                if deleted.iter().any(|d| d == id) {
+                    if seen.iter().any(|s| s == id) {
+                        continue;
+                    }
+                    seen.push(id.to_string());
+                    let Some(gone) = removed.iter().find(|g| g.id.as_deref() == Some(id)) else { continue };
+                    if gone.status != Some(GoalStatus::Inactive) {
+                        continue;
+                    }
+                    let Some(when) = &gone.activate_when else { return false };
+                    if !add(when.after.as_deref().unwrap_or_default(), false, removed, deleted, seen, out) {
+                        return false;
+                    }
+                    continue;
+                }
+            }
+            if !out.contains(trigger) {
+                out.push(trigger.clone());
+            }
+        }
+        true
+    }
+    let mut out = Vec::new();
+    add(after, true, removed, deleted, &mut Vec::new(), &mut out).then_some(out)
 }
 
 /// The goals `goal` waits to close.

@@ -726,6 +726,44 @@ fn a_goal_activated_waiting_leaves_its_inactive_parents_and_by_hand_ignores_what
 }
 
 #[test]
+fn what_waited_for_a_goal_deleted_waits_for_what_it_waited_for() {
+    let f = fixture();
+    let removal = |id: &str| GoalRemoval { goal_id: id.into(), if_version: None };
+    let queued = |title: &str, after: Value| json!({"title": title, "status": "inactive", "deadline": "2026-12-01", "activate_when": {"after": after, "delay": "next_day"}});
+    let front = f.create(json!({"title": "Front", "deadline": "2026-11-01"})).unwrap();
+    let a = f.create(queued("A", json!([{"goal_closed": front}, {"at": "2026-11-20"}]))).unwrap();
+    let b = f.create(queued("B", json!([{"goal_closed": a}]))).unwrap();
+    let c = f.create(queued("C", json!([{"goal_closed": b}]))).unwrap();
+    let d = f.create(queued("D", json!([{"goal_closed": c}, {"at": "2026-11-25"}]))).unwrap();
+
+    // The queue closes up, keeping each one's own delay; through two
+    // deleted at once too.
+    f.change(&[], vec![], vec![removal(&a)]).unwrap();
+    assert_eq!(f.get(&b)["activate_when"], json!({"after": [{"goal_closed": front}, {"at": "2026-11-20"}], "delay": "next_day"}));
+    f.change(&[], vec![], vec![removal(&b), removal(&c)]).unwrap();
+    assert_eq!(f.get(&d)["activate_when"], json!({"after": [{"goal_closed": front}, {"at": "2026-11-20"}, {"at": "2026-11-25"}], "delay": "next_day"}));
+
+    // An active goal deleted has started: what waited for only it starts.
+    let next = f.create(json!({"title": "Next", "status": "inactive", "deadline": "2026-12-01", "activate_when": {"after": [{"goal_closed": front}]}})).unwrap();
+    f.change(&[], vec![], vec![removal(&front)]).unwrap();
+    assert_eq!(f.get(&next)["status"], json!("active"));
+
+    // One held by hand (inactive, waiting for nothing): what waited for
+    // it is held too.
+    let held = f.create(json!({"title": "Held", "status": "inactive", "deadline": "2026-12-01"})).unwrap();
+    let after_held = f.create(queued("After held", json!([{"goal_closed": held}]))).unwrap();
+    f.change(&[], vec![], vec![removal(&held)]).unwrap();
+    assert_eq!((f.get(&after_held)["status"].clone(), f.get(&after_held)["activate_when"].clone()), (json!("inactive"), Value::Null));
+
+    // Never onto its own parent.
+    let top = f.create(json!({"title": "Top", "status": "inactive", "deadline": "2026-12-01"})).unwrap();
+    let first = f.create(queued("First", json!([{"goal_closed": top}, {"at": "2026-11-20"}]))).unwrap();
+    let sub = f.create(json!({"title": "Sub", "parent_id": top, "status": "inactive", "deadline": "2026-12-01", "activate_when": {"after": [{"goal_closed": first}]}})).unwrap();
+    f.change(&[], vec![], vec![removal(&first)]).unwrap();
+    assert_eq!(f.get(&sub)["activate_when"], json!({"after": [{"at": "2026-11-20"}]}));
+}
+
+#[test]
 fn a_goal_past_its_deadline_by_the_time_it_could_start_keeps_waiting() {
     let f = fixture();
     let id = f.create(json!({"title": "Late", "status": "inactive", "deadline": "2026-10-16", "activate_when": {"after": [{"at": "2026-10-17"}]}})).unwrap();
