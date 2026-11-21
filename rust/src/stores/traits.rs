@@ -42,7 +42,9 @@ pub const DEFAULT_LOOKBACK_DAYS: i64 = 30;
 pub const DEFAULT_TARGET: i64 = 1;
 pub const DEFAULT_WITHIN_DAYS: i64 = 14;
 pub const DEFAULT_WINDOW_DAYS: i64 = 30;
-pub const CLEARABLE_TRAIT_FIELDS: [&str; 4] = ["definition", "icon", "scoring", "facts"];
+pub const CLEARABLE_TRAIT_FIELDS: [&str; 5] = ["definition", "techniques", "icon", "scoring", "facts"];
+/// The most characters one of a trait's techniques can have.
+pub const MAX_TECHNIQUE_CHARS: usize = 2000;
 const MAX_PART_ID_LENGTH: usize = 30;
 static PART_ID: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Za-z0-9_#-]+$").unwrap());
 
@@ -102,6 +104,9 @@ pub struct Trait {
     pub facts: Option<Vec<Map<String, Value>>>,
     /// Its icon: SVG markup, one colour (see get_traits).
     pub icon: Option<String>,
+    /// How to develop it, in order: each a plain-text technique (see
+    /// get_traits).
+    pub techniques: Option<Vec<String>>,
     /// Goes up by one each time it changes. Give it to an update (and to a delete, as if_version): it's the version you last read, required -- one saved before versions is version 0 -- changed since, the change is refused; on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK.
     pub version: Option<i64>,
 }
@@ -145,6 +150,7 @@ pub struct ListedTrait {
     pub name: Option<String>,
     pub status: Option<TraitStatus>,
     pub definition: Option<String>,
+    pub techniques: Option<Vec<String>>,
     pub parts: Option<Vec<Map<String, Value>>>,
     pub scoring: Option<Map<String, Value>>,
     pub facts: Option<Vec<Map<String, Value>>>,
@@ -171,6 +177,7 @@ pub fn seed_traits() -> Vec<Trait> {
         name: Some(name.into()),
         status: Some(TraitStatus::Active),
         definition: Some(definition.into()),
+        techniques: None,
         parts: Some(parts.as_array().unwrap().iter().map(|p| p.as_object().unwrap().clone()).collect()),
         scoring: None,
         facts: None,
@@ -316,6 +323,7 @@ pub fn trait_problems(t: &Trait) -> Vec<String> {
     if let Some(icon) = &t.icon {
         problems.extend(icon_problems(icon).into_iter().map(|p| format!("its icon {p}")));
     }
+    problems.extend(technique_problems(t.techniques.as_deref().unwrap_or_default()));
     problems.extend(fact_definition_problems(t.facts.as_deref().unwrap_or_default()));
     let parts = t.part_values();
     if parts.is_empty() {
@@ -344,6 +352,20 @@ fn repeated_part_ids(parts: &[Value]) -> Vec<String> {
     repeated.sort();
     repeated.dedup();
     repeated.iter().map(|id| format!("its parts' id {} is used more than once", py::repr(id))).collect()
+}
+
+/// What's wrong with a trait's techniques: each must say something, in at
+/// most MAX_TECHNIQUE_CHARS characters.
+fn technique_problems(techniques: &[String]) -> Vec<String> {
+    let mut problems = Vec::new();
+    for (number, technique) in techniques.iter().enumerate() {
+        if technique.trim().is_empty() {
+            problems.push(format!("its technique {} is empty", number + 1));
+        } else if technique.chars().count() > MAX_TECHNIQUE_CHARS {
+            problems.push(format!("its technique {} is longer than {MAX_TECHNIQUE_CHARS} characters", number + 1));
+        }
+    }
+    problems
 }
 
 /// What's wrong with a trait's facts: each {"id", "name",
@@ -1264,6 +1286,7 @@ impl Traits {
                     name: t.name,
                     status: t.status,
                     definition: t.definition,
+                    techniques: t.techniques,
                     parts: t.parts,
                     scoring: t.scoring,
                     facts: t.facts,

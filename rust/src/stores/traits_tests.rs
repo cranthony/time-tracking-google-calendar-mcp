@@ -307,6 +307,44 @@ fn clears_the_definition() {
     assert!(f.by_id("creative")["definition"].is_null());
 }
 
+// -- techniques --------------------------------------------------------------------------
+
+#[test]
+fn keeps_lists_replaces_and_clears_techniques_in_order() {
+    let f = fixture();
+    let techniques = json!(["Get past the first few seconds", "Name the feeling", "Ask why"]);
+
+    let created =
+        f.held(|t| t.create_trait(&given(json!({"name": "Brave", "parts": [judgment()], "techniques": techniques})))).unwrap();
+    assert_eq!(created["techniques"], techniques);
+    let listed = to_value(f.traits.get_traits(None).unwrap());
+    assert_eq!(listed[5]["techniques"], techniques);
+    assert!(listed[0]["techniques"].is_null());
+
+    f.update(json!({"id": "brave", "name": "Braver"}));
+    assert_eq!(f.by_id("brave")["techniques"], techniques);
+    f.update(json!({"id": "brave", "techniques": ["Ask why", "Name the feeling"]}));
+    assert_eq!(f.by_id("brave")["techniques"], json!(["Ask why", "Name the feeling"]));
+
+    f.held(|t| t.update_trait(&given(json!({"id": "brave"})), &strings(&["techniques"]))).unwrap();
+    assert!(f.by_id("brave")["techniques"].is_null());
+}
+
+#[test]
+fn an_empty_or_too_long_technique_is_refused_saying_which() {
+    let f = fixture();
+    let long = "x".repeat(MAX_TECHNIQUE_CHARS + 1);
+
+    refused(
+        f.held(|t| t.create_trait(&given(json!({"name": "Brave", "parts": [judgment()], "techniques": ["Ask why", "  "]})))),
+        "The trait 'Brave': its technique 2 is empty",
+    );
+    refused(
+        f.held(|t| t.update_trait(&given(json!({"id": "creative", "techniques": [long]})), &[])),
+        "its technique 1 is longer than 2000 characters",
+    );
+}
+
 // -- icons -------------------------------------------------------------------------------
 
 const ICON: &str = r#"<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>"#;
