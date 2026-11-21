@@ -236,3 +236,64 @@ fn an_amend_over_an_event_the_proposal_decides_is_refused_in_the_users_words() {
     assert!(!refusal.contains("Resend the whole batch"), "{refusal}");
     assert!(refusal.contains("overlaps 'Report'"), "{refusal}");
 }
+
+// -- an edit keeps the edges it didn't move where the layer had them ----------------
+
+fn span_of(proposal: &Proposal, id: &str) -> (Option<Moment>, Option<Moment>, Option<String>) {
+    let e = proposal.events.as_ref().unwrap().iter().find(|e| e.id == id).unwrap();
+    (e.start, e.end, e.decided_by.clone())
+}
+
+#[test]
+fn an_end_edit_of_a_cut_event_keeps_its_cut_start() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+    // The report run on to 12:30 cuts lunch to start then.
+    setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("12:30")), ..keep("e2") }]);
+
+    // Lunch's end dragged later: its start is still where the layer cut it.
+    let proposal = setup.amend(&p, 2, vec![EventDecision { end: Some(time_at("13:30")), ..keep("e3") }]);
+
+    assert_eq!(span_of(&proposal, "e3"), (Some(time_at("12:30")), Some(time_at("13:30")), Some("user".into())));
+}
+
+#[test]
+fn an_edge_left_free_follows_what_cut_it() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+    setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("12:30")), ..keep("e2") }]);
+    setup.amend(&p, 2, vec![EventDecision { end: Some(time_at("13:30")), ..keep("e3") }]);
+
+    // The report run on further: lunch's start, never set, follows it.
+    let proposal = setup.amend(&p, 3, vec![EventDecision { end: Some(time_at("12:45")), ..keep("e2") }]);
+
+    assert_eq!(span_of(&proposal, "e3"), (Some(time_at("12:45")), Some(time_at("13:30")), Some("user".into())));
+}
+
+#[test]
+fn an_edge_set_by_the_edit_still_overlaps_and_is_refused() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+    setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("12:30")), ..keep("e2") }]);
+
+    // Lunch's start set under the report: that's the user's, and overlaps.
+    let refusal = setup
+        .try_amend(&p, 2, Amend { decisions: vec![EventDecision { start: Some(time_at("12:15")), ..keep("e3") }], ..Default::default() })
+        .unwrap_err()
+        .to_string();
+
+    assert!(refusal.contains("overlaps"), "{refusal}");
+}
+
+#[test]
+fn confirming_writes_the_cut_start_an_end_edit_kept() {
+    let setup = Setup::standard();
+    let p = setup.dry_run(setup.email_then_report()).proposal_id.unwrap();
+    setup.amend(&p, 1, vec![EventDecision { end: Some(time_at("12:30")), ..keep("e2") }]);
+    setup.amend(&p, 2, vec![EventDecision { end: Some(time_at("13:30")), ..keep("e3") }]);
+
+    setup.call(|c| c.confirm(&p, 3)).unwrap();
+
+    let lunch = setup.event("e3");
+    assert_eq!((lunch.start, lunch.end), (Some(time_at("12:30")), Some(time_at("13:30"))));
+}

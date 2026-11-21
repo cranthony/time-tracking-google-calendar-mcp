@@ -951,8 +951,9 @@ pub fn merge(proposal: &str, claude: &[EventDecision], edits: &[UserEdit], optio
         if given.description.is_some() {
             described.set(&target, edit.seq);
         }
+        let given = EventDecision { layer_edges: true, ..given };
         match existing.filter(|d| d.action == "keep" || d.action == "create") {
-            Some(existing) => keyed.set(&target, overlay(&existing, &given)),
+            Some(existing) => keyed.set(&target, EventDecision { layer_edges: true, ..overlay(&existing, &given) }),
             None => keyed.set(&target, EventDecision { event_id: Some(target.clone()), ..given }),
         }
         decided_by.set(&target, "user".into());
@@ -1094,6 +1095,7 @@ pub fn decision_shape(decision: &EventDecision) -> (&'static str, Value) {
     };
     let action = data.shift_remove("action").and_then(|a| a.as_str().map(str::to_string)).unwrap_or_default();
     data.shift_remove("allow_history");
+    data.shift_remove("layer_edges");
     if action == "create" {
         return ("creates", Value::Object(data));
     }

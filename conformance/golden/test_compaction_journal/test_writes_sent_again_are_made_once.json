@@ -5749,7 +5749,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Late dinner\"}",
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Late dinner\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -6622,7 +6622,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Late dinner\"}"
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Late dinner\", \"layer_edges\": true}"
        ],
        [
         "bdb7a77874dar2",

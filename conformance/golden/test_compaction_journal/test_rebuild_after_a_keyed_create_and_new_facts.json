@@ -5556,7 +5556,7 @@
         "0",
         "decision",
         "a3ed657f83d6a4bc6c3589c096",
-        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\"}",
+        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -6009,7 +6009,7 @@
         "0",
         "decision",
         "a3ed657f83d6a4bc6c3589c096",
-        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\"}",
+        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -7122,7 +7122,7 @@
         "0",
         "decision",
         "a3ed657f83d6a4bc6c3589c096",
-        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\"}"
+        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\", \"layer_edges\": true}"
        ],
        [
         "74adc82e2eb6r2",
@@ -7221,7 +7221,7 @@
         "0",
         "decision",
         "a3ed657f83d6a4bc6c3589c096",
-        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\"}"
+        "{\"action\": \"keep\", \"event_id\": \"a3ed657f83d6a4bc6c3589c096\", \"summary\": \"Late dinner\", \"end_note\": \"a0g0jc\", \"layer_edges\": true}"
        ],
        [
         "74adc82e2eb6r3",

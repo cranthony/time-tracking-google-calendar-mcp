@@ -10337,7 +10337,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Dinner with Robin\", \"end_note\": \"onvtja\", \"facts\": {\"with\": [\"co2yzn\"]}}",
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Dinner with Robin\", \"end_note\": \"onvtja\", \"facts\": {\"with\": [\"co2yzn\"]}, \"layer_edges\": true}",
         "",
         "",
         ""
@@ -12190,7 +12190,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Dinner with Robin\", \"end_note\": \"onvtja\", \"facts\": {\"with\": [\"co2yzn\"]}}"
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Dinner with Robin\", \"end_note\": \"onvtja\", \"facts\": {\"with\": [\"co2yzn\"]}, \"layer_edges\": true}"
        ],
        [
         "9e18fcd7d564r2",

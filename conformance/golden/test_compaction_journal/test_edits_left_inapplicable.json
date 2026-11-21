@@ -7840,7 +7840,7 @@
         "0",
         "decision",
         "2a2bbdacdbfc08240bd7b31473",
-        "{\"action\": \"keep\", \"event_id\": \"2a2bbdacdbfc08240bd7b31473\", \"summary\": \"Errands\"}",
+        "{\"action\": \"keep\", \"event_id\": \"2a2bbdacdbfc08240bd7b31473\", \"summary\": \"Errands\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -8153,7 +8153,7 @@
         "0",
         "decision",
         "d820ae0f22570a19812dcb76c2",
-        "{\"action\": \"keep\", \"event_id\": \"d820ae0f22570a19812dcb76c2\", \"summary\": \"Brunch\"}",
+        "{\"action\": \"keep\", \"event_id\": \"d820ae0f22570a19812dcb76c2\", \"summary\": \"Brunch\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -8325,7 +8325,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Supper\"}",
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Supper\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -9359,7 +9359,7 @@
         "0",
         "decision",
         "2a2bbdacdbfc08240bd7b31473",
-        "{\"action\": \"keep\", \"event_id\": \"2a2bbdacdbfc08240bd7b31473\", \"summary\": \"Errands\"}"
+        "{\"action\": \"keep\", \"event_id\": \"2a2bbdacdbfc08240bd7b31473\", \"summary\": \"Errands\", \"layer_edges\": true}"
        ],
        [
         "bdb7a77874dar2",
@@ -9454,7 +9454,7 @@
         "0",
         "decision",
         "d820ae0f22570a19812dcb76c2",
-        "{\"action\": \"keep\", \"event_id\": \"d820ae0f22570a19812dcb76c2\", \"summary\": \"Brunch\"}"
+        "{\"action\": \"keep\", \"event_id\": \"d820ae0f22570a19812dcb76c2\", \"summary\": \"Brunch\", \"layer_edges\": true}"
        ],
        [
         "bdb7a77874dar4",
@@ -9515,7 +9515,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Supper\"}"
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Supper\", \"layer_edges\": true}"
        ],
        [
         "bdb7a77874dar5",

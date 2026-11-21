@@ -9771,7 +9771,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}",
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}",
         "",
         "",
         ""
@@ -9904,7 +9904,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}",
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}",
         "",
         "",
         ""
@@ -10027,7 +10027,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}",
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}",
         "",
         "",
         ""
@@ -10203,7 +10203,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}",
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}",
         "",
         "",
         ""
@@ -11224,7 +11224,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}"
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}"
        ],
        [
         "c7797ab51193r3",
@@ -11281,7 +11281,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}"
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}"
        ],
        [
         "c7797ab51193r4",
@@ -11328,7 +11328,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}"
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}"
        ],
        [
         "c7797ab51193r5",
@@ -11365,7 +11365,7 @@
         "0",
         "decision",
         "3bc8a594c0be6dfabc4993e74e",
-        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"]}"
+        "{\"action\": \"keep\", \"event_id\": \"3bc8a594c0be6dfabc4993e74e\", \"description\": \"Morning block.\", \"dropped_notes\": [\"a0g0jc\"], \"layer_edges\": true}"
        ],
        [
         "c7797ab51193r6",
