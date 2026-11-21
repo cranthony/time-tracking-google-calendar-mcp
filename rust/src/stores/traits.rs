@@ -49,7 +49,7 @@ static PART_ID: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[A-Za-z0-9_#-]+
 /// Each part kind's (required, optional) fields.
 pub fn part_kind(kind: &str) -> Option<(&'static [&'static str], &'static [&'static str])> {
     match kind {
-        "judgment" => Some((&["rubric", "ratings", "facts"], &["window_days", "scoring"])),
+        "judgment" => Some((&["rubric", "ratings", "facts"], &["window_days", "scoring", "neutral"])),
         "continuity" => Some((&[], &["last_within_days", "next_within_days", "action"])),
         "count" => Some((&["target"], &["noun", "interval_days", "zero_at_days", "action"])),
         "duration" => Some((&["target_min"], &["interval_days", "zero_at_days", "action"])),
@@ -628,6 +628,15 @@ fn judgment_problems(part: &Map<String, Value>, fact_ids: Option<&[String]>) -> 
         problems.push(
             "\"ratings\" must be an object of at least two ratings, each a whole number (as text, from \"0\") saying what it means: {\"0\": \"routine\", \"1\": \"a twist\", ...}".into(),
         );
+    }
+    if let Some(neutral) = part.get("neutral") {
+        // The rating that says nothing either way: shown as neither good
+        // nor bad. Display only; it doesn't change how a part is scored.
+        let named = is_int(neutral)
+            && part["ratings"].as_object().is_some_and(|r| r.contains_key(&(number(neutral) as i64).to_string()));
+        if !named {
+            problems.push("\"neutral\" must be one of its ratings, as a whole number: the one that says nothing either way (\"nothing came up\")".into());
+        }
     }
     let Value::Array(facts) = &part["facts"] else {
         problems.push(format!("\"facts\" must be a list of facts to judge by: {}", fact_names()));
