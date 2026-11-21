@@ -304,7 +304,11 @@ pub fn create_goal(app: &App, goal: GoalInput) -> Result<CreatedGoal, ToolError>
 /// in the same call. Nothing is moved or changed to make things fit: a
 /// call that breaks a rule changes nothing, and the error names the goals
 /// in the way. Deleting a goal can't be undone; events tagged with it
-/// stop showing it. Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, it's refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns each goal made or
+/// stop showing it. A goal that waited for one deleted (activate_when)
+/// waits in its place for what that one waited for -- the goals it waited
+/// to close and the times it waited for -- so a queue of goals closes up;
+/// if that one was inactive waiting for nothing, what waited for it does
+/// too (activate_when removed, held till activated by hand). Give each update its version, and each delete its if_version -- the versions you last read (get_goals gives them): without, it's refused; changed since, the call is refused with every goal that's changed, as it is now (_meta.conflicts) -- on a conflict, read it again: if what changed elsewhere is in fields you aren't changing, make your change again on it as it is now; if it's in fields you're changing, or it was deleted (or, deleting it, it was changed since), stop and ask the user -- showing what changed and what you meant to do -- and never overwrite their change, or put back what was deleted, without their OK. Returns each goal made or
 /// changed, as it is now, and the ids deleted.
 #[tool(writes)]
 pub fn update_goals(app: &App, updates: Option<Vec<GoalUpdate>>, creates: Option<Vec<GoalInput>>, deletes: Option<Vec<GoalDelete>>) -> Result<ChangedGoals, ToolError> {
@@ -333,7 +337,8 @@ pub fn update_goal(app: &App, goal: GoalInput, clear_fields: Option<Vec<GoalFiel
 
 /// Delete one goal by id -- update_goals for one goal: refused while it
 /// has sub-goals (delete or move them first). Can't be undone; events
-/// tagged with it stop showing it. Given if_version -- the version last
+/// tagged with it stop showing it; what waited for it waits for what it
+/// waited for (see update_goals). Given if_version -- the version last
 /// seen -- it's refused if it's changed since; gone already, it's done.
 /// Returns the ids deleted.
 #[tool(writes)]
