@@ -5426,7 +5426,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\"}",
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -5539,7 +5539,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\"}",
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\", \"layer_edges\": true}",
         "",
         "",
         ""
@@ -6520,7 +6520,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\"}"
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\", \"layer_edges\": true}"
        ],
        [
         "bdb7a77874dar2",
@@ -6554,7 +6554,7 @@
         "0",
         "decision",
         "f43e48437258cfca35d17613c4",
-        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\"}"
+        "{\"action\": \"keep\", \"event_id\": \"f43e48437258cfca35d17613c4\", \"summary\": \"Long dinner\", \"end_note\": \"co2yzn\", \"layer_edges\": true}"
        ],
        [
         "bdb7a77874dar3",

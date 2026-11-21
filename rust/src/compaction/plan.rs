@@ -70,6 +70,12 @@ pub struct EventDecision {
     pub counts_against_follow_through: Option<bool>,
     pub key: Option<String>,
     pub allow_history: Option<bool>,
+    /// The user's edit: an edge it doesn't set stays where the plan had
+    /// it, the layer's to cut (see `trim_free_edges`). Claude's decisions
+    /// place what they keep: an overlap there is refused, for Claude to
+    /// resolve. Set as the user's edits are merged, and kept with the
+    /// decisions a revision is planned with.
+    pub layer_edges: bool,
 }
 
 impl EventDecision {
@@ -105,6 +111,7 @@ impl EventDecision {
         put("counts_against_follow_through", self.counts_against_follow_through.map(|c| json!(c)));
         put("key", self.key.clone().map(Value::String));
         put("allow_history", self.allow_history.map(|a| json!(a)));
+        put("layer_edges", self.layer_edges.then_some(Value::Bool(true)));
         Value::Object(out)
     }
 
@@ -136,6 +143,7 @@ impl EventDecision {
             counts_against_follow_through: data.get("counts_against_follow_through").and_then(Value::as_bool),
             key: text("key"),
             allow_history: data.get("allow_history").and_then(Value::as_bool),
+            layer_edges: data.get("layer_edges").and_then(Value::as_bool).unwrap_or(false),
         })
     }
 }
@@ -313,6 +321,11 @@ struct Fact {
     fixed_description: bool,
     dropped_notes: Option<Vec<String>>,
     created_key: Option<String>,
+    /// A decided event's edges its decision left where the plan had
+    /// them: still the layer's to cut, as an undecided event's are (see
+    /// `trim_free_edges`).
+    free_start: bool,
+    free_end: bool,
 }
 
 impl Fact {
@@ -441,6 +454,8 @@ pub fn plan_compaction(
             fixed_description: false,
             dropped_notes: None,
             created_key: None,
+            free_start: false,
+            free_end: false,
         });
     }
     facts.sort_by_key(|f| (f.start, f.end));
@@ -458,6 +473,7 @@ pub fn plan_compaction(
         }
         set_fields(copy, decision);
     }
+    trim_free_edges(&mut facts);
     let layer_end = facts.iter().filter(|f| !f.default && f.start < now).map(|f| f.end).fold(now, |a, b| if b > a { b } else { a });
     let mut cancels = cancels;
     let implied = imply(&mut facts, &mut copies, &mut cancels, &revisits, options.history_until);
@@ -545,6 +561,57 @@ impl Implied {
 }
 
 /// The key a later piece of a split event is created under.
+/// Each decided event's free edges ([`Fact::free_start`], `free_end`) cut
+/// by the decided events they run into, as the layer cuts an undecided
+/// event: an edit of an event's end leaves its start where the layer had
+/// it, and following what cut it. A free start is moved to the end of a
+/// decided event going on then, that started no later and ends sooner; a
+/// free end, likewise, to the start of one going on then. Not by one whose
+/// facing edge is free too: neither's been placed there, so that overlap
+/// is refused, as any other between decided events is.
+fn trim_free_edges(facts: &mut [Fact]) {
+    let decided: Vec<usize> = (0..facts.len()).filter(|&i| !facts[i].default).collect();
+    if !decided.iter().any(|&i| facts[i].free_start || facts[i].free_end) {
+        return;
+    }
+    // Each trim only shrinks an event, so this settles.
+    loop {
+        let mut trimmed = false;
+        for &i in &decided {
+            let (start, end) = (facts[i].start, facts[i].end);
+            let mut new_start = start;
+            let mut new_end = end;
+            for &j in &decided {
+                if j == i {
+                    continue;
+                }
+                let other = &facts[j];
+                if other.end <= other.start {
+                    continue;
+                }
+                if facts[i].free_start && !other.free_end && other.start <= start && other.end > new_start && other.end < end {
+                    new_start = other.end;
+                }
+                if facts[i].free_end && !other.free_start && other.end >= end && other.start < new_end && other.start > start {
+                    new_end = other.start;
+                }
+            }
+            if (new_start, new_end) != (start, end) && new_end > new_start {
+                let fact = &mut facts[i];
+                fact.start = new_start;
+                fact.end = new_end;
+                fact.event.start = Some(new_start);
+                fact.event.end = Some(new_end);
+                trimmed = true;
+            }
+        }
+        if !trimmed {
+            break;
+        }
+    }
+    facts.sort_by_key(|f| (f.start, f.end));
+}
+
 fn piece_key(event_id: &str, number: usize) -> String {
     format!("{event_id}~{number}")
 }
@@ -671,6 +738,8 @@ fn imply(
                 fixed_description: false,
                 dropped_notes: None,
                 created_key: Some(key.clone()),
+                free_start: false,
+                free_end: false,
             });
             implied.push((key, made));
         }
@@ -934,6 +1003,11 @@ fn resolve(
             touched.push((event_id.clone(), decision));
             continue;
         }
+        // What the user's edit didn't set stays the layer's to cut -- not
+        // what an earlier compaction settled, nor a revisited event's.
+        let fixed = !decision.layer_edges || revisits.contains(&event_id) || compacted.is_some();
+        let free_start = !fixed && decision.start.is_none() && decision.start_note.is_none() && start == base.start();
+        let free_end = !fixed && decision.end.is_none() && decision.end_note.is_none() && end == base.end();
         let mut fact_event = base.clone();
         let mut names: Vec<String> = Vec::new();
         for member in &members {
@@ -987,6 +1061,8 @@ fn resolve(
             fixed_description: decision.description.is_some(),
             dropped_notes: decision.dropped_notes.clone(),
             created_key: None,
+            free_start,
+            free_end,
         });
     }
 
@@ -1015,6 +1091,8 @@ fn resolve(
         facts.push(Fact {
             key: decision.key.clone().unwrap_or_else(|| format!("new:{}", number + 1)),
             created_key: decision.key.clone(),
+            free_start: false,
+            free_end: false,
             start,
             end,
             event: Event {

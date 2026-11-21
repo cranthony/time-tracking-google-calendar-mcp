@@ -2050,7 +2050,10 @@ pub fn get_proposal(app: &App, proposal_id: Option<String>, since_revision: Opti
 /// with these edits, so later revisions keep to it. What an edit runs
 /// over that no decision changed is cut, covered or split by it (see
 /// get_proposal's `cut_by` and `covered_by`) -- worked out again on every
-/// revision, never kept as an edit. An end may run past `through`: what
+/// revision, never kept as an edit. An edge an update doesn't set stays
+/// where the plan had it, still cut by the decided events it runs into:
+/// an update of only the end of an event the layer cut keeps the start
+/// it was cut to, and follows what cut it. An end may run past `through`: what
 /// it runs over there is cut or covered too, and the proposal's
 /// `layer_end` moves there. An update or create that puts an event past
 /// the proposal's events takes in the events it lands among as the
