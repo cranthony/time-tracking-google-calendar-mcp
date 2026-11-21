@@ -400,6 +400,11 @@ fn accepts_every_kind_of_part() {
 }
 
 #[test]
+fn a_judgment_can_say_which_rating_is_neutral() {
+    assert_eq!(part_problems(&with(judgment(), "neutral", json!(1))), Vec::<String>::new());
+}
+
+#[test]
 fn refuses_what_isnt_a_part() {
     let cases = [
         (json!("judgment"), "must be an object with a \"kind\""),
@@ -422,6 +427,8 @@ fn refuses_what_isnt_a_part() {
         (with(judgment(), "facts", json!([{"fact": "action_history", "lookback_days": 0}])), "\"facts\": action_history's"),
         (with(judgment(), "facts", json!([{"fact": "location", "days": 1}])), "\"facts\": location has no field 'days'"),
         (with(judgment(), "facts", json!(["action", {"fact": "action"}])), "\"facts\" names action more than once"),
+        (with(judgment(), "neutral", json!(9)), "\"neutral\" must be one of its ratings"),
+        (with(judgment(), "neutral", json!("1")), "\"neutral\" must be one of its ratings"),
     ];
 
     for (part, problem) in cases {

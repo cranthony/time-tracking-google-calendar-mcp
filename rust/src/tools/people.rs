@@ -222,7 +222,10 @@ pub enum HabitField {
 /// "ratings" ({"0": "The activity and place were routine", "1": "There
 /// was a twist on the activity or place", "2": "The activity or the
 /// place were new", "3": "Both were new, or it was otherwise
-/// adventurous"}), from the "facts" it names: "action" (what was done),
+/// adventurous"}) -- optionally with a "neutral" rating, the one that
+/// says nothing either way ("Nothing came up"), which the app shows as
+/// neither good nor bad (it doesn't change the score) -- from the "facts"
+/// it names: "action" (what was done),
 /// "action_history" (what's been done with them before), "location",
 /// "location_history" (where they've been together before),
 /// "general_notes" (the event's notes) and any of the trait's own facts
