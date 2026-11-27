@@ -528,6 +528,8 @@ Hosting the server where other people, apps and Claude.ai can reach it.
 
 ### On Render, with WorkOS sign-in
 
+Wherever it's hosted, the server compresses what it sends, gzip or Brotli, to a client that accepts either ([`rust/src/mcp/http.rs`](rust/src/mcp/http.rs)'s `compression`): bandwidth is what a host like Render limits, and JSON shrinks to a tenth or so (the tool list, from about 700 KB to under 90). That's each reply on `/mcp` too, though it's an event stream, but not the `GET /mcp` stream held open, which is never written to; and not images, or anything under 256 bytes.
+
 Hosting this remotely (e.g. on [Render](https://render.com/)) involves **two independent OAuth concerns** — don't confuse them:
 
 1. **This server's own credential to talk to Google** (`credentials.json`/`token.json`, already covered above) — who *this app* is, as far as Google Calendar is concerned.
@@ -587,6 +589,7 @@ The server can serve the Time Tracker web app itself, from the same origin as `/
 The server refuses to start if the directory has no `index.html`. What it serves ([`rust/src/mcp/http.rs`](rust/src/mcp/http.rs)):
 - **The endpoints come first.** `/mcp`, the protected-resource metadata and the OAuth proxy answer as always; the site only gets the paths they don't.
 - **The site's files,** for a `GET` or `HEAD`, with their content types (`application/wasm` included) and `Last-Modified`, each marked `Cache-Control: no-cache` so a browser revalidates and a new deploy is picked up at once. Nothing outside the directory is served, and directories aren't listed.
+- **Compressed,** as everything the server sends is (below).
 - **`index.html` for any other page a browser loads** (a request that accepts `text/html`), so the app's own paths survive a reload. Anything else — a script or asset that isn't there, any other method, and anything under `/.well-known/`, which MCP clients probe for sign-in — gets the same `404` as without a site.
 
 Copy a new build over the directory to deploy it; the server needn't restart.

@@ -19,6 +19,8 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
+use tower_http::compression::predicate::{NotForContentType, Predicate};
+use tower_http::compression::{CompressionLayer, CompressionLevel};
 use regex::Regex;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -277,7 +279,30 @@ fn router(shared: Arc<Shared>) -> Router {
         .fallback(site)
         .layer(middleware::from_fn_with_state(shared.clone(), cors))
         .layer(middleware::from_fn_with_state(shared.clone(), through_proxy))
+        .layer(compression())
         .with_state(shared)
+}
+
+/// Compresses what's sent (gzip or Brotli, whichever the client prefers
+/// of those it accepts): JSON shrinks to a tenth or so, and bandwidth is
+/// what a host like Render charges for. Only a body whose size is known
+/// and isn't tiny -- so each reply on /mcp, though it's an event stream,
+/// but not the GET stream held open on /mcp, which is never written to
+/// and has no size -- and never an image, already compressed. A middling
+/// level: much smaller than gzip's fastest, without Brotli's slowest
+/// costing the server's half a CPU.
+fn compression() -> CompressionLayer<impl Predicate> {
+    CompressionLayer::new().quality(CompressionLevel::Precise(5)).compress_when(KnownSize.and(NotForContentType::IMAGES))
+}
+
+/// A body whose size is known, and at least 256 bytes (see compression).
+#[derive(Clone, Copy)]
+struct KnownSize;
+
+impl Predicate for KnownSize {
+    fn should_compress<B: axum::body::HttpBody>(&self, response: &axum::http::Response<B>) -> bool {
+        response.body().size_hint().exact().is_some_and(|size| size >= 256)
+    }
 }
 
 /// The app's icon (crate::mcp::icon), cacheable for a day.

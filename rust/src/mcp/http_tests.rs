@@ -355,6 +355,67 @@ fn exposes_the_session_id() {
     assert!(answer.header("access-control-expose-headers").unwrap().to_lowercase().contains("mcp-session-id"));
 }
 
+// -- compression -------------------------------------------------------------------------
+
+/// A session on `served`, initialized; and the headers to call it with.
+fn session_headers(served: &Served, auth: &str) -> String {
+    let bearer = auth.trim_start_matches("Bearer ");
+    let session = initialize(served, bearer).header("mcp-session-id").unwrap().to_string();
+    let headers = [("Authorization", auth), ("Content-Type", "application/json"), ACCEPT, ("Mcp-Session-Id", session.as_str())];
+    send("POST", &format!("{}/mcp", served.url), &headers, Some(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}).to_string().as_bytes()));
+    session
+}
+
+#[test]
+fn replies_are_compressed_for_a_client_that_accepts_it() {
+    let served = served(AUTHKIT);
+    let auth = format!("Bearer {}", token(json!({})));
+    let session = session_headers(&served, &auth);
+    let list = json!({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}).to_string();
+    let call = |encoding: &str| {
+        let headers = [("Authorization", auth.as_str()), ("Content-Type", "application/json"), ACCEPT, ("Mcp-Session-Id", session.as_str()), ("Accept-Encoding", encoding)];
+        send("POST", &format!("{}/mcp", served.url), &headers, Some(list.as_bytes()))
+    };
+
+    // ureq leaves Brotli alone, so its header shows.
+    let brotli = call("br");
+    assert_eq!(brotli.status, 200);
+    assert_eq!(brotli.header("content-encoding"), Some("br"));
+    assert!(brotli.header("vary").unwrap().to_lowercase().contains("accept-encoding"));
+    // It undoes gzip itself (dropping the header): what's read is the
+    // reply, as ever.
+    let gzipped = call("gzip");
+    assert_eq!(gzipped.status, 200);
+    assert!(gzipped.body.starts_with("event: message"), "{}", &gzipped.body[..100.min(gzipped.body.len())]);
+    assert!(gzipped.body.contains("\"tools\""));
+
+    assert_eq!(call("identity").header("content-encoding"), None);
+}
+
+#[test]
+fn the_held_open_stream_and_tiny_replies_are_not_compressed() {
+    let served = served(AUTHKIT);
+    let auth = format!("Bearer {}", token(json!({})));
+    let session = session_headers(&served, &auth);
+    let headers = [("Authorization", auth.as_str()), ("Accept", "text/event-stream"), ("Mcp-Session-Id", session.as_str()), ("Accept-Encoding", "br")];
+
+    // Brotli, which ureq leaves alone, so a header would show. Its
+    // headers only: the stream never ends.
+    let mut request = ureq::get(&format!("{}/mcp", served.url));
+    for (k, v) in headers {
+        request = request.set(k, v);
+    }
+    let stream = request.call().unwrap();
+    assert_eq!(stream.status(), 200);
+    assert_eq!(stream.header("content-type"), Some("text/event-stream"));
+    assert_eq!(stream.header("content-encoding"), None);
+
+    let headers = [("Authorization", auth.as_str()), ("Content-Type", "application/json"), ACCEPT, ("Mcp-Session-Id", session.as_str()), ("Accept-Encoding", "br")];
+    let notified = send("POST", &format!("{}/mcp", served.url), &headers, Some(json!({"jsonrpc": "2.0", "method": "notifications/initialized"}).to_string().as_bytes()));
+    assert_eq!(notified.status, 202);
+    assert_eq!(notified.header("content-encoding"), None);
+}
+
 // -- timing ------------------------------------------------------------------------------
 
 #[test]
